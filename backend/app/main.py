@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from backend.app.auth.router import router as auth_router
 from backend.app.database.connection import engine
 
 app = FastAPI(
     title="Research Funding & Innovation Intelligence Platform"
 )
+
+app.include_router(auth_router)
 
 
 @app.get("/")
@@ -22,4 +25,4 @@ def database_health():
         return {
             "database": "connected",
             "test": result.scalar()
-        }
+        }
