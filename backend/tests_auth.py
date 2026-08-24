@@ -137,11 +137,13 @@ class TestAuthModule(unittest.TestCase):
         res_reg = client.post("/auth/register", json=register_payload)
         self.assertEqual(res_reg.status_code, 201)
 
-        login_payload = {
-            "email": email,
-            "password": password,
-        }
-        res_login = client.post("/auth/login", json=login_payload)
+        res_login = client.post(
+            "/auth/login",
+            data={
+                "username": email,
+                "password": password,
+            },
+        )
         self.assertEqual(res_login.status_code, 200)
         login_data = res_login.json()
         self.assertIn("access_token", login_data)
@@ -162,12 +164,24 @@ class TestAuthModule(unittest.TestCase):
         }
         client.post("/auth/register", json=register_payload)
 
-        res_login = client.post("/auth/login", json={"email": email, "password": "WrongPassword123!"})
+        res_login = client.post(
+            "/auth/login",
+            data={
+                "username": email,
+                "password": "WrongPassword123!",
+            },
+        )
         self.assertEqual(res_login.status_code, 401)
         self.assertIn("invalid", res_login.json()["detail"].lower())
 
     def test_08_login_non_existent_email(self):
-        res_login = client.post("/auth/login", json={"email": "doesnotexist@example.com", "password": "anypassword"})
+        res_login = client.post(
+            "/auth/login",
+            data={
+                "username": "doesnotexist@example.com",
+                "password": "anypassword",
+            },
+        )
         self.assertEqual(res_login.status_code, 401)
         self.assertIn("invalid", res_login.json()["detail"].lower())
 
@@ -185,7 +199,13 @@ class TestAuthModule(unittest.TestCase):
         res_reg = client.post("/auth/register", json=register_payload)
         self.assertEqual(res_reg.status_code, 201)
 
-        res_login = client.post("/auth/login", json={"email": email, "password": password})
+        res_login = client.post(
+            "/auth/login",
+            data={
+                "username": email,
+                "password": password,
+            },
+        )
         token = res_login.json()["access_token"]
 
         res_me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
