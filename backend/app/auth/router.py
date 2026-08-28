@@ -68,9 +68,22 @@ async def google_callback(request: Request, code: str, state: str, db: Session =
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            token_response = await client.post(GOOGLE_TOKEN_URL, data={"code": code, "client_id": client_id, "client_secret": client_secret, "redirect_uri": redirect_uri, "grant_type": "authorization_code"})
+            token_response = await client.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
+            if token_response.is_error:
+                logger.error("Google token exchange error status %s: %s", token_response.status_code, token_response.text)
             token_response.raise_for_status()
             user_response = await client.get(GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {token_response.json()['access_token']}"})
+            if user_response.is_error:
+                logger.error("Google userinfo error status %s: %s", user_response.status_code, user_response.text)
             user_response.raise_for_status()
     except (httpx.HTTPError, KeyError) as error:
         # Keep the browser message generic, but retain provider diagnostics in server logs.

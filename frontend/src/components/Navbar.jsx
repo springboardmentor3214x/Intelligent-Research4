@@ -13,9 +13,9 @@ export default function Navbar() {
 
   return (
     <header className="navbar">
-      <Link to="/" className="brand" aria-label="Research Intelligence home">
-        <span className="brand-mark" aria-hidden="true">RI</span>
-        <span>Research Intelligence</span>
+      <Link to="/" className="brand" aria-label="Research Funding and Innovation Intelligence home">
+        <span className="brand-mark" aria-hidden="true">RFI</span>
+        <span>Research Funding and Innovation Intelligence</span>
       </Link>
       {user ? (
         <div className="account-actions">

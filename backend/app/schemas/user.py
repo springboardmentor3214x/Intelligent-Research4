@@ -16,10 +16,13 @@ class UserBase(BaseModel):
 
     @field_validator("name", "role", "phone_number", "organization", "designation", "country", "research_domain", mode="before")
     @classmethod
-    def reject_blank_values(cls, value: str) -> str:
-        value = value.strip() if isinstance(value, str) else value
-        if not value:
-            raise ValueError("This field is required")
+    def reject_blank_values(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                raise ValueError("This field is required")
         return value
 
 
