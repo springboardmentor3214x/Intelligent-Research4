@@ -116,6 +116,11 @@ class TestAuthModule(unittest.TestCase):
             "email": email,
             "password": "Password123!",
             "role": "researcher",
+            "phone_number": "+1234567890",
+            "organization": "Test University",
+            "designation": "Researcher",
+            "country": "USA",
+            "research_domain": "Computer Science",
         }
 
         res1 = client.post("/auth/register", json=payload)
@@ -133,6 +138,11 @@ class TestAuthModule(unittest.TestCase):
             "email": email,
             "password": password,
             "role": "innovator",
+            "phone_number": "+1234567890",
+            "organization": "Test Labs",
+            "designation": "Innovator",
+            "country": "USA",
+            "research_domain": "Technology",
         }
         res_reg = client.post("/auth/register", json=register_payload)
         self.assertEqual(res_reg.status_code, 201)
@@ -161,6 +171,11 @@ class TestAuthModule(unittest.TestCase):
             "email": email,
             "password": "CorrectPassword123!",
             "role": "researcher",
+            "phone_number": "+1234567890",
+            "organization": "Test University",
+            "designation": "Researcher",
+            "country": "USA",
+            "research_domain": "Computer Science",
         }
         client.post("/auth/register", json=register_payload)
 
@@ -195,6 +210,9 @@ class TestAuthModule(unittest.TestCase):
             "role": "researcher",
             "organization": "MIT",
             "country": "USA",
+            "phone_number": "+1234567890",
+            "designation": "Researcher",
+            "research_domain": "Computer Science",
         }
         res_reg = client.post("/auth/register", json=register_payload)
         self.assertEqual(res_reg.status_code, 201)
