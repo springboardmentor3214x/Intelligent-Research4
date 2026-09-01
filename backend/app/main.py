@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from backend.app.auth.router import router as auth_router
 from backend.app.database.connection import engine
+from backend.app.routers.technology_areas import router as technology_areas_router
 
 app = FastAPI(
     title="Research Funding & Innovation Intelligence Platform"
@@ -26,6 +27,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(technology_areas_router)
 
 
 @app.get("/")

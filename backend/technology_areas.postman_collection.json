@@ -1,0 +1,28 @@
+{
+  "info": {
+    "name": "Research Platform - Technology Areas",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "token", "value": "" },
+    { "key": "technologyAreaId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "List technology areas",
+      "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/technology-areas" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Returns technology areas', () => pm.response.to.have.status(200));"] } }]
+    },
+    {
+      "name": "Create technology area",
+      "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\\n  \\\"name\\\": \\\"Machine Learning\\\"\\n}" }, "url": "{{baseUrl}}/technology-areas" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Creates technology area', () => pm.response.to.have.status(201));", "pm.collectionVariables.set('technologyAreaId', pm.response.json().id);"] } }]
+    },
+    {
+      "name": "Delete technology area",
+      "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/technology-areas/{{technologyAreaId}}" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Deletes technology area', () => pm.response.to.have.status(204));"] } }]
+    }
+  ]
+}

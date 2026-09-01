@@ -27,13 +27,13 @@ export default function Navbar() {
 
   return (
     <header className="navbar">
-      <Link to="/" className="brand" aria-label="Research Intelligence home">
+      <Link to="/" className="brand" aria-label="Research Funding and Innovation Intelligence home">
         <span className="brand-mark" aria-hidden="true">RI</span>
-        <span className="brand-title">Research Intelligence</span>
+        <span className="brand-title">Research Funding &amp; Innovation Intelligence</span>
       </Link>
 
       <nav className="nav-links" aria-label="Main Navigation">
-        <button type="button" className="nav-link-btn" onClick={() => handleNavClick('home')}>
+        <button type="button" className={`nav-link-btn ${location.pathname === '/' ? 'active' : ''}`} onClick={() => handleNavClick('home')}>
           Home
         </button>
         <button type="button" className="nav-link-btn" onClick={() => handleNavClick('platform')}>
@@ -53,8 +53,8 @@ export default function Navbar() {
             <strong>{user.name}</strong>
             <small>{user.role.replaceAll('_', ' ')}</small>
           </span>
-          <Link className="nav-logout" to="/dashboard">Dashboard</Link>
-          <Link className="nav-logout" to="/profile">Profile</Link>
+          <Link className={`nav-logout ${location.pathname === '/dashboard' ? 'active' : ''}`} to="/dashboard">Dashboard</Link>
+          <Link className={`nav-logout ${location.pathname === '/profile' ? 'active' : ''}`} to="/profile">Profile</Link>
           <button className="nav-logout" onClick={handleLogout}>Log out</button>
         </div>
       ) : (
