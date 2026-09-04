@@ -7,12 +7,12 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 class UserBase(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: EmailStr
-    role: str = Field(min_length=3, max_length=30)
-    phone_number: str = Field(min_length=7, max_length=20)
-    organization: str = Field(min_length=2, max_length=150)
-    designation: str = Field(min_length=2, max_length=100)
-    country: str = Field(min_length=2, max_length=100)
-    research_domain: str = Field(min_length=2, max_length=150)
+    role: str = Field(default="researcher", min_length=3, max_length=30)
+    phone_number: str | None = Field(default=None, max_length=20)
+    organization: str | None = Field(default=None, max_length=150)
+    designation: str | None = Field(default=None, max_length=100)
+    country: str | None = Field(default=None, max_length=100)
+    research_domain: str | None = Field(default=None, max_length=150)
 
     @field_validator("name", "role", "phone_number", "organization", "designation", "country", "research_domain", mode="before")
     @classmethod
@@ -22,7 +22,7 @@ class UserBase(BaseModel):
         if isinstance(value, str):
             value = value.strip()
             if not value:
-                raise ValueError("This field is required")
+                return None
         return value
 
 

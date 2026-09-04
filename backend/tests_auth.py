@@ -3,14 +3,10 @@ import unittest
 import uuid
 from datetime import timedelta
 
-# Set dummy DATABASE_URL and JWT_SECRET_KEY before importing backend modules
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-auth-testing-12345"
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.security import (
@@ -19,33 +15,12 @@ from backend.app.auth.security import (
     hash_password,
     verify_password,
 )
-from backend.app.database.base import Base
 from backend.app.database.connection import get_db
 from backend.app.main import app
 from backend.app.models.user import User
-
-# In-memory SQLite engine for tests
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-test_engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-
-Base.metadata.create_all(bind=test_engine)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+from backend.tests_common import TestingSessionLocal, override_get_db
 
 app.dependency_overrides[get_db] = override_get_db
-
 client = TestClient(app)
 
 
