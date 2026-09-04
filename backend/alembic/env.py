@@ -2,14 +2,12 @@ import os
 from logging.config import fileConfig
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy import pool
+from sqlalchemy import create_engine, pool
 
 from alembic import context
 
 from backend.app.database.base import Base
-from backend.app.models.user import User
-
+import backend.app.models  # Ensures User, ResearchProfile, ResearchArea, Keyword, TechnologyArea, Publication, Patent are registered
 
 # Load environment variables from .env
 load_dotenv()
