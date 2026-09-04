@@ -7,6 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.database.base import Base
 
+from sqlalchemy import ForeignKey
+
 
 class User(Base):
     __tablename__ = "users"
@@ -74,5 +76,42 @@ class User(Base):
         DateTime(timezone=True),
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+
+class ResearchArea(Base):
+    __tablename__ = "research_areas"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(
+        String(150),
+        nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+class ResearchKeyword(Base):
+    __tablename__ = "research_keywords"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    keyword: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
