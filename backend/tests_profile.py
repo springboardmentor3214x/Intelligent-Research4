@@ -18,7 +18,7 @@ client = TestClient(app)
 
 
 class TestProfileModule(unittest.TestCase):
-    def _create_and_login_user(self, email_prefix="user", organization="MIT", country="USA", designation="Researcher"):
+    def _create_and_login_user(self, email_prefix="user", organization="MIT", department="Computer Science", country="USA", designation="Researcher"):
         email = f"{email_prefix}_{uuid.uuid4().hex[:6]}@example.com"
         password = "SecurePassword123!"
         reg_payload = {
@@ -27,6 +27,7 @@ class TestProfileModule(unittest.TestCase):
             "password": password,
             "role": "researcher",
             "organization": organization,
+            "department": department,
             "designation": designation,
             "country": country,
             "phone_number": "+1234567890",
@@ -50,6 +51,7 @@ class TestProfileModule(unittest.TestCase):
             "research_domain": "Artificial Intelligence & Quantum Computing",
             "research_interests": "Neural networks, quantum algorithms, optimization",
             "organization": "Stanford University",
+            "department": "Computer Science & AI Lab",
             "designation": "Associate Professor",
             "country": "United States",
             "phone_number": "+15550001111",
@@ -63,6 +65,7 @@ class TestProfileModule(unittest.TestCase):
         self.assertEqual(data["research_domain"], "Artificial Intelligence & Quantum Computing")
         self.assertEqual(data["research_interests"], "Neural networks, quantum algorithms, optimization")
         self.assertEqual(data["organization"], "Stanford University")
+        self.assertEqual(data["department"], "Computer Science & AI Lab")
         self.assertEqual(data["designation"], "Associate Professor")
         self.assertEqual(data["country"], "United States")
         self.assertEqual(data["phone_number"], "+15550001111")
@@ -353,6 +356,21 @@ class TestProfileModule(unittest.TestCase):
         )
         self.assertEqual(res.status_code, 404)
         self.assertIn("not found", res.json()["detail"].lower())
+
+    def test_17_authenticated_user_can_update_department(self):
+        token, _ = self._create_and_login_user("prof_up_dept", department="Old Dept")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        client.post(
+            "/profile",
+            json={"research_domain": "Robotics"},
+            headers=headers,
+        )
+
+        update_payload = {"department": "Department of Autonomous Systems"}
+        res = client.put("/profile", json=update_payload, headers=headers)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["department"], "Department of Autonomous Systems")
 
 
 if __name__ == "__main__":

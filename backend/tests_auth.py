@@ -61,6 +61,7 @@ class TestAuthModule(unittest.TestCase):
             "role": "researcher",
             "phone_number": "+1234567890",
             "organization": "Institute for Advanced Study",
+            "department": "School of Mathematics",
             "designation": "Principal Investigator",
             "country": "United Kingdom",
             "research_domain": "Computer Science & Cryptography",
@@ -72,6 +73,7 @@ class TestAuthModule(unittest.TestCase):
         self.assertEqual(data["email"], email.lower())
         self.assertEqual(data["name"], "Dr. Alan Turing")
         self.assertEqual(data["role"], "researcher")
+        self.assertEqual(data["department"], "School of Mathematics")
         self.assertIn("id", data)
         self.assertNotIn("password", data)
         self.assertNotIn("password_hash", data)

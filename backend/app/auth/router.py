@@ -148,6 +148,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> User:
         role=role_requested,
         phone_number=user_in.phone_number,
         organization=user_in.organization,
+        department=user_in.department,
         designation=user_in.designation,
         country=user_in.country,
         research_domain=user_in.research_domain,

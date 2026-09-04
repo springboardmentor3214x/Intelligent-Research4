@@ -28,6 +28,7 @@ def _build_profile_response(profile: ResearchProfile, user: User) -> ResearchPro
         email=user.email,
         role=user.role,
         organization=user.organization,
+        department=user.department,
         designation=user.designation,
         country=user.country,
         phone_number=user.phone_number,
@@ -97,6 +98,8 @@ def create_profile(
 
     if profile_in.organization is not None:
         current_user.organization = profile_in.organization.strip()
+    if profile_in.department is not None:
+        current_user.department = profile_in.department.strip()
     if profile_in.designation is not None:
         current_user.designation = profile_in.designation.strip()
     if profile_in.country is not None:
@@ -186,6 +189,12 @@ def update_profile(
         current_user.organization = (
             update_data["organization"].strip()
             if update_data["organization"] is not None
+            else None
+        )
+    if "department" in update_data:
+        current_user.department = (
+            update_data["department"].strip()
+            if update_data["department"] is not None
             else None
         )
     if "designation" in update_data:

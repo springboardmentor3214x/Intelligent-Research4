@@ -29,6 +29,7 @@ export default function Profile() {
   const [editForm, setEditForm] = useState({
     name: '',
     organization: '',
+    department: '',
     designation: '',
     country: '',
     phone_number: '',
@@ -81,6 +82,7 @@ export default function Profile() {
       setEditForm({
         name: data.name || '',
         organization: data.organization || '',
+        department: data.department || '',
         designation: data.designation || '',
         country: data.country || '',
         phone_number: data.phone_number || '',
@@ -93,6 +95,7 @@ export default function Profile() {
         setEditForm({
           name: user?.name || '',
           organization: user?.organization || '',
+          department: user?.department || '',
           designation: user?.designation || '',
           country: user?.country || '',
           phone_number: user?.phone_number || '',
@@ -337,6 +340,17 @@ export default function Profile() {
                 />
               </div>
               <div className="form-group">
+                <label>Department</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Computer Science, Physics"
+                  value={editForm.department}
+                  onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
                 <label>Designation</label>
                 <input
                   type="text"
@@ -345,8 +359,6 @@ export default function Profile() {
                   onChange={(e) => setEditForm({ ...editForm, designation: e.target.value })}
                 />
               </div>
-            </div>
-            <div className="form-row">
               <div className="form-group">
                 <label>Country</label>
                 <input
@@ -356,15 +368,15 @@ export default function Profile() {
                   onChange={(e) => setEditForm({ ...editForm, country: e.target.value })}
                 />
               </div>
-              <div className="form-group">
-                <label>Phone Number</label>
-                <input
-                  type="text"
-                  placeholder="+1 234 567 8900"
-                  value={editForm.phone_number}
-                  onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
-                />
-              </div>
+            </div>
+            <div className="form-group">
+              <label>Phone Number</label>
+              <input
+                type="text"
+                placeholder="+1 234 567 8900"
+                value={editForm.phone_number}
+                onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+              />
             </div>
             <div className="form-group">
               <label>Primary Research Domain *</label>

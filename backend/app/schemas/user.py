@@ -10,11 +10,12 @@ class UserBase(BaseModel):
     role: str = Field(default="researcher", min_length=3, max_length=30)
     phone_number: str | None = Field(default=None, max_length=20)
     organization: str | None = Field(default=None, max_length=150)
+    department: str | None = Field(default=None, max_length=150)
     designation: str | None = Field(default=None, max_length=100)
     country: str | None = Field(default=None, max_length=100)
     research_domain: str | None = Field(default=None, max_length=150)
 
-    @field_validator("name", "role", "phone_number", "organization", "designation", "country", "research_domain", mode="before")
+    @field_validator("name", "role", "phone_number", "organization", "department", "designation", "country", "research_domain", mode="before")
     @classmethod
     def reject_blank_values(cls, value: str | None) -> str | None:
         if value is None:
@@ -42,11 +43,12 @@ class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=100)
     phone_number: str | None = Field(default=None, min_length=7, max_length=20)
     organization: str | None = Field(default=None, min_length=2, max_length=150)
+    department: str | None = Field(default=None, min_length=2, max_length=150)
     designation: str | None = Field(default=None, min_length=2, max_length=100)
     country: str | None = Field(default=None, min_length=2, max_length=100)
     research_domain: str | None = Field(default=None, min_length=2, max_length=150)
 
-    @field_validator("name", "phone_number", "organization", "designation", "country", "research_domain", mode="before")
+    @field_validator("name", "phone_number", "organization", "department", "designation", "country", "research_domain", mode="before")
     @classmethod
     def reject_blank_updates(cls, value: str | None) -> str | None:
         if value is None:
@@ -61,6 +63,7 @@ class UserResponse(UserBase):
     # OAuth-created accounts complete these fields later in the profile screen.
     phone_number: str | None = None
     organization: str | None = None
+    department: str | None = None
     designation: str | None = None
     country: str | None = None
     research_domain: str | None = None
