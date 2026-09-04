@@ -8,6 +8,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from backend.app.database.base import Base
+from backend.app.models.technology_area import TechnologyArea
 from backend.app.models.user import User
 
 
