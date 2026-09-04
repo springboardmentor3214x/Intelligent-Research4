@@ -25,3 +25,30 @@ class UserResponse(UserBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class ProfileDomainUpdate(BaseModel):
+    research_domain: str
+
+
+class ResearchAreaCreate(BaseModel):
+    name: str
+
+
+class ResearchAreaResponse(BaseModel):
+    id: UUID
+    name: str
+    user_id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ResearchKeywordCreate(BaseModel):
+    keyword: str
+
+
+class ResearchKeywordResponse(BaseModel):
+    id: UUID
+    keyword: str
+    user_id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
