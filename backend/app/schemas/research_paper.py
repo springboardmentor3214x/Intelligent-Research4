@@ -35,3 +35,13 @@ class ResearchPaperResponse(ResearchPaperBase):
 class ResearchPaperListResponse(BaseModel):
     total: int
     papers: list[ResearchPaperResponse]
+
+class ResearchPaperImportRequest(BaseModel):
+    search: str
+    per_page: int = 10
+
+class ResearchPaperSearchResponse(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    papers: list[ResearchPaperResponse]
