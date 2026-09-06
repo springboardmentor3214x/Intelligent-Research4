@@ -7,7 +7,8 @@ from sqlalchemy import create_engine, pool
 from alembic import context
 
 from backend.app.database.base import Base
-import backend.app.models  # Ensures User, ResearchProfile, ResearchArea, Keyword, TechnologyArea, Publication, Patent are registered
+import backend.app.models  # Ensures all SQLAlchemy models are registered
+
 
 # Load environment variables from .env
 load_dotenv()

@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import OAuthCallback from './pages/OAuthCallback'
 import Profile from './pages/Profile'
+import ResearchPapers from './pages/ResearchPapers'
 import './App.css'
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/oauth/callback" element={<OAuthCallback />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/research-papers" element={<ResearchPapers />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
@@ -34,3 +36,4 @@ export default function App() {
     </BrowserRouter>
   )
 }
+
