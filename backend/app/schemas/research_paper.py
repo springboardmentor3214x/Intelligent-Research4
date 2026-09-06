@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ResearchPaperBase(BaseModel):
@@ -36,9 +36,11 @@ class ResearchPaperListResponse(BaseModel):
     total: int
     papers: list[ResearchPaperResponse]
 
+from pydantic import BaseModel, ConfigDict, Field
+
 class ResearchPaperImportRequest(BaseModel):
-    search: str
-    per_page: int = 10
+    search: str = Field(min_length=1)
+    per_page: int = Field(default=10, ge=1, le=100)
 
 class ResearchPaperSearchResponse(BaseModel):
     total: int
