@@ -178,3 +178,135 @@ def save_research_papers(
     db.commit()
 
     return inserted_count, skipped_count
+
+SEMANTIC_SCHOLAR_SEARCH_URL = (
+    "https://api.semanticscholar.org/graph/v1/paper/search"
+)
+
+
+def normalize_semantic_scholar_paper(paper: dict) -> dict:
+    """
+    Convert one Semantic Scholar paper into
+    the ResearchPaper database structure.
+    """
+
+    authors = paper.get("authors") or []
+
+    author_names = []
+
+    for author in authors:
+        name = author.get("name")
+
+        if name and name not in author_names:
+            author_names.append(name)
+
+    author_text = (
+        ", ".join(author_names)
+        if author_names
+        else None
+    )
+
+    publication_date = None
+
+    if paper.get("publicationDate"):
+        publication_date = date.fromisoformat(
+            paper["publicationDate"]
+        )
+
+    external_ids = paper.get("externalIds") or {}
+
+    doi = external_ids.get("DOI")
+
+    return {
+        "source": "Semantic Scholar",
+        "source_id": paper.get("paperId"),
+        "title": paper.get("title") or "Untitled",
+        "abstract": paper.get("abstract"),
+        "authors": author_text,
+        "publication_date": publication_date,
+        "publication_year": paper.get("year"),
+        "journal_or_conference": (
+            (paper.get("journal") or {}).get("name")
+        ),
+        "keywords": None,
+        "research_domain": None,
+        "doi": (
+            f"https://doi.org/{doi}"
+            if doi
+            else None
+        ),
+        "citation_count": (
+            paper.get("citationCount") or 0
+        ),
+        "publication_link": paper.get("url"),
+    }
+
+
+def fetch_semantic_scholar_papers(
+    search: str,
+    per_page: int = 10,
+) -> list[dict]:
+    """
+    Search Semantic Scholar and return normalized
+    research papers.
+    """
+
+    params = {
+        "query": search,
+        "limit": per_page,
+        "fields": (
+            "paperId,title,abstract,authors,"
+            "year,publicationDate,journal,"
+            "externalIds,citationCount,url"
+        ),
+    }
+
+    response = httpx.get(
+        SEMANTIC_SCHOLAR_SEARCH_URL,
+        params=params,
+        timeout=20,
+    )
+
+    if response.status_code == 429:
+        return []
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    return [
+        normalize_semantic_scholar_paper(paper)
+        for paper in data.get("data", [])
+        if paper.get("paperId")
+    ]
+
+CROSSREF_WORKS_URL = "https://api.crossref.org/v1/works"
+
+
+def fetch_crossref_metadata(
+    doi: str,
+) -> dict | None:
+    """
+    Retrieve supporting metadata from Crossref
+    using a DOI.
+    """
+
+    clean_doi = doi.replace(
+        "https://doi.org/",
+        ""
+    ).strip()
+
+    response = httpx.get(
+        f"{CROSSREF_WORKS_URL}/{clean_doi}",
+        params={
+            "mailto": "research-platform@example.com"
+        },
+        timeout=20,
+    )
+
+    if response.status_code == 404:
+        return None
+
+    response.raise_for_status()
+
+    return response.json().get("message")
