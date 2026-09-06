@@ -3,12 +3,14 @@ from sqlalchemy import text
 
 from backend.app.auth.router import router as auth_router
 from backend.app.database.connection import engine
+from backend.app.routers.research_paper import router as research_paper_router
 
 app = FastAPI(
     title="Research Funding & Innovation Intelligence Platform"
 )
 
 app.include_router(auth_router)
+app.include_router(research_paper_router)
 
 
 @app.get("/")
@@ -25,4 +27,4 @@ def database_health():
         return {
             "database": "connected",
             "test": result.scalar()
-        }
+        }

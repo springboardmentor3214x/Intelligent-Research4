@@ -8,7 +8,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from backend.app.database.base import Base
-from backend.app.models.user import User
+from backend.app.models import *
 
 
 # Load environment variables from .env
