@@ -196,13 +196,17 @@ def normalize_grants_opportunity(
         ),
     }
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def fetch_grants_opportunities(
     search: str,
     per_page: int = 10,
-) -> list[dict]:
+) -> tuple[list[dict], int, int]:
     """
     Search Grants.gov, fetch detailed information,
-    and return normalized funding opportunities.
+    and return (normalized_opportunities, total_hits, failed_count).
     """
 
     payload = {
@@ -211,30 +215,31 @@ def fetch_grants_opportunities(
         "oppStatuses": "forecasted|posted",
     }
 
-    response = httpx.post(
-        GRANTS_GOV_SEARCH_URL,
-        json=payload,
-        timeout=20,
-    )
-
-    response.raise_for_status()
-
-    data = response.json()
+    try:
+        response = httpx.post(
+            GRANTS_GOV_SEARCH_URL,
+            json=payload,
+            timeout=25,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except Exception as e:
+        logger.error(f"Grants.gov search API request failed for '{search}': {e}")
+        raise
 
     if data.get("errorcode") != 0:
-        raise RuntimeError(
-            data.get(
-                "msg",
-                "Grants.gov search request failed",
-            )
-        )
+        msg = data.get("msg", "Grants.gov search request failed")
+        logger.error(f"Grants.gov returned error: {msg}")
+        raise RuntimeError(msg)
 
     opportunities = (
         data.get("data", {})
         .get("oppHits", [])
     )
 
+    total_hits = len(opportunities)
     normalized_opportunities = []
+    failed_count = 0
 
     for opportunity in opportunities:
         opportunity_id = opportunity.get("id")
@@ -260,10 +265,12 @@ def fetch_grants_opportunities(
             httpx.HTTPError,
             ValueError,
             RuntimeError,
-        ):
+        ) as exc:
+            logger.warning(f"Failed to fetch/normalize Grants.gov opportunity {opportunity_id}: {exc}")
+            failed_count += 1
             continue
 
-    return normalized_opportunities
+    return normalized_opportunities, total_hits, failed_count
 
 def save_funding_opportunities(
     session,
@@ -309,18 +316,18 @@ def save_funding_opportunities(
 def import_grants_opportunities(
     search: str,
     per_page: int = 10,
-) -> tuple[int, int]:
+) -> dict:
     """
     Fetch funding opportunities from Grants.gov
     and save them to PostgreSQL.
 
-    Returns:
-        inserted_count, skipped_count
+    Returns dict with detailed metrics:
+        fetched, normalized, inserted, skipped, failed
     """
 
     from backend.app.database.connection import SessionLocal
 
-    opportunities = fetch_grants_opportunities(
+    opportunities, total_hits, failed_count = fetch_grants_opportunities(
         search,
         per_page,
     )
@@ -335,7 +342,13 @@ def import_grants_opportunities(
             )
         )
 
-        return inserted_count, skipped_count
+        return {
+            "fetched": total_hits,
+            "normalized": len(opportunities),
+            "inserted": inserted_count,
+            "skipped": skipped_count,
+            "failed": failed_count,
+        }
 
     finally:
-        db.close()
+        db.close()

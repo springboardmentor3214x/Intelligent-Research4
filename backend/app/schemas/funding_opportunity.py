@@ -45,6 +45,17 @@ class FundingImportRequest(BaseModel):
     per_page: int = Field(default=10, ge=1, le=100)
 
 
+class FundingImportResponse(BaseModel):
+    source: str
+    search: str
+    fetched: int
+    normalized: int
+    inserted: int
+    skipped: int
+    failed: int
+    message: str
+
+
 class ProfileSummaryContext(BaseModel):
     user_id: UUID
     user_name: str
@@ -66,9 +77,11 @@ class FundingMatchBreakdown(BaseModel):
     eligibility_score: float
     relevance_score: float
     match_level: str
+    match_type: str = "Semantic / Profile Match"
     matched_research_areas: list[str] = []
     matched_keywords: list[str] = []
     matched_technology_areas: list[str] = []
+    matched_concepts: list[str] = []
     eligibility_status: str
     explanation: str
     explanation_points: list[str] = []
@@ -85,6 +98,7 @@ class FundingRecommendationsResponse(BaseModel):
     recommendations: list[FundingRecommendationItem]
     profile_used: ProfileSummaryContext | None = None
     message: str | None = None
+    search_query: str | None = None
 
 
 class FundingMatchRequest(BaseModel):
@@ -94,4 +108,49 @@ class FundingMatchRequest(BaseModel):
 class FundingMatchResponse(BaseModel):
     funding_opportunity: FundingOpportunityResponse
     match: FundingMatchBreakdown
-    profile_used: ProfileSummaryContext | None = None
+    profile_used: ProfileSummaryContext | None = None
+
+
+class SourceSyncMetric(BaseModel):
+    status: str
+    fetched: int = 0
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+    error: str | None = None
+
+
+class FundingSyncRequest(BaseModel):
+    sources: list[str] | None = None
+
+
+class FundingSyncResponse(BaseModel):
+    sources_processed: int
+    records_fetched: int
+    records_created: int
+    records_updated: int
+    duplicates_skipped: int
+    source_results: dict[str, SourceSyncMetric]
+    errors: list[str] = []
+    message: str
+
+
+class SavedFundingItem(BaseModel):
+    id: UUID
+    user_id: UUID
+    funding_opportunity_id: UUID
+    created_at: datetime
+    funding_opportunity: FundingOpportunityResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SavedFundingListResponse(BaseModel):
+    total: int
+    saved_opportunities: list[SavedFundingItem]
+
+
+class SaveFundingActionResponse(BaseModel):
+    message: str
+    saved: bool
+    funding_opportunity_id: UUID

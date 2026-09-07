@@ -119,10 +119,27 @@
   background: #ffffff;
   border: 1px solid #c8d9e6;
   color: #173b56;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  padding: 0.2rem 0.6rem;
+  padding: 0.35rem 0.75rem;
   border-radius: 20px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.profile-chip:hover {
+  background: #f0f7fb;
+  border-color: #0b726e;
+  transform: translateY(-1px);
+}
+
+.profile-chip:focus-visible {
+  outline: 2px solid #0b726e;
+  outline-offset: 2px;
 }
 
 .profile-chip.domain {
@@ -130,6 +147,60 @@
   border-color: #9fe2dc;
   color: #065b57;
 }
+
+.profile-chip.domain:hover {
+  background: #d1f1ee;
+}
+
+.profile-chip.active {
+  background: linear-gradient(135deg, #0b726e, #155094) !important;
+  color: #ffffff !important;
+  border-color: #0b726e !important;
+  box-shadow: 0 4px 12px rgba(11, 114, 110, 0.35);
+  transform: translateY(-1px);
+}
+
+.clear-focus-btn {
+  background: none;
+  border: 1px solid #d8e2e9;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.clear-focus-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.active-focus-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  background: #ffffff;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  border: 1px dashed #0b726e66;
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  color: #0b726e;
+}
+
+.focus-pill {
+  background: #e6f6f5;
+  color: #0b726e;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  border: 1px solid #a4e5df;
+  font-size: 0.78rem;
+}
+
 
 /* Filters Bar */
 .funding-filters-bar {

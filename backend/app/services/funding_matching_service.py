@@ -45,6 +45,25 @@ STOP_WORDS = {
     "you're", "you've", "your", "yours", "yourself", "yourselves"
 }
 
+# Domain ontology mapping: broad concepts and synonyms to improve semantic recall
+CONCEPT_SYNONYMS = {
+    "healthtech": ["health technology", "digital health", "healthcare", "medical technology", "biomedical", "diagnostics", "telemedicine", "ehealth"],
+    "health": ["healthcare", "healthtech", "digital health", "medical", "clinical", "biomedical", "medicine"],
+    "sustainable": ["sustainability", "renewable", "clean", "green", "environmental", "climate", "eco", "circular economy", "energy efficiency"],
+    "sustainability": ["sustainable", "green", "clean energy", "environmental", "renewable"],
+    "ai": ["artificial intelligence", "machine learning", "deep learning", "neural networks", "computer vision", "nlp", "llm", "generative ai"],
+    "artificial intelligence": ["ai", "machine learning", "deep learning", "neural networks", "generative ai"],
+    "biotechnology": ["biotech", "bio-engineering", "genomics", "bioinformatics", "biomedical", "crispr", "molecular biology"],
+    "biotech": ["biotechnology", "genomics", "biomedical", "bio-engineering", "diagnostics"],
+    "energy": ["renewable energy", "solar", "wind", "hydrogen", "battery", "grid", "storage", "bio-energy", "biofuel", "clean tech"],
+    "quantum": ["quantum computing", "quantum communication", "quantum sensing", "qubits", "quantum cryptography"],
+    "cybersecurity": ["cyber security", "network security", "cryptography", "information security", "cyber defense", "cloud security"],
+    "agriculture": ["agritech", "precision agriculture", "crop genetics", "farming", "sustainable agriculture", "horticulture"],
+    "agritech": ["agriculture", "smart farming", "crop science", "food technology"],
+    "semiconductor": ["vlsi", "microelectronics", "chip design", "hardware", "integrated circuits", "c2s"],
+}
+
+
 def clean_and_tokenize(text: str | None) -> list[str]:
     """Tokenize and clean string into list of non-stopword lowercase terms."""
     if not text:
@@ -52,6 +71,16 @@ def clean_and_tokenize(text: str | None) -> list[str]:
     cleaned = re.sub(r"[^\w\s-]", " ", text.lower())
     tokens = [t.strip() for t in re.split(r"[\s,;]+", cleaned) if len(t.strip()) > 2]
     return [t for t in tokens if t not in STOP_WORDS]
+
+
+def extract_concept_expansions(text: str) -> list[str]:
+    """Expands query terms with related synonyms and domain concepts."""
+    tokens = clean_and_tokenize(text)
+    expanded = set(tokens)
+    for t in tokens:
+        if t in CONCEPT_SYNONYMS:
+            expanded.update(CONCEPT_SYNONYMS[t])
+    return list(expanded)
 
 
 def extract_researcher_profile_data(user: User, db: Session) -> dict:
@@ -100,12 +129,30 @@ def extract_researcher_profile_data(user: User, db: Session) -> dict:
     }
 
 
-def build_researcher_representation(profile_data: dict) -> str:
+def build_researcher_representation(
+    profile_data: dict,
+    topic_query: str | None = None,
+    focus_terms: list[str] | None = None,
+) -> str:
     """
-    Construct a dense, semantically-rich text representation of the researcher's focus.
-    Combines domain, areas, keywords, tech areas, interests, and publications.
+    Construct a dense, semantically-rich query representation combining:
+      - Explicit user topic search query (with high weight if provided)
+      - Active selected focus chips
+      - Module 2 researcher profile (domain, areas, keywords, tech areas, interests, affiliation)
     """
     parts = []
+
+    # 1. Primary User-Entered Topic
+    if topic_query and topic_query.strip():
+        q_clean = topic_query.strip()
+        expansions = extract_concept_expansions(q_clean)
+        parts.append(f"TARGET TOPIC SEARCH: {q_clean}. {q_clean}. Focus Area: {', '.join(expansions[:6])}.")
+
+    # 2. Active Focus Chips
+    if focus_terms:
+        parts.append(f"Active Selected Focus: {', '.join(focus_terms)}.")
+
+    # 3. Researcher Profile Context
     if profile_data.get("research_domain"):
         parts.append(f"Domain: {profile_data['research_domain']}.")
     if profile_data.get("research_areas"):
@@ -150,31 +197,30 @@ def build_funding_representation(opportunity: FundingOpportunity) -> str:
 
 
 def compute_semantic_similarities(
-    researcher_text: str,
+    query_text: str,
     funding_texts: list[str],
 ) -> np.ndarray:
     """
-    Computes cosine similarity between researcher profile representation
+    Computes cosine similarity between researcher query representation
     and a list of funding opportunity texts using TF-IDF N-gram semantic vectorization.
     Safe against empty strings and division by zero.
     """
-    if not researcher_text.strip() or not funding_texts:
+    if not query_text.strip() or not funding_texts:
         return np.zeros(len(funding_texts))
 
-    # All documents to fit vectorizer
-    corpus = [researcher_text] + [ft if ft.strip() else "general research funding" for ft in funding_texts]
+    corpus = [query_text] + [ft if ft.strip() else "general scientific research funding" for ft in funding_texts]
 
     try:
         vectorizer = TfidfVectorizer(
             ngram_range=(1, 2),
             stop_words="english",
-            max_features=5000,
+            max_features=10000,
             sublinear_tf=True,
         )
         tfidf_matrix = vectorizer.fit_transform(corpus)
-        researcher_vec = tfidf_matrix[0:1]
+        query_vec = tfidf_matrix[0:1]
         funding_vecs = tfidf_matrix[1:]
-        sims = cosine_similarity(researcher_vec, funding_vecs)[0]
+        sims = cosine_similarity(query_vec, funding_vecs)[0]
         return np.nan_to_num(sims, nan=0.0, posinf=1.0, neginf=0.0)
     except Exception as e:
         logger.warning(f"Error computing semantic similarity with TFIDF: {e}")
@@ -189,29 +235,26 @@ def assess_eligibility_signal(profile_data: dict, opportunity: FundingOpportunit
     """
     eligibility_text = (opportunity.eligibility or "").lower()
     if not eligibility_text:
-        return 0.85, "Eligibility Information Unavailable", "Detailed eligibility criteria not specified by source"
+        return 0.85, "Insufficient Information", "Detailed eligibility criteria not specified by sponsor."
 
     user_org = (profile_data.get("organization") or "").lower()
     user_country = (profile_data.get("country") or "").lower()
     user_role = (profile_data.get("role") or "").lower()
 
-    # Check for restrictive criteria
-    mismatches = []
     matches = []
-
     # Academic / Higher education
-    if any(k in eligibility_text for k in ["higher education", "university", "universities", "academic", "institution"]):
-        if any(k in user_org for k in ["university", "college", "institute", "school", "univ", "faculty"]) or user_role in ["researcher", "academic", "faculty", "professor"]:
+    if any(k in eligibility_text for k in ["higher education", "university", "universities", "academic", "institution", "faculty"]):
+        if any(k in user_org for k in ["university", "college", "institute", "school", "univ", "faculty", "iit", "aiims"]) or user_role in ["researcher", "academic", "faculty", "professor"]:
             matches.append("academic institution")
 
     # Small business / startup
-    if any(k in eligibility_text for k in ["small business", "sbir", "sttr", "startup", "for-profit"]):
+    if any(k in eligibility_text for k in ["small business", "sbir", "sttr", "startup", "for-profit", "msme"]):
         if any(k in user_org for k in ["inc", "llc", "ltd", "corp", "startup", "technologies", "labs"]):
-            matches.append("business/commercial entity")
+            matches.append("business/startup entity")
 
     # Non-profit
-    if any(k in eligibility_text for k in ["nonprofit", "non-profit", "501(c)(3)"]):
-        if "nonprofit" in user_org or "foundation" in user_org:
+    if any(k in eligibility_text for k in ["nonprofit", "non-profit", "501(c)(3)", "society"]):
+        if "nonprofit" in user_org or "foundation" in user_org or "society" in user_org:
             matches.append("non-profit organization")
 
     # Geographic criteria
@@ -230,107 +273,162 @@ def calculate_match_details(
     profile_data: dict,
     opportunity: FundingOpportunity,
     semantic_sim: float,
+    topic_query: str | None = None,
+    focus_terms: list[str] | None = None,
 ) -> FundingMatchBreakdown:
     """
-    Calculates transparent, multi-signal relevance score (0-100),
+    Calculates transparent, multi-level relevance score (0-100),
     identifies exact matched terms, and produces a factual explanation.
 
-    Formula:
-      Semantic Score (45%) + Research Area/Domain Score (25%) + Keyword Score (20%) + Eligibility Signal (10%)
+    Multi-level Strategy:
+      Level 1: Exact Topic Match (direct phrase match in title/description/area)
+      Level 2: Keyword & Concept Matching (extracted terms and domain expansions)
+      Level 3: Semantic Cosine Similarity (TF-IDF vector alignment)
+      Level 4: Profile & Focus alignment (Module 2 researcher signals)
+      Level 5: Eligibility compatibility
     """
-    opp_text = f"{opportunity.title or ''} {opportunity.description or ''} {opportunity.research_area or ''} {opportunity.funding_category or ''}".lower()
-    opp_tokens = set(clean_and_tokenize(opp_text))
+    opp_title = (opportunity.title or "").lower()
+    opp_desc = (opportunity.description or "").lower()
+    opp_area = (opportunity.research_area or "").lower()
+    opp_cat = (opportunity.funding_category or "").lower()
+    opp_full = f"{opp_title} {opp_desc} {opp_area} {opp_cat}".lower()
+    opp_tokens = set(clean_and_tokenize(opp_full))
 
-    # 1. Match Research Areas
-    user_areas = profile_data.get("research_areas", [])
+    matched_concepts = []
     matched_areas = []
+    matched_keywords = []
+    matched_tech = []
+    matched_focus = []
+    exact_topic_matched = False
+    topic_keyword_matches = []
+
+    # 1. Level 1: Topic Exact and Keyword Match
+    if topic_query and topic_query.strip():
+        q_raw = topic_query.strip().lower()
+        if q_raw in opp_full:
+            exact_topic_matched = True
+            matched_concepts.append(topic_query.strip())
+
+        q_tokens = clean_and_tokenize(q_raw)
+        for qt in q_tokens:
+            if qt in opp_tokens:
+                topic_keyword_matches.append(qt)
+                matched_concepts.append(qt)
+
+        # Synonym/Domain concept overlap
+        expansions = extract_concept_expansions(q_raw)
+        for exp in expansions:
+            if exp not in q_tokens and (exp in opp_full or exp in opp_tokens):
+                matched_concepts.append(exp)
+
+    # 2. Focus Terms match
+    if focus_terms:
+        for ft in focus_terms:
+            ft_clean = ft.lower().strip()
+            if ft_clean in opp_full:
+                matched_focus.append(ft)
+                matched_concepts.append(ft)
+            else:
+                ft_tokens = set(clean_and_tokenize(ft_clean))
+                if ft_tokens and (ft_tokens & opp_tokens):
+                    matched_focus.append(ft)
+                    matched_concepts.append(ft)
+
+    # 3. Match Research Areas from Profile
+    user_areas = profile_data.get("research_areas", [])
     for area in user_areas:
         area_clean = area.lower().strip()
-        if area_clean in opp_text:
+        if area_clean in opp_full:
             matched_areas.append(area)
         else:
-            # Check individual token overlap
             area_tokens = set(clean_and_tokenize(area_clean))
             if area_tokens and area_tokens.issubset(opp_tokens):
                 matched_areas.append(area)
 
-    # 2. Match Keywords
+    # 4. Match Keywords from Profile
     user_keywords = profile_data.get("keywords", [])
-    matched_keywords = []
     for kw in user_keywords:
         kw_clean = kw.lower().strip()
-        if kw_clean in opp_text:
+        if kw_clean in opp_full:
             matched_keywords.append(kw)
         else:
             kw_tokens = set(clean_and_tokenize(kw_clean))
             if kw_tokens and (kw_tokens & opp_tokens):
                 matched_keywords.append(kw)
 
-    # 3. Match Technology Areas
+    # 5. Match Technology Areas from Profile
     user_tech = profile_data.get("technology_areas", [])
-    matched_tech = []
     for ta in user_tech:
         ta_clean = ta.lower().strip()
-        if ta_clean in opp_text:
+        if ta_clean in opp_full:
             matched_tech.append(ta)
 
-    # 4. Domain Overlap
+    # 6. Domain Overlap
     domain = profile_data.get("research_domain", "")
     domain_matched = False
     if domain:
         domain_clean = domain.lower()
-        if domain_clean in opp_text:
+        if domain_clean in opp_full:
             domain_matched = True
         else:
             domain_tokens = set(clean_and_tokenize(domain_clean))
             if domain_tokens and (domain_tokens & opp_tokens):
                 domain_matched = True
 
-    # 5. Component Scores (0.0 to 1.0)
-    # Semantic Score (normalized)
-    semantic_score_comp = min(max(semantic_sim, 0.0), 1.0)
+    # Component Scores
+    semantic_comp = min(max(semantic_sim, 0.0), 1.0)
 
-    # Area & Domain Score
+    # Keyword & Concept Score
+    if topic_query and topic_query.strip():
+        q_tokens = clean_and_tokenize(topic_query)
+        q_overlap_ratio = (len(topic_keyword_matches) / max(len(q_tokens), 1)) if q_tokens else 0.0
+        kw_comp = (0.6 * q_overlap_ratio) + (0.4 * semantic_comp)
+    else:
+        kw_ratio = (len(matched_keywords) / max(len(user_keywords), 1)) if user_keywords else 0.0
+        tech_ratio = (len(matched_tech) / max(len(user_tech), 1)) if user_tech else 0.0
+        kw_comp = (0.7 * kw_ratio + 0.3 * tech_ratio) if (user_keywords or user_tech) else semantic_comp
+
+    # Domain / Area Score
     area_ratio = (len(matched_areas) / max(len(user_areas), 1)) if user_areas else 0.0
     domain_val = 1.0 if domain_matched else 0.0
-    if user_areas and domain:
-        domain_area_score_comp = (0.6 * area_ratio) + (0.4 * domain_val)
-    elif user_areas:
-        domain_area_score_comp = area_ratio
-    elif domain:
-        domain_area_score_comp = domain_val
-    else:
-        domain_area_score_comp = 0.5 * semantic_score_comp
+    domain_area_comp = (0.6 * area_ratio + 0.4 * domain_val) if (user_areas or domain) else semantic_comp
 
-    # Keyword & Tech Score
-    kw_ratio = (len(matched_keywords) / max(len(user_keywords), 1)) if user_keywords else 0.0
-    tech_ratio = (len(matched_tech) / max(len(user_tech), 1)) if user_tech else 0.0
-    if user_keywords and user_tech:
-        keyword_score_comp = (0.7 * kw_ratio) + (0.3 * tech_ratio)
-    elif user_keywords:
-        keyword_score_comp = kw_ratio
-    elif user_tech:
-        keyword_score_comp = tech_ratio
-    else:
-        keyword_score_comp = 0.5 * semantic_score_comp
-
-    # Eligibility component
+    # Eligibility signal
     elig_comp, elig_status, elig_note = assess_eligibility_signal(profile_data, opportunity)
 
-    # If profile is very sparse, scale primarily on semantic matching
-    if not user_areas and not user_keywords and not domain:
-        raw_final = (semantic_score_comp * 0.85) + (elig_comp * 0.15)
-    else:
-        raw_final = (
-            (semantic_score_comp * 0.45) +
-            (domain_area_score_comp * 0.25) +
-            (keyword_score_comp * 0.20) +
-            (elig_comp * 0.10)
+    # Calculate Base Relevance Score
+    if topic_query and topic_query.strip():
+        # Search-Driven Weighting (Semantic 50%, Keyword/Concepts 30%, Area/Domain 12%, Eligibility 8%)
+        base_score = (
+            (semantic_comp * 0.50) +
+            (kw_comp * 0.30) +
+            (domain_area_comp * 0.12) +
+            (elig_comp * 0.08)
         )
+        if exact_topic_matched:
+            base_score = min(base_score + 0.20, 1.0)
+    else:
+        # Profile-Driven Weighting
+        if not user_areas and not user_keywords and not domain:
+            base_score = (semantic_comp * 0.85) + (elig_comp * 0.15)
+        else:
+            base_score = (
+                (semantic_comp * 0.45) +
+                (domain_area_comp * 0.25) +
+                (kw_comp * 0.20) +
+                (elig_comp * 0.10)
+            )
 
-    # Map raw_final (typically 0.0 to 1.0) to an intuitive 0-100 scale with calibrated sigmoid/linear curve
-    # Ensure high quality matches reach 85-98 while poor matches stay below 40
-    calibrated_score = round(float(raw_final * 100.0), 1)
+    # Dynamic Focus Chips Boost
+    if focus_terms and matched_focus:
+        focus_boost = 0.10 * (len(matched_focus) / len(focus_terms))
+        base_score = min(base_score + focus_boost, 1.0)
+
+    # If top profile signals match strongly (domain + keywords), ensure high-confidence scaling
+    if domain_matched and (matched_areas or matched_keywords):
+        base_score = min(base_score + 0.05, 1.0)
+
+    calibrated_score = round(float(base_score * 100.0), 1)
     relevance_score = min(max(calibrated_score, 0.0), 99.5)
 
     # Match Level Determination
@@ -345,49 +443,73 @@ def calculate_match_details(
     else:
         match_level = "Low Match"
 
-    # Build Explainability Signals (Anti-Hallucination: strictly derived from actual data)
+    # Match Type Classification
+    if exact_topic_matched:
+        match_type = "Exact Topic Match"
+    elif topic_query and topic_keyword_matches:
+        match_type = "Keyword & Concept Match"
+    elif topic_query:
+        match_type = "Semantic / Related Match"
+    elif matched_focus:
+        match_type = "Research Focus Match"
+    elif matched_areas or matched_keywords:
+        match_type = "Profile & Area Match"
+    else:
+        match_type = "Contextual Semantic Match"
+
+    # Deduplicate matched concepts
+    unique_concepts = list(dict.fromkeys(matched_concepts))
+
+    # Explanation Generation
     explanation_points = []
+    if exact_topic_matched:
+        explanation_points.append(f"Direct mention of your search topic '{topic_query.strip()}' in grant solicitation.")
+    elif topic_query and topic_keyword_matches:
+        explanation_points.append(f"Matches search concepts: {', '.join(topic_keyword_matches)}.")
+    elif topic_query and semantic_comp >= 0.15:
+        explanation_points.append(f"Conceptually related to '{topic_query.strip()}' based on domain semantic similarity.")
+
+    if matched_focus:
+        explanation_points.append(f"Active research focus alignment: {', '.join(matched_focus)}.")
     if domain_matched and domain:
-        explanation_points.append(f"Direct alignment with your core research domain '{domain}'.")
+        explanation_points.append(f"Domain alignment with '{domain}'.")
     if matched_areas:
-        explanation_points.append(f"Focus area overlap in {', '.join(matched_areas)}.")
+        explanation_points.append(f"Research area overlap in {', '.join(matched_areas)}.")
     if matched_keywords:
-        explanation_points.append(f"Research keywords matched: {', '.join(matched_keywords)}.")
-    if matched_tech:
-        explanation_points.append(f"Technology focus matches {', '.join(matched_tech)}.")
-    if semantic_sim >= 0.40:
-        explanation_points.append("High semantic content similarity between your profile and the grant solicitation.")
-    elif semantic_sim >= 0.20:
-        explanation_points.append("Moderate contextual relevance to your research background.")
+        explanation_points.append(f"Keyword match: {', '.join(matched_keywords)}.")
     if elig_note:
         explanation_points.append(elig_note)
 
     if not explanation_points:
-        explanation_points.append("Opportunity shares general scientific scope with your academic interests.")
+        explanation_points.append("Related to your broader scientific research background.")
 
-    # High level explanation paragraph
-    if matched_areas and matched_keywords:
-        explanation_summary = f"Recommended because your research profile matches this opportunity in {', '.join(matched_areas[:2])} with matching keywords ({', '.join(matched_keywords[:3])})."
-    elif matched_areas:
-        explanation_summary = f"Recommended based on close alignment with your research area in {', '.join(matched_areas)}."
-    elif matched_keywords:
-        explanation_summary = f"Recommended because key topics in this grant align with your keywords: {', '.join(matched_keywords)}."
-    elif domain_matched and domain:
-        explanation_summary = f"Recommended due to strong domain relevance in {domain}."
+    # High-level summary sentence
+    if exact_topic_matched:
+        explanation_summary = f"Directly matches your topic '{topic_query.strip()}' with strong sponsor alignment."
+    elif topic_query and unique_concepts:
+        explanation_summary = f"Matches {', '.join(unique_concepts[:3])} concepts related to '{topic_query.strip()}'."
+    elif topic_query:
+        explanation_summary = f"Semantically related to '{topic_query.strip()}' in scientific and technical scope."
+    elif matched_focus:
+        explanation_summary = f"Prioritized for your active research focus in '{', '.join(matched_focus)}'."
+    elif matched_areas and matched_keywords:
+        explanation_summary = f"Recommended because your profile matches this grant in {', '.join(matched_areas[:2])} ({', '.join(matched_keywords[:2])})."
     else:
         explanation_summary = "Recommended based on contextual semantic analysis of your research profile."
 
     return FundingMatchBreakdown(
         semantic_similarity=round(float(semantic_sim), 4),
-        semantic_score=round(float(semantic_score_comp * 100.0), 1),
-        keyword_score=round(float(keyword_score_comp * 100.0), 1),
-        domain_score=round(float(domain_area_score_comp * 100.0), 1),
+        semantic_score=round(float(semantic_comp * 100.0), 1),
+        keyword_score=round(float(kw_comp * 100.0), 1),
+        domain_score=round(float(domain_area_comp * 100.0), 1),
         eligibility_score=round(float(elig_comp * 100.0), 1),
         relevance_score=relevance_score,
         match_level=match_level,
+        match_type=match_type,
         matched_research_areas=matched_areas,
         matched_keywords=matched_keywords,
         matched_technology_areas=matched_tech,
+        matched_concepts=unique_concepts[:6],
         eligibility_status=elig_status,
         explanation=explanation_summary,
         explanation_points=explanation_points,
@@ -397,21 +519,23 @@ def calculate_match_details(
 def get_personalized_recommendations(
     user: User,
     db: Session,
-    limit: int = 10,
+    limit: int = 20,
     min_score: float = 0.0,
+    topic_query: str | None = None,
     research_area_filter: str | None = None,
     funding_type_filter: str | None = None,
     agency_filter: str | None = None,
+    focus_terms: list[str] | None = None,
 ) -> FundingRecommendationsResponse:
     """
-    Generates personalized funding recommendations for the authenticated user.
+    Generates personalized funding recommendations and topic search matching.
     Pipeline:
       1. Load user profile & related data from Module 2.
-      2. Build researcher representation.
-      3. Query available funding opportunities.
-      4. Compute semantic similarity vectors.
-      5. Calculate multi-factor relevance scores & explanations.
-      6. Filter and rank descending by score.
+      2. Construct dense query representation (topic + focus chips + profile).
+      3. Retrieve candidate funding opportunities (with non-restrictive hard filters).
+      4. Compute TF-IDF semantic similarity vectors.
+      5. Calculate multi-level relevance scores (Exact + Keyword + Semantic + Profile).
+      6. Rank descending and apply relevance threshold post-scoring.
     """
     profile_data = extract_researcher_profile_data(user, db)
     profile_summary = ProfileSummaryContext(
@@ -429,12 +553,21 @@ def get_personalized_recommendations(
 
     query = db.query(FundingOpportunity)
 
-    if research_area_filter:
-        query = query.filter(FundingOpportunity.research_area.ilike(f"%{research_area_filter}%"))
-    if funding_type_filter:
-        query = query.filter(FundingOpportunity.funding_type.ilike(f"%{funding_type_filter}%"))
-    if agency_filter:
-        query = query.filter(FundingOpportunity.agency.ilike(f"%{agency_filter}%"))
+    # Filtering by research area (if research_area_filter is explicitly provided without topic)
+    if research_area_filter and research_area_filter.strip() and not topic_query:
+        term = research_area_filter.strip()
+        query = query.filter(
+            (FundingOpportunity.research_area.ilike(f"%{term}%")) |
+            (FundingOpportunity.funding_category.ilike(f"%{term}%")) |
+            (FundingOpportunity.title.ilike(f"%{term}%")) |
+            (FundingOpportunity.description.ilike(f"%{term}%"))
+        )
+
+    # Optional hard filters
+    if funding_type_filter and funding_type_filter.strip():
+        query = query.filter(FundingOpportunity.funding_type.ilike(f"%{funding_type_filter.strip()}%"))
+    if agency_filter and agency_filter.strip():
+        query = query.filter(FundingOpportunity.agency.ilike(f"%{agency_filter.strip()}%"))
 
     opportunities = query.all()
 
@@ -445,18 +578,29 @@ def get_personalized_recommendations(
             recommendations=[],
             profile_used=profile_summary,
             message="No funding opportunities are currently available in the database." if db.query(FundingOpportunity).count() == 0 else "No funding opportunities matched the requested filters.",
+            search_query=topic_query,
         )
 
-    # Build representations
-    researcher_text = build_researcher_representation(profile_data)
+    # Build dense query representation
+    query_text = build_researcher_representation(
+        profile_data=profile_data,
+        topic_query=topic_query or research_area_filter,
+        focus_terms=focus_terms,
+    )
     funding_texts = [build_funding_representation(opp) for opp in opportunities]
 
-    # Semantic similarity calculation
-    similarities = compute_semantic_similarities(researcher_text, funding_texts)
+    # Compute semantic cosine similarity
+    similarities = compute_semantic_similarities(query_text, funding_texts)
 
     scored_items: list[FundingRecommendationItem] = []
     for opp, sim in zip(opportunities, similarities):
-        match_breakdown = calculate_match_details(profile_data, opp, float(sim))
+        match_breakdown = calculate_match_details(
+            profile_data=profile_data,
+            opportunity=opp,
+            semantic_sim=float(sim),
+            topic_query=topic_query or research_area_filter,
+            focus_terms=focus_terms,
+        )
         if match_breakdown.relevance_score >= min_score:
             opp_resp = FundingOpportunityResponse.model_validate(opp)
             scored_items.append(
@@ -471,7 +615,9 @@ def get_personalized_recommendations(
     top_recommendations = scored_items[:limit]
 
     message = None
-    if not profile_data["has_profile"]:
+    if not scored_items and min_score > 0:
+        message = f"No funding opportunities met the {int(min_score)}% relevance threshold. Try lowering the minimum match slider."
+    elif not profile_data["has_profile"] and not topic_query:
         message = "Your research profile is incomplete. Add research domain, areas, and keywords to receive highly personalized recommendations."
 
     return FundingRecommendationsResponse(
@@ -480,6 +626,7 @@ def get_personalized_recommendations(
         recommendations=top_recommendations,
         profile_used=profile_summary,
         message=message,
+        search_query=topic_query or research_area_filter,
     )
 
 

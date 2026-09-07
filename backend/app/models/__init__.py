@@ -8,3 +8,4 @@ from backend.app.models.patent import Patent
 from backend.app.models.research_paper import ResearchPaper
 from backend.app.models.research_paper_analysis import ResearchPaperAnalysis
 from backend.app.models.funding_opportunity import FundingOpportunity
+from backend.app.models.saved_funding import SavedFunding

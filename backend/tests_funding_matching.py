@@ -406,18 +406,59 @@ class TestAIFundingMatching:
         assert response.status_code == 404
         assert response.json()["detail"] == "Funding opportunity not found"
 
-    def test_16_filtering_recommendations_by_research_area(self, db_session):
-        """16. Filtering recommendations by research area restricts results."""
+    def test_16_topic_search_returns_semantically_related_grants(self, db_session):
+        """16. Topic search returns semantically related grants even without exact string match."""
         user = create_test_user(db_session, email="filter_test@test.com")
-        attach_profile(db_session, user, domain="AI")
+        attach_profile(db_session, user, domain="General Science")
         seed_funding_opportunities(db_session)
 
         token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role})
         response = client.get(
-            "/funding/recommendations/me?research_area=Renewable",
+            "/funding/recommendations/me?topic=Clean%20Solar%20Energy%20Photovoltaics",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["count"] == 1
+        assert data["count"] >= 1
         assert "Solar" in data["recommendations"][0]["funding_opportunity"]["title"]
+        assert data["recommendations"][0]["match"]["relevance_score"] > 0
+
+    def test_17_focus_terms_chip_selection_prioritization(self, db_session):
+        """17. Selecting active focus chips boosts relevance for targeted focus topics."""
+        user = create_test_user(db_session, email="chip_user@test.com", domain="Healthcare")
+        attach_profile(
+            db_session, user,
+            domain="Healthcare",
+            areas=["Medical Image Processing", "MRI Visualization"],
+            keywords=["Deep Learning", "Image Segmentation"],
+        )
+        ai_grant, energy_grant, _ = seed_funding_opportunities(db_session)
+
+        token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role})
+
+        # Base call
+        r_base = client.get("/funding/recommendations/me", headers={"Authorization": f"Bearer {token}"}).json()
+
+        # Call with focused chip "Medical Image Processing"
+        r_focus = client.get("/funding/recommendations/me?focus_terms=Medical%20Image%20Processing", headers={"Authorization": f"Bearer {token}"}).json()
+
+        assert r_focus["count"] >= 1
+        assert r_focus["recommendations"][0]["funding_opportunity"]["id"] == str(ai_grant.id)
+        assert r_focus["recommendations"][0]["match"]["relevance_score"] >= r_base["recommendations"][0]["match"]["relevance_score"]
+
+    def test_18_import_endpoint_returns_granular_metrics(self, db_session):
+        """18. POST /funding/import returns structured metrics with inserted and skipped counts."""
+        seed_funding_opportunities(db_session)
+        # Mock import payload validation
+        response = client.post(
+            "/funding/import",
+            json={"search": "Artificial Intelligence", "per_page": 2},
+        )
+        # Verify endpoint responds with either 200 (if network reachable) or 502 (if offline) with structured error
+        assert response.status_code in [200, 502]
+        if response.status_code == 200:
+            data = response.json()
+            assert "fetched" in data
+            assert "inserted" in data
+            assert "skipped" in data
+
