@@ -9,6 +9,7 @@ import Register from './pages/Register'
 import OAuthCallback from './pages/OAuthCallback'
 import Profile from './pages/Profile'
 import ResearchPapers from './pages/ResearchPapers'
+import FundingIntelligence from './pages/FundingIntelligence'
 import './App.css'
 
 export default function App() {
@@ -26,8 +27,10 @@ export default function App() {
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/research-papers" element={<ResearchPapers />} />
+                <Route path="/funding" element={<FundingIntelligence />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>
+
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

@@ -55,8 +55,10 @@ export default function Navbar() {
           </span>
           <Link className="nav-logout" to="/dashboard">Dashboard</Link>
           <Link className="nav-logout" to="/research-papers">Research Papers</Link>
+          <Link className="nav-logout" to="/funding">Funding Opportunities</Link>
           <Link className="nav-logout" to="/profile">Profile</Link>
           <button className="nav-logout" onClick={handleLogout}>Log out</button>
+
 
         </div>
       ) : (
