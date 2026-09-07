@@ -6,4 +6,5 @@ from backend.app.models.technology_area import TechnologyArea
 from backend.app.models.publication import Publication
 from backend.app.models.patent import Patent
 from backend.app.models.research_paper import ResearchPaper
-from backend.app.models.research_paper_analysis import ResearchPaperAnalysis
+from backend.app.models.research_paper_analysis import ResearchPaperAnalysis
+from backend.app.models.funding_opportunity import FundingOpportunity

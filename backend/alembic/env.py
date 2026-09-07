@@ -10,6 +10,7 @@ from backend.app.database.base import Base
 import backend.app.models  # Ensures all SQLAlchemy models are registered
 
 
+
 # Load environment variables from .env
 load_dotenv()
 
