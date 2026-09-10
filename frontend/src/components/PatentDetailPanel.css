@@ -1,0 +1,347 @@
+/* =========================================================
+   Patent Detail Drawer Panel Styles
+   Theme: Light SaaS AI Research Platform
+   ========================================================= */
+
+.patent-detail-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: flex;
+  justify-content: flex-end;
+  animation: overlayFade 0.2s ease-out;
+}
+
+@keyframes overlayFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.patent-detail-drawer {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  background: #ffffff;
+  box-shadow: -10px 0 35px rgba(15, 23, 42, 0.15);
+  display: flex;
+  flex-direction: column;
+  animation: drawerSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes drawerSlide {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Header */
+.drawer-header {
+  padding: 1.5rem 1.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+}
+
+.drawer-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.drawer-badge-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: #f0fdfa;
+  color: #0f766e;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid #ccfbf1;
+}
+
+.drawer-source-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+}
+
+.btn-drawer-close {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: all 0.15s ease;
+}
+
+.btn-drawer-close:hover {
+  background: #f1f5f9;
+  color: #0f2942;
+  border-color: #94a3b8;
+}
+
+/* Body */
+.drawer-body {
+  padding: 1.75rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.drawer-patent-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f2942;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.drawer-pub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drawer-pub-number {
+  font-family: monospace;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+}
+
+.drawer-official-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0284c7;
+  text-decoration: none;
+}
+
+.drawer-official-link:hover {
+  text-decoration: underline;
+}
+
+/* Action Banner */
+.drawer-action-banner {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.action-text strong {
+  display: block;
+  font-size: 0.92rem;
+  color: #0f766e;
+}
+
+.action-text p {
+  font-size: 0.8rem;
+  color: #475569;
+  margin: 0.2rem 0 0 0;
+}
+
+.btn-drawer-find-similar {
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.btn-drawer-find-similar:hover:not(:disabled) {
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35);
+}
+
+.btn-drawer-find-similar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Metadata */
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.section-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin: 0;
+}
+
+.drawer-meta-list {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.84rem;
+}
+
+.meta-label {
+  color: #64748b;
+}
+
+.meta-value {
+  font-weight: 600;
+  color: #0f2942;
+  text-align: right;
+  max-width: 260px;
+}
+
+.meta-value.code-font {
+  font-family: monospace;
+}
+
+.drawer-abstract-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.drawer-abstract-box p {
+  font-size: 0.86rem;
+  color: #334155;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Similar list */
+.drawer-similar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.drawer-sim-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sim-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sim-rank {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.sim-pct {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0d9488;
+}
+
+.sim-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f2942;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sim-assignee {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.sim-shared-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.sim-pill {
+  font-size: 0.7rem;
+  background: #f0fdfa;
+  color: #0f766e;
+  border: 1px solid #ccfbf1;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+/* Mobile bottom sheet */
+@media (max-width: 640px) {
+  .patent-detail-drawer-overlay {
+    align-items: flex-end;
+  }
+
+  .patent-detail-drawer {
+    max-width: 100%;
+    height: 85vh;
+    border-radius: 20px 20px 0 0;
+    animation: drawerSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes drawerSlideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+}

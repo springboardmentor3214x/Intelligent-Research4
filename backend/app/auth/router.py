@@ -127,3 +127,31 @@ def get_me(current_user: User = Depends(get_current_user)) -> User:
     Retrieve the profile of the currently authenticated user using the JWT Bearer token.
     """
     return current_user
+
+
+@router.get(
+    "/oauth/google",
+    summary="Initiate Google OAuth2 flow"
+)
+def google_oauth_login():
+    """
+    Redirects to Google OAuth consent screen if configured, or returns a clear message.
+    """
+    import os
+    from fastapi.responses import RedirectResponse
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Google OAuth is not configured. Please sign in or register with your email and password.",
+        )
+
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5173/oauth/callback")
+    google_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={client_id}&response_type=code&scope=openid%20email%20profile&"
+        f"redirect_uri={redirect_uri}"
+    )
+    return RedirectResponse(url=google_url)
+
