@@ -78,8 +78,4 @@ class ResearchProfile(Base):
         cascade="all, delete-orphan"
     )
 
-    patents = relationship(
-        "Patent",
-        back_populates="research_profile",
-        cascade="all, delete-orphan"
-    )
+    

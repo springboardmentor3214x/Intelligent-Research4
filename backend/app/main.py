@@ -9,6 +9,8 @@ from backend.app.routers.funding_opportunity import (
     router as funding_router,
 )
 
+from backend.app.routers.patent import router as patent_router
+
 app = FastAPI(
     title="Research Funding & Innovation Intelligence Platform"
 )
@@ -16,6 +18,7 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(research_paper_router)
 app.include_router(funding_router)
+app.include_router(patent_router)
 
 
 @app.get("/")
