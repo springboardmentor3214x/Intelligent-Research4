@@ -15,6 +15,8 @@ from backend.app.routers.platform import router as platform_router
 from backend.app.routers.profile import router as profile_router
 from backend.app.routers.publications import router as publications_router
 from backend.app.routers.research_details import router as research_details_router
+from backend.app.routers import intelligence
+from backend.app.routers import patent_intelligence
 
 app = FastAPI(
     title="Research Funding & Innovation Intelligence Platform"
@@ -42,6 +44,8 @@ app.include_router(research_details_router)
 app.include_router(publications_router)
 app.include_router(patents_router)
 app.include_router(platform_router)
+app.include_router(intelligence.router)
+app.include_router(patent_intelligence.router)
 
 
 @app.get("/")
