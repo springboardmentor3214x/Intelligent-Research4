@@ -38,16 +38,7 @@ export default function Login() {
         <button className="primary-button" disabled={submitting}>{submitting ? 'Signing in...' : 'Sign in securely'}</button>
       </form>
       <div className="divider"><span>OR CONTINUE WITH</span></div>
-      <button
-        type="button"
-        className="google-button"
-        style={{ width: '100%', cursor: 'pointer' }}
-        onClick={() => {
-          setError('Google OAuth requires Google Cloud client configuration. Please sign in using your email and password above.')
-        }}
-      >
-        <GoogleIcon /> <span>Continue with Google</span>
-      </button>
+      <a className="google-button" href={googleOAuthUrl()}><GoogleIcon /> <span>Continue with Google</span></a>
       <p className="auth-footer">New to the platform? <Link to="/register">Create an account</Link></p>
     </section>
   </div>

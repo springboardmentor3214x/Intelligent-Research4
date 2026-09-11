@@ -32,7 +32,6 @@ export default function App() {
                 <Route path="/funding" element={<FundingIntelligence />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>
-
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
@@ -41,3 +40,4 @@ export default function App() {
     </BrowserRouter>
   )
 }
+

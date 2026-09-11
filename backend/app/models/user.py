@@ -59,6 +59,11 @@ class User(Base):
         nullable=True
     )
 
+    department: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True
+    )
+
     research_domain: Mapped[str | None] = mapped_column(
         String(150),
         nullable=True
