@@ -27,6 +27,7 @@ export default function PatentSemanticMap({
   const [hoveredPoint, setHoveredPoint] = useState(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
   const [searchTerm, setSearchTerm] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
   const [similarityMode, setSimilarityMode] = useState(true)
   const [zoomLevel, setZoomLevel] = useState(1)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
@@ -34,6 +35,13 @@ export default function PatentSemanticMap({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false)
   const [animProgress, setAnimProgress] = useState(0) // 0 to 1 for intro animation
+
+  // Autocomplete suggestions state
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const searchInputRef = useRef(null)
+  const suggestionsRef = useRef(null)
 
   const svgRef = useRef(null)
   const containerRef = useRef(null)
@@ -76,24 +84,82 @@ export default function PatentSemanticMap({
     return () => cancelAnimationFrame(frameId)
   }, [clustersData])
 
-  // Filtered/searched matches
+  // Debounced autocomplete fetcher from backend
+  useEffect(() => {
+    if (!searchTerm.trim() || searchTerm.trim().length < 2) {
+      setSuggestions([])
+      setSuggestionsOpen(false)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setSuggestionsLoading(true)
+        const res = await patentService.getPatentSuggestions(searchTerm.trim(), 8)
+        setSuggestions(res?.suggestions || [])
+        setSuggestionsOpen((res?.suggestions || []).length > 0)
+      } catch (err) {
+        console.warn('Suggestions error:', err)
+      } finally {
+        setSuggestionsLoading(false)
+      }
+    }, 250)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleOutside(e) {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target) &&
+        !searchInputRef.current?.contains(e.target)
+      ) {
+        setSuggestionsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [])
+
+  function handleExecuteSearch(overrideQuery) {
+    const queryToUse = overrideQuery !== undefined ? overrideQuery : searchTerm
+    setAppliedSearch(queryToUse.trim())
+    setSuggestionsOpen(false)
+    if (searchInputRef.current) searchInputRef.current.blur()
+  }
+
+  function handleSelectSuggestion(suggestionText) {
+    setSearchTerm(suggestionText)
+    handleExecuteSearch(suggestionText)
+  }
+
+  // Filtered/searched matches on map based on search term or applied query
+  const effectiveSearchQuery = (appliedSearch || searchTerm).toLowerCase().trim()
+
   const searchMatches = useMemo(() => {
-    if (!searchTerm.trim()) return null
-    const term = searchTerm.toLowerCase().trim()
+    if (!effectiveSearchQuery) return null
     const matchingIds = new Set()
     patents.forEach((p) => {
       if (
-        p.title?.toLowerCase().includes(term) ||
-        p.publication_number?.toLowerCase().includes(term) ||
-        p.assignee?.toLowerCase().includes(term) ||
-        p.technology_domain?.toLowerCase().includes(term) ||
-        p.classification?.toLowerCase().includes(term)
+        p.title?.toLowerCase().includes(effectiveSearchQuery) ||
+        p.publication_number?.toLowerCase().includes(effectiveSearchQuery) ||
+        p.assignee?.toLowerCase().includes(effectiveSearchQuery) ||
+        p.technology_domain?.toLowerCase().includes(effectiveSearchQuery) ||
+        p.classification?.toLowerCase().includes(effectiveSearchQuery) ||
+        p.abstract?.toLowerCase().includes(effectiveSearchQuery)
       ) {
         matchingIds.add(p.id)
       }
     })
     return matchingIds
-  }, [searchTerm, patents])
+  }, [effectiveSearchQuery, patents])
+
+  // Has zero search matches when search is entered
+  const isZeroSearchMatches = useMemo(() => {
+    return Boolean(effectiveSearchQuery && searchMatches && searchMatches.size === 0)
+  }, [effectiveSearchQuery, searchMatches])
 
   // Map patent_id to similarity score when selectedPatent + similarData are active
   const similarityScoreMap = useMemo(() => {
@@ -120,6 +186,8 @@ export default function PatentSemanticMap({
     setPanOffset({ x: 0, y: 0 })
     setSelectedClusterId(null)
     setSearchTerm('')
+    setAppliedSearch('')
+    setSuggestionsOpen(false)
     if (onResetView) onResetView()
   }
 
@@ -296,24 +364,84 @@ export default function PatentSemanticMap({
 
       {/* 3. Interactive Toolbar & Search */}
       <div className="map-toolbar">
-        {/* Search Input */}
-        <div className="map-search-box">
-          <span className="search-icon">🔍</span>
-          <input
-            type="text"
-            placeholder="Search patents by title, ID, assignee, domain..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="map-search-input"
-          />
-          {searchTerm && (
+        {/* Search Input Box with Autocomplete & Search Button */}
+        <div className="map-search-wrapper">
+          <form
+            className="map-search-box"
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleExecuteSearch()
+            }}
+          >
+            <span className="search-icon">🔍</span>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search patents by technology, keyword, research area, company, or patent title..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                if (!e.target.value.trim()) {
+                  setAppliedSearch('')
+                }
+              }}
+              onFocus={() => {
+                if (suggestions.length > 0) setSuggestionsOpen(true)
+              }}
+              className="map-search-input"
+            />
+            {suggestionsLoading && (
+              <span className="suggestions-inline-spinner" title="Loading suggestions...">●</span>
+            )}
+            {searchTerm && (
+              <button
+                type="button"
+                className="btn-clear-search"
+                onClick={() => {
+                  setSearchTerm('')
+                  setAppliedSearch('')
+                  setSuggestions([])
+                  setSuggestionsOpen(false)
+                }}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
             <button
-              type="button"
-              className="btn-clear-search"
-              onClick={() => setSearchTerm('')}
+              type="submit"
+              className="btn-map-search"
+              title="Execute Search"
             >
-              ✕
+              <span className="btn-search-icon">🔍</span>
+              <span>Search</span>
             </button>
+          </form>
+
+          {/* Autocomplete Suggestions Dropdown Popup */}
+          {suggestionsOpen && suggestions.length > 0 && (
+            <div className="map-suggestions-dropdown" ref={suggestionsRef}>
+              <div className="suggestions-header">
+                <span>Matching Patent Concepts</span>
+                <small>{suggestions.length} suggestions</small>
+              </div>
+              <div className="suggestions-list">
+                {suggestions.map((s, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className="suggestion-item"
+                    onClick={() => handleSelectSuggestion(s.text)}
+                  >
+                    <span className="suggestion-icon">
+                      {s.category === 'domain' ? '🔬' : s.category === 'assignee' ? '🏢' : '📄'}
+                    </span>
+                    <span className="suggestion-text">{s.text}</span>
+                    <span className="suggestion-badge">{s.category}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
@@ -685,6 +813,34 @@ export default function PatentSemanticMap({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* 6. No Search Matches Floating Overlay */}
+        {isZeroSearchMatches && (
+          <div className="map-no-matches-overlay">
+            <div className="no-matches-card">
+              <div className="no-matches-icon">🔍</div>
+              <h4>No patents found</h4>
+              <p>
+                No matching patents found for &ldquo;<strong>{effectiveSearchQuery}</strong>&rdquo;.
+              </p>
+              <span className="no-matches-tip">
+                Try different keywords (e.g., &ldquo;medical imaging&rdquo;, &ldquo;quantum&rdquo;) or check spelling.
+              </span>
+              <button
+                type="button"
+                className="btn-clear-search-pill"
+                onClick={() => {
+                  setSearchTerm('')
+                  setAppliedSearch('')
+                  setSuggestions([])
+                  setSuggestionsOpen(false)
+                }}
+              >
+                Reset Map Search
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -29,23 +29,27 @@ def build_patent_text(patent: Any) -> str:
 
     title = _clean_val(getattr(patent, "title", None) if hasattr(patent, "title") else patent.get("title") if isinstance(patent, dict) else None)
     if title:
-        parts.append(f"Title: {title}")
-
-    abstract = _clean_val(getattr(patent, "abstract", None) if hasattr(patent, "abstract") else patent.get("abstract") if isinstance(patent, dict) else None)
-    if abstract:
-        parts.append(f"Abstract: {abstract}")
+        parts.append(f"Patent Title: {title}")
 
     tech_domain = _clean_val(getattr(patent, "technology_domain", None) if hasattr(patent, "technology_domain") else patent.get("technology_domain") if isinstance(patent, dict) else None)
     if tech_domain:
         parts.append(f"Technology Domain: {tech_domain}")
 
+    abstract = _clean_val(getattr(patent, "abstract", None) if hasattr(patent, "abstract") else patent.get("abstract") if isinstance(patent, dict) else None)
+    if abstract:
+        parts.append(f"Technical Abstract: {abstract}")
+
     classification = _clean_val(getattr(patent, "classification", None) if hasattr(patent, "classification") else patent.get("classification") if isinstance(patent, dict) else None)
     if classification:
-        parts.append(f"Classification: {classification}")
+        parts.append(f"International Classification: {classification}")
 
     assignee = _clean_val(getattr(patent, "assignee", None) if hasattr(patent, "assignee") else patent.get("assignee") if isinstance(patent, dict) else None)
     if assignee:
-        parts.append(f"Assignee: {assignee}")
+        parts.append(f"Applicant Assignee: {assignee}")
+
+    inventors = _clean_val(getattr(patent, "inventors", None) if hasattr(patent, "inventors") else patent.get("inventors") if isinstance(patent, dict) else None)
+    if inventors:
+        parts.append(f"Inventors: {inventors}")
 
     return ". ".join(parts).strip()
 
@@ -131,15 +135,6 @@ class PatentEmbeddingService:
 
         cleaned_texts = [t if t.strip() else "Patent Document" for t in texts]
 
-        # Lazy check if sentence_transformers is newly available
-        if self._model is None:
-            try:
-                from sentence_transformers import SentenceTransformer
-                self._model = SentenceTransformer(DEFAULT_EMBEDDING_MODEL)
-                self._model_name = DEFAULT_EMBEDDING_MODEL
-            except Exception:
-                pass
-
         if self._model is not None:
             try:
                 raw_embeddings = self._model.encode(
@@ -157,6 +152,33 @@ class PatentEmbeddingService:
         hash_mat = self._hasher.transform(cleaned_texts).toarray().astype(np.float32)
         normed = normalize(hash_mat, norm="l2", axis=1).astype(np.float32)
         return normed
+
+    def search_patents_by_query(
+        self,
+        query: str,
+        patents: list[Any],
+        top_k: int = 50,
+    ) -> list[tuple[Any, float]]:
+        """
+        Rank patents against a natural language query using cosine similarity
+        on normalized dense semantic embeddings.
+        """
+        if not query.strip() or not patents:
+            return []
+
+        query_vec = self.generate_text_embeddings([query.strip()])[0]
+        patent_embeddings = self.generate_patent_embeddings(patents)
+
+        # Cosine similarity via dot product of unit-normalized vectors
+        similarities = np.dot(patent_embeddings, query_vec)
+        ranked_indices = np.argsort(similarities)[::-1]
+
+        results = []
+        for idx in ranked_indices[:top_k]:
+            score = float(similarities[idx])
+            results.append((patents[idx], max(0.0, min(1.0, score))))
+
+        return results
 
     @staticmethod
     def calculate_similarity(vector_a: np.ndarray, vector_b: np.ndarray) -> float:

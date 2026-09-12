@@ -299,13 +299,18 @@ def fetch_patents_from_epo(
 
             record = record_response.json()
 
-            patent_data = (
-                record
-                .get("result", {})
-                .get("primaryTopic", {})
-            )
+            if isinstance(record, dict):
+                result_obj = record.get("result", {})
+                if isinstance(result_obj, dict):
+                    patent_data = result_obj.get("primaryTopic", {})
+                elif isinstance(result_obj, list) and len(result_obj) > 0 and isinstance(result_obj[0], dict):
+                    patent_data = result_obj[0].get("primaryTopic", {})
+                else:
+                    patent_data = {}
+            else:
+                patent_data = {}
 
-            if not patent_data:
+            if not isinstance(patent_data, dict) or not patent_data:
                 continue
 
             # ---------------------------------
@@ -314,8 +319,11 @@ def fetch_patents_from_epo(
 
             application = (
                 patent_data.get("application")
-                or {}
+                if isinstance(patent_data, dict)
+                else {}
             )
+            if not isinstance(application, dict):
+                application = {}
 
             # ---------------------------------
             # Inventors

@@ -9,6 +9,22 @@ export const patentService = {
     return apiFetch(`/patents${queryString}`)
   },
 
+  async searchPatents(query = '', domain = null, assignee = null, limit = 50) {
+    const params = new URLSearchParams()
+    if (query) params.append('q', query)
+    if (domain) params.append('domain', domain)
+    if (assignee) params.append('assignee', assignee)
+    if (limit) params.append('limit', limit)
+    const queryString = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch(`/patents/search${queryString}`)
+  },
+
+  async getPatentSuggestions(query = '', limit = 8) {
+    if (!query || !query.trim()) return { query: '', suggestions: [] }
+    const params = new URLSearchParams({ q: query.trim(), limit })
+    return apiFetch(`/patents/suggestions?${params.toString()}`)
+  },
+
   async getPatentById(patentId) {
     return apiFetch(`/patents/${patentId}`)
   },
@@ -43,6 +59,19 @@ export const patentService = {
       body: JSON.stringify({
         keyword,
         limit: Number.parseInt(limit, 10),
+      }),
+    })
+  },
+
+  async analyzePatentIdea(idea, { focusCountry = 'all', minSimilarity = 0.0, limit = 20 } = {}) {
+    return apiFetch('/patents/analyze-idea', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idea,
+        focus_country: focusCountry,
+        min_similarity: minSimilarity,
+        limit,
       }),
     })
   },

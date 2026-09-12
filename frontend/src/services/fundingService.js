@@ -3,7 +3,7 @@ import { apiFetch } from './api'
 export async function getPersonalizedFundingRecommendations({
   token,
   limit = 20,
-  minScore = 0.0,
+  minScore = 0,
   topic = '',
   researchArea = '',
   fundingType = '',
@@ -12,13 +12,13 @@ export async function getPersonalizedFundingRecommendations({
 } = {}) {
   const queryParams = new URLSearchParams()
   if (limit) queryParams.set('limit', limit)
-  if (minScore) queryParams.set('min_score', minScore)
+  if (minScore !== undefined && minScore !== null) queryParams.set('min_score', minScore)
   if (topic) queryParams.set('topic', topic)
   if (researchArea) queryParams.set('research_area', researchArea)
   if (fundingType) queryParams.set('funding_type', fundingType)
   if (agency) queryParams.set('agency', agency)
   if (focusTerms && focusTerms.length > 0) {
-    focusTerms.forEach(t => queryParams.append('focus_terms', t))
+    focusTerms.forEach((t) => queryParams.append('focus_terms', t))
   }
 
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : ''
@@ -30,6 +30,45 @@ export async function getPersonalizedFundingRecommendations({
   })
 }
 
+export async function analyzeStartupIdea({ token, idea, fundingTypeFilter = null } = {}) {
+  return apiFetch('/funding/analyze-idea', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      idea,
+      funding_type_filter: fundingTypeFilter || null,
+    }),
+  })
+}
+
+export async function searchFundingOpportunities({
+  token,
+  query = '',
+  limit = 20,
+  minScore = 0,
+  fundingType = '',
+  researchArea = '',
+  agency = '',
+} = {}) {
+  return apiFetch('/funding/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      query,
+      limit,
+      min_score: minScore,
+      funding_type: fundingType || null,
+      research_area: researchArea || null,
+      agency: agency || null,
+    }),
+  })
+}
 
 export async function matchSingleFundingOpportunity(token, fundingOpportunityId) {
   return apiFetch('/funding/match', {
@@ -42,8 +81,10 @@ export async function matchSingleFundingOpportunity(token, fundingOpportunityId)
   })
 }
 
-export async function getAllFundingOpportunities({ skip = 0, limit = 20 } = {}) {
-  return apiFetch(`/funding?skip=${skip}&limit=${limit}`)
+export async function getAllFundingOpportunities({ skip = 0, limit = 20, search = '' } = {}) {
+  const queryParams = new URLSearchParams({ skip, limit })
+  if (search) queryParams.set('search', search)
+  return apiFetch(`/funding?${queryParams.toString()}`)
 }
 
 export async function getFundingOpportunityDetails(opportunityId) {
@@ -88,4 +129,3 @@ export async function removeSavedFunding(token, fundingOpportunityId) {
     },
   })
 }
-

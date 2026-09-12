@@ -21,7 +21,7 @@ export default function Dashboard() {
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0f766e', background: '#f0fdfa', padding: '0.25rem 0.65rem', borderRadius: '999px', border: '1px solid #ccfbf1', display: 'inline-block', marginBottom: '0.5rem' }}>
-              Module 2: Researcher Profile
+              Researcher Profile
             </span>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2942', margin: '0 0 0.5rem 0' }}>Research Portfolio &amp; Details</h2>
             <p style={{ color: '#64748b', fontSize: '0.92rem', margin: 0 }}>Manage your research areas, keywords, publications, and patents.</p>
@@ -34,10 +34,10 @@ export default function Dashboard() {
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#2563eb', background: '#eff6ff', padding: '0.25rem 0.65rem', borderRadius: '999px', border: '1px solid #dbeafe', display: 'inline-block', marginBottom: '0.5rem' }}>
-              Module 3: Research Intelligence
+              Literature Discovery &amp; AI
             </span>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2942', margin: '0 0 0.5rem 0' }}>Research Papers &amp; AI Analysis</h2>
-            <p style={{ color: '#64748b', fontSize: '0.92rem', margin: 0 }}>Discover papers from OpenAlex, generate structured AI findings, and track research trends.</p>
+            <p style={{ color: '#64748b', fontSize: '0.92rem', margin: 0 }}>Discover papers across repositories, generate structured AI findings, and track research trends.</p>
           </div>
           <Link to="/research-papers" className="btn-primary" style={{ marginTop: '1.25rem', padding: '0.65rem 1.2rem', textDecoration: 'none', borderRadius: '10px', fontWeight: 600, textAlign: 'center' }}>
             Explore Papers &rarr;
@@ -47,7 +47,7 @@ export default function Dashboard() {
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#7c3aed', background: '#f5f3ff', padding: '0.25rem 0.65rem', borderRadius: '999px', border: '1px solid #ede9fe', display: 'inline-block', marginBottom: '0.5rem' }}>
-              Module 4: Funding Intelligence
+              Grant Intelligence
             </span>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2942', margin: '0 0 0.5rem 0' }}>AI Funding Semantic Matching</h2>
             <p style={{ color: '#64748b', fontSize: '0.92rem', margin: 0 }}>Personalized funding recommendations based on semantic similarity to your researcher profile.</p>
@@ -60,7 +60,7 @@ export default function Dashboard() {
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0f766e', background: '#f0fdfa', padding: '0.25rem 0.65rem', borderRadius: '999px', border: '1px solid #ccfbf1', display: 'inline-block', marginBottom: '0.5rem' }}>
-              Module 5: Patent Intelligence
+              Patent Landscape
             </span>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2942', margin: '0 0 0.5rem 0' }}>Patent Landscape &amp; AI Clustering</h2>
             <p style={{ color: '#64748b', fontSize: '0.92rem', margin: 0 }}>Explore EPO patent records, sentence embeddings, KMeans clustering, and PCA maps.</p>

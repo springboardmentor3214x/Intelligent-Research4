@@ -216,30 +216,42 @@
   z-index: 1;
 }
 
+.map-search-wrapper {
+  position: relative;
+  max-width: 600px;
+  width: 100%;
+  z-index: 25;
+}
+
 .map-search-box {
   position: relative;
-  max-width: 480px;
+  display: flex;
+  align-items: center;
   width: 100%;
+  gap: 0.5rem;
 }
 
 .search-icon {
   position: absolute;
-  left: 0.9rem;
+  left: 0.95rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #94a3b8;
-  font-size: 0.9rem;
+  color: #0d9488;
+  font-size: 0.95rem;
   pointer-events: none;
+  z-index: 2;
 }
 
 .map-search-input {
+  flex: 1;
   width: 100%;
-  padding: 0.6rem 2.2rem 0.6rem 2.4rem;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  padding: 0.65rem 2.4rem 0.65rem 2.6rem;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
   border-radius: 10px;
-  font-size: 0.88rem;
-  color: #1e293b;
+  font-size: 0.9rem;
+  color: #0f2942;
+  font-weight: 500;
   outline: none;
   transition: all 0.2s ease;
   box-sizing: border-box;
@@ -248,20 +260,251 @@
 .map-search-input:focus {
   background: #ffffff;
   border-color: #0d9488;
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+  box-shadow: 0 0 0 3.5px rgba(13, 148, 136, 0.15);
+}
+
+.suggestions-inline-spinner {
+  position: absolute;
+  right: 6.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #0d9488;
+  font-size: 0.75rem;
+  animation: pulseDot 1s infinite;
+  pointer-events: none;
 }
 
 .btn-clear-search {
   position: absolute;
-  right: 0.75rem;
+  right: 5.6rem;
   top: 50%;
   transform: translateY(-50%);
+  background: #f1f5f9;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.75rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-clear-search:hover {
+  background: #e2e8f0;
+  color: #0f2942;
+}
+
+.btn-map-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1.15rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-map-search:hover {
+  background: linear-gradient(135deg, #0f766e, #115e59);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
+}
+
+.btn-map-search:active {
+  transform: translateY(0);
+}
+
+.btn-search-icon {
+  font-size: 0.82rem;
+}
+
+/* Autocomplete Suggestions Dropdown Popup */
+.map-suggestions-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 41, 66, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  z-index: 50;
+  animation: tooltipFadeIn 0.18s ease-out;
+}
+
+.suggestions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 0.95rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.suggestions-header small {
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: none;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.65rem 0.95rem;
   background: none;
   border: none;
-  color: #94a3b8;
+  border-bottom: 1px solid #f8fafc;
+  text-align: left;
   cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background: #f0fdfa;
+}
+
+.suggestion-icon {
+  font-size: 0.9rem;
+  color: #0d9488;
+}
+
+.suggestion-text {
+  flex: 1;
   font-size: 0.85rem;
-  padding: 0.2rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  text-transform: capitalize;
+}
+
+.suggestion-item:hover .suggestion-badge {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+/* No Search Matches Floating Overlay */
+.map-no-matches-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(250, 252, 255, 0.4);
+  pointer-events: none;
+  z-index: 12;
+}
+
+.no-matches-card {
+  pointer-events: auto;
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  max-width: 360px;
+  box-shadow: 0 12px 32px rgba(239, 68, 68, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04);
+  animation: tooltipFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.no-matches-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 0.75rem auto;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-matches-card h4 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f2942;
+  margin: 0 0 0.4rem 0;
+}
+
+.no-matches-card p {
+  font-size: 0.88rem;
+  color: #475569;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.no-matches-card p strong {
+  color: #dc2626;
+}
+
+.no-matches-tip {
+  display: block;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-bottom: 1rem;
+  line-height: 1.35;
+}
+
+.btn-clear-search-pill {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-search-pill:hover {
+  background: #0f2942;
+  color: #ffffff;
+  border-color: #0f2942;
 }
 
 .map-legend-chips {

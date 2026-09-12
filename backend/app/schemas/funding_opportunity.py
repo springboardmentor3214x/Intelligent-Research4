@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -43,3 +44,82 @@ class FundingOpportunityListResponse(BaseModel):
 class FundingImportRequest(BaseModel):
     search: str = Field(min_length=1)
     per_page: int = Field(default=10, ge=1, le=100)
+
+
+class FundingSearchRequest(BaseModel):
+    query: str = Field(default="", description="Search topic or research area")
+    limit: int = Field(default=20, ge=1, le=100)
+    min_score: float = Field(default=0.0, ge=0.0, le=100.0)
+    funding_type: str | None = None
+    research_area: str | None = None
+    agency: str | None = None
+
+
+class FundingRecommendationResponse(BaseModel):
+    total: int
+    recommendations: list[dict[str, Any]]
+    profile_used: dict[str, Any] | None = None
+    message: str | None = None
+
+
+class IdeaAnalysisRequest(BaseModel):
+    idea: str = Field(min_length=10, description="Startup or research idea description")
+    funding_type_filter: str | None = None
+
+
+class ResearchOverlapItem(BaseModel):
+    id: str
+    title: str
+    authors: str | None = None
+    publication_date: str | None = None
+    journal_or_conference: str | None = None
+    similarity_score: float
+    similarity_percentage: float
+    domain: str | None = None
+    shared_concepts: list[str] = []
+    doi: str | None = None
+
+
+class PatentOverlapItem(BaseModel):
+    id: str
+    title: str
+    patent_number: str | None = None
+    assignee: str | None = None
+    publication_date: str | None = None
+    similarity_score: float
+    similarity_percentage: float
+    classification: str | None = None
+    shared_concepts: list[str] = []
+
+
+class ScoringFactor(BaseModel):
+    name: str
+    score: float
+    max_score: float
+    weight: float
+    details: str
+
+
+class FundingSuitability(BaseModel):
+    suitability_score: float
+    readiness_level: str
+    factors: list[ScoringFactor]
+    disclaimer: str
+
+
+class IdeaAnalysisResponse(BaseModel):
+    idea_summary: str
+    domain: str
+    research_areas: list[str]
+    technologies: list[str]
+    keywords: list[str]
+    application_areas: list[str]
+    potential_funding_categories: list[str]
+    funding_suitability: FundingSuitability
+    matching_funding: list[dict[str, Any]]
+    research_landscape: dict[str, Any]
+    patent_landscape: dict[str, Any]
+    potential_risks: list[str]
+    improvement_suggestions: list[str]
+    recommended_next_steps: list[str]
+    ai_provider: str

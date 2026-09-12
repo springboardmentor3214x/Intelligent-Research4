@@ -127,12 +127,6 @@ export default function Navbar() {
             >
               How It Works
             </button>
-            <Link
-              to="/patents"
-              className={`nav-link-btn ${location.pathname === '/patents' ? 'active' : ''}`}
-            >
-              Patent Landscape
-            </Link>
           </nav>
         ) : (
           /* Authenticated Navigation with Dropdowns */

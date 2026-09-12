@@ -13,6 +13,10 @@ from backend.app.schemas.funding_opportunity import (
     FundingImportRequest,
     FundingOpportunityListResponse,
     FundingOpportunityResponse,
+    FundingRecommendationResponse,
+    FundingSearchRequest,
+    IdeaAnalysisRequest,
+    IdeaAnalysisResponse,
 )
 from backend.app.services.funding_matching_service import (
     funding_matching_service,
@@ -71,6 +75,7 @@ def sync_funding(
     inserted, skipped = import_grants_opportunities("science technology research", 15)
     return {
         "status": "synchronized",
+        "message": "Successfully synchronized live funding opportunities.",
         "inserted": inserted,
         "skipped": skipped,
     }
@@ -78,11 +83,12 @@ def sync_funding(
 
 @router.get(
     "/recommendations/me",
+    response_model=FundingRecommendationResponse,
     summary="Get personalized funding recommendations for current user",
 )
 def get_user_funding_recommendations(
     limit: int = Query(default=20, ge=1, le=100),
-    min_score: float = Query(default=0.0, ge=0.0, le=1.0),
+    min_score: float = Query(default=0.0, ge=0.0, le=100.0),
     topic: str = Query(default=""),
     research_area: str = Query(default=""),
     funding_type: str = Query(default=""),
@@ -90,7 +96,7 @@ def get_user_funding_recommendations(
     focus_terms: list[str] = Query(default=[]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """
     AI/ML Semantic Matching pairing Researcher Profile with real Funding Opportunities.
     Returns cosine relevance scores, explainable matched concepts, and automated eligibility assessments.
@@ -105,6 +111,75 @@ def get_user_funding_recommendations(
         funding_type=funding_type,
         agency=agency,
         focus_terms=focus_terms,
+    )
+
+
+@router.post(
+    "/search",
+    summary="Semantic search for funding opportunities",
+)
+def search_funding(
+    payload: FundingSearchRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Search funding opportunities using natural language semantic matching and filters."""
+    return funding_matching_service.search_funding_opportunities(
+        db=db,
+        query=payload.query,
+        limit=payload.limit,
+        min_score=payload.min_score,
+        funding_type=payload.funding_type,
+        research_area=payload.research_area,
+        agency=payload.agency,
+        current_user=current_user,
+    )
+
+
+@router.post(
+    "/analyze-idea",
+    response_model=IdeaAnalysisResponse,
+    summary="Startup and research idea funding intelligence analyzer",
+)
+def analyze_startup_idea(
+    payload: IdeaAnalysisRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Analyzes startup / research ideas:
+    - Concept & technology extraction
+    - Prior art research paper overlap in local database
+    - Prior art patent overlap in local database
+    - Recommended real funding opportunities
+    - Estimated funding readiness & suitability score (0-100%)
+    - Explainable matching and potential risk factors
+    - Actionable next steps
+    """
+    return funding_matching_service.analyze_startup_idea(
+        db=db,
+        idea_text=payload.idea,
+        current_user=current_user,
+        funding_type_filter=payload.funding_type_filter,
+    )
+
+
+@router.post(
+    "/startup-analysis",
+    response_model=IdeaAnalysisResponse,
+    summary="Alias for analyze-idea endpoint",
+)
+def analyze_startup_idea_alias(
+    payload: IdeaAnalysisRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Alias for /funding/analyze-idea."""
+    return funding_matching_service.analyze_startup_idea(
+        db=db,
+        idea_text=payload.idea,
+        current_user=current_user,
+        funding_type_filter=payload.funding_type_filter,
     )
 
 
@@ -149,12 +224,16 @@ def save_opportunity(
 def get_saved_opportunities(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """Retrieve saved funding opportunities for authenticated user."""
-    return funding_matching_service.get_saved_funding(
+    saved_items = funding_matching_service.get_saved_funding(
         db=db,
         current_user=current_user,
     )
+    return {
+        "total": len(saved_items),
+        "saved_opportunities": saved_items,
+    }
 
 
 @router.delete(

@@ -100,7 +100,7 @@ def test_build_patent_text_missing_fields_and_nones():
         "assignee": "null",
     }
     text = build_patent_text(patent)
-    assert text == "Title: Quantum Error Correction System"
+    assert text == "Patent Title: Quantum Error Correction System"
     assert "None" not in text.replace("Quantum", "")
     assert "null" not in text
     assert "undefined" not in text
@@ -337,3 +337,20 @@ def test_api_similar_patents_and_clustering(client: TestClient, db_session: Sess
     res_post_clusters = client.post("/patents/clusters/run", json={"n_clusters": 2, "max_patents": 100})
     assert res_post_clusters.status_code == 200
     assert res_post_clusters.json()["number_of_clusters"] == 2
+
+    # GET /patents/suggestions
+    res_sugg = client.get("/patents/suggestions?q=Auto")
+    assert res_sugg.status_code == 200
+    sugg_data = res_sugg.json()
+    assert sugg_data["query"] == "Auto"
+    assert len(sugg_data["suggestions"]) > 0
+    assert any("Autonomous" in s["text"] for s in sugg_data["suggestions"])
+
+    # GET /patents/search
+    res_search = client.get("/patents/search?q=Solar")
+    assert res_search.status_code == 200
+    search_data = res_search.json()
+    assert search_data["query"] == "Solar"
+    assert search_data["total_results"] >= 2
+    assert "Solar" in search_data["patents"][0]["title"]
+
