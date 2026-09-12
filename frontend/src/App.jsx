@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
@@ -8,29 +8,45 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import OAuthCallback from './pages/OAuthCallback'
 import Profile from './pages/Profile'
+import ResearchPapers from './pages/ResearchPapers'
+import FundingIntelligence from './pages/FundingIntelligence'
+import PatentLandscape from './pages/PatentLandscape'
 import './App.css'
+
+function AppContent() {
+  const location = useLocation()
+  const isLandingPage = location.pathname === '/'
+
+  return (
+    <div className="application">
+      <Navbar />
+      <main className={isLandingPage ? 'landing-app-shell' : 'app-shell'}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/oauth/callback" element={<OAuthCallback />} />
+          <Route path="/patents" element={<PatentLandscape />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/research-papers" element={<ResearchPapers />} />
+            <Route path="/funding" element={<FundingIntelligence />} />
+            <Route path="/profile" element={<Profile />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </div>
+  )
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="application">
-          <Navbar />
-          <main className="app-shell">
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/oauth/callback" element={<OAuthCallback />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/profile" element={<Profile />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-        </div>
+        <AppContent />
       </AuthProvider>
     </BrowserRouter>
   )
 }
+

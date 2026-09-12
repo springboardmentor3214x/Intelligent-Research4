@@ -230,3 +230,4 @@ def update_me(profile_in: UserUpdate, current_user: User = Depends(get_current_u
 def administrator_access_check(current_user: User = Depends(require_roles("administrator"))) -> dict[str, str]:
     """A protected endpoint used to verify server-side administrator authorization."""
     return {"message": f"Administrator access granted for {current_user.email}"}
+

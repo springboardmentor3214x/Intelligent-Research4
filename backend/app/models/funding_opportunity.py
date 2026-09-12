@@ -1,21 +1,21 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.database.base import Base
 
 
-class Patent(Base):
-    __tablename__ = "patents"
+class FundingOpportunity(Base):
+    __tablename__ = "funding_opportunities"
 
     __table_args__ = (
         UniqueConstraint(
             "source",
             "source_id",
-            name="uq_patents_source_source_id",
+            name="uq_funding_opportunities_source_source_id",
         ),
     )
 
@@ -36,9 +36,9 @@ class Patent(Base):
         nullable=False,
     )
 
-    publication_number: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
+    opportunity_number: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
         index=True,
     )
 
@@ -47,53 +47,62 @@ class Patent(Base):
         nullable=False,
     )
 
-    abstract: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
-
-    assignee: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-        index=True,
-    )
-
-    inventors: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
-
-    filing_date: Mapped[date | None] = mapped_column(
-        Date,
-        nullable=True,
-        index=True,
-    )
-
-    publication_date: Mapped[date | None] = mapped_column(
-        Date,
-        nullable=True,
-        index=True,
-    )
-
-    classification: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
-
-    technology_domain: Mapped[str | None] = mapped_column(
+    agency: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         index=True,
     )
 
-    citation_count: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    funding_type: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    funding_amount: Mapped[float | None] = mapped_column(
+        Numeric(15, 2),
+        nullable=True,
+    )
+
+    open_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        index=True,
+    )
+
+    close_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        index=True,
+    )
+
+    eligibility: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    funding_category: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    research_area: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+    )
+
+    country: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
     )
 
     status: Mapped[str | None] = mapped_column(
-        String(100),
+        String(50),
         nullable=True,
         index=True,
     )

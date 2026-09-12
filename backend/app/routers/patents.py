@@ -4,7 +4,7 @@ from uuid import UUID
 
 from backend.app.auth.dependencies import get_current_user
 from backend.app.database.connection import get_db
-from backend.app.models.patent import Patent
+from backend.app.models.profile_patent import ProfilePatent
 from backend.app.models.research_profile import ResearchProfile
 from backend.app.models.user import User
 from backend.app.schemas.research_profile import (
@@ -38,12 +38,12 @@ def _get_or_create_profile(user: User, db: Session) -> ResearchProfile:
 def list_patents(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[Patent]:
+) -> list[ProfilePatent]:
     profile = _get_or_create_profile(current_user, db)
     return (
-        db.query(Patent)
-        .filter(Patent.research_profile_id == profile.id)
-        .order_by(Patent.created_at.desc())
+        db.query(ProfilePatent)
+        .filter(ProfilePatent.research_profile_id == profile.id)
+        .order_by(ProfilePatent.created_at.desc())
         .all()
     )
 
@@ -53,10 +53,10 @@ def create_patent(
     payload: PatentCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Patent:
+) -> ProfilePatent:
     profile = _get_or_create_profile(current_user, db)
 
-    patent = Patent(
+    patent = ProfilePatent(
         research_profile_id=profile.id,
         patent_title=payload.patent_title.strip(),
         inventor=payload.inventor.strip(),
@@ -79,13 +79,13 @@ def get_patent(
     patent_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Patent:
+) -> ProfilePatent:
     profile = _get_or_create_profile(current_user, db)
     pat = (
-        db.query(Patent)
+        db.query(ProfilePatent)
         .filter(
-            Patent.id == patent_id,
-            Patent.research_profile_id == profile.id,
+            ProfilePatent.id == patent_id,
+            ProfilePatent.research_profile_id == profile.id,
         )
         .first()
     )
@@ -100,13 +100,13 @@ def update_patent(
     payload: PatentUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Patent:
+) -> ProfilePatent:
     profile = _get_or_create_profile(current_user, db)
     pat = (
-        db.query(Patent)
+        db.query(ProfilePatent)
         .filter(
-            Patent.id == patent_id,
-            Patent.research_profile_id == profile.id,
+            ProfilePatent.id == patent_id,
+            ProfilePatent.research_profile_id == profile.id,
         )
         .first()
     )
@@ -132,10 +132,10 @@ def delete_patent(
 ):
     profile = _get_or_create_profile(current_user, db)
     pat = (
-        db.query(Patent)
+        db.query(ProfilePatent)
         .filter(
-            Patent.id == patent_id,
-            Patent.research_profile_id == profile.id,
+            ProfilePatent.id == patent_id,
+            ProfilePatent.research_profile_id == profile.id,
         )
         .first()
     )
@@ -145,3 +145,4 @@ def delete_patent(
     db.delete(pat)
     db.commit()
     return {"message": "Patent deleted successfully"}
+
