@@ -10,6 +10,7 @@ from backend.app.routers.funding_opportunity import (
 )
 
 from backend.app.routers.patent import router as patent_router
+from backend.app.routers.technology import router as technology_router
 
 app = FastAPI(
     title="Research Funding & Innovation Intelligence Platform"
@@ -19,7 +20,7 @@ app.include_router(auth_router)
 app.include_router(research_paper_router)
 app.include_router(funding_router)
 app.include_router(patent_router)
-
+app.include_router(technology_router)
 
 @app.get("/")
 def root():
