@@ -12,10 +12,12 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [researchDropdownOpen, setResearchDropdownOpen] = useState(false)
   const [fundingDropdownOpen, setFundingDropdownOpen] = useState(false)
+  const [techDropdownOpen, setTechDropdownOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
   const researchRef = useRef(null)
   const fundingRef = useRef(null)
+  const techRef = useRef(null)
 
   function handleLogout() {
     logout()
@@ -45,12 +47,16 @@ export default function Navbar() {
       if (fundingRef.current && !fundingRef.current.contains(event.target)) {
         setFundingDropdownOpen(false)
       }
+      if (techRef.current && !techRef.current.contains(event.target)) {
+        setTechDropdownOpen(false)
+      }
     }
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setResearchDropdownOpen(false)
         setFundingDropdownOpen(false)
+        setTechDropdownOpen(false)
         setMobileMenuOpen(false)
       }
     }
@@ -68,6 +74,7 @@ export default function Navbar() {
     setMobileMenuOpen(false)
     setResearchDropdownOpen(false)
     setFundingDropdownOpen(false)
+    setTechDropdownOpen(false)
   }, [location.pathname])
 
   function handleNavClick(sectionId) {
@@ -106,6 +113,12 @@ export default function Navbar() {
             >
               Home
             </button>
+            <Link
+              to="/technologies"
+              className={`nav-link-btn ${isCurrent('/technologies') ? 'active' : ''}`}
+            >
+              Technologies
+            </Link>
             <button
               type="button"
               className="nav-link-btn"
@@ -153,6 +166,7 @@ export default function Navbar() {
                 onClick={() => {
                   setResearchDropdownOpen(!researchDropdownOpen)
                   setFundingDropdownOpen(false)
+                  setTechDropdownOpen(false)
                 }}
                 aria-expanded={researchDropdownOpen}
                 aria-haspopup="true"
@@ -215,6 +229,89 @@ export default function Navbar() {
               )}
             </div>
 
+            {/* Technology Intelligence Dropdown */}
+            <div className="nav-dropdown" ref={techRef}>
+              <button
+                type="button"
+                className={`nav-link-btn dropdown-toggle ${location.pathname.startsWith('/technologies') ? 'active' : ''}`}
+                onClick={() => {
+                  setTechDropdownOpen(!techDropdownOpen)
+                  setResearchDropdownOpen(false)
+                  setFundingDropdownOpen(false)
+                }}
+                aria-expanded={techDropdownOpen}
+                aria-haspopup="true"
+              >
+                Technology
+                <svg
+                  className={`dropdown-chevron ${techDropdownOpen ? 'rotated' : ''}`}
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {techDropdownOpen && (
+                <div className="dropdown-menu" role="menu">
+                  <Link
+                    to="/technologies"
+                    className={`dropdown-item ${isCurrent('/technologies') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">⚡</div>
+                    <div>
+                      <strong>Intelligence Hub</strong>
+                      <small>Overview &amp; Synchronization</small>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/technologies/maturity"
+                    className={`dropdown-item ${isCurrent('/technologies/maturity') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">🌱</div>
+                    <div>
+                      <strong>Maturity &amp; Readiness</strong>
+                      <small>Explainable Stages &amp; Evidence</small>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/technologies/adoption"
+                    className={`dropdown-item ${isCurrent('/technologies/adoption') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">📈</div>
+                    <div>
+                      <strong>Adoption Tracking</strong>
+                      <small>Multi-Year Progression &amp; CAGR</small>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/technologies/trends"
+                    className={`dropdown-item ${isCurrent('/technologies/trends') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">🎯</div>
+                    <div>
+                      <strong>Trend Analysis</strong>
+                      <small>Growth Momentum &amp; Trajectory</small>
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </div>
+
             {/* Funding Dropdown */}
             <div className="nav-dropdown" ref={fundingRef}>
               <button
@@ -223,6 +320,7 @@ export default function Navbar() {
                 onClick={() => {
                   setFundingDropdownOpen(!fundingDropdownOpen)
                   setResearchDropdownOpen(false)
+                  setTechDropdownOpen(false)
                 }}
                 aria-expanded={fundingDropdownOpen}
                 aria-haspopup="true"

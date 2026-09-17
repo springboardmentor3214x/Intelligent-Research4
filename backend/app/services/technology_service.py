@@ -4,6 +4,7 @@ from backend.app.models.technology import Technology
 from backend.app.models.research_paper import ResearchPaper
 from backend.app.models.patent import Patent
 from backend.app.models.funding_opportunity import FundingOpportunity
+from backend.app.services.technology_analysis_service import TechnologyAnalysisService
 
 
 def calculate_emerging_score(
@@ -115,7 +116,7 @@ def get_or_create_technology(
 def sync_technologies(db: Session):
     """
     Generate Technology Intelligence records
-    from Research Papers, Patents and Funding.
+    from Research Papers, Patents and Funding using semantic concept matching.
     """
 
     # =================================================
@@ -125,6 +126,17 @@ def sync_technologies(db: Session):
     technology_candidates = {
         "Artificial Intelligence",
         "Machine Learning",
+        "Medical Imaging AI",
+        "Edge AI",
+        "Quantum Computing",
+        "Natural Language Processing",
+        "Computer Vision",
+        "Robotics",
+        "Deep Learning",
+        "Biotechnology",
+        "Cybersecurity",
+        "Clean Energy",
+        "Generative AI",
     }
 
     # =================================================
@@ -132,7 +144,6 @@ def sync_technologies(db: Session):
     # =================================================
 
     for technology_name in technology_candidates:
-
         get_or_create_technology(
             db,
             technology_name,
@@ -141,26 +152,7 @@ def sync_technologies(db: Session):
     db.commit()
 
     # =================================================
-    # Load source data
-    # =================================================
-
-    papers = (
-        db.query(ResearchPaper)
-        .all()
-    )
-
-    patents = (
-        db.query(Patent)
-        .all()
-    )
-
-    funding_list = (
-        db.query(FundingOpportunity)
-        .all()
-    )
-
-    # =================================================
-    # Process each technology
+    # Process each technology with concept matching
     # =================================================
 
     technologies = (
@@ -169,178 +161,59 @@ def sync_technologies(db: Session):
     )
 
     for technology in technologies:
+        tech_name = technology.technology_name
 
-        technology_name = (
-            technology.technology_name
-            .lower()
+        related_papers, related_patents, related_funding = TechnologyAnalysisService.fetch_related_entities_by_term(
+            db, tech_name
         )
 
-        # -------------------------------------------------
-        # Research Papers
-        # -------------------------------------------------
-
-        related_papers = []
-
-        for paper in papers:
-
-            searchable_text = " ".join(
-                filter(
-                    None,
-                    [
-                        paper.title,
-                        paper.abstract,
-                        paper.authors,
-                        paper.keywords,
-                        paper.research_domain,
-                    ],
-                )
-            ).lower()
-
-            if technology_name in searchable_text:
-
-                related_papers.append(
-                    paper
-                )
-
-        technology.research_paper_count = (
-            len(related_papers)
-        )
-
+        technology.research_paper_count = len(related_papers)
         technology.citation_count = sum(
             paper.citation_count or 0
             for paper in related_papers
         )
+        technology.patent_count = len(related_patents)
+        technology.funding_opportunity_count = len(related_funding)
 
         # -------------------------------------------------
-        # Patents
+        # Technology Domain Discovery
         # -------------------------------------------------
-
-        related_patents = []
-
-        for patent in patents:
-
-            searchable_text = " ".join(
-                filter(
-                    None,
-                    [
-                        patent.title,
-                        patent.abstract,
-                        patent.assignee,
-                        patent.inventors,
-                        patent.classification,
-                        patent.technology_domain,
-                    ],
-                )
-            ).lower()
-
-            if technology_name in searchable_text:
-
-                related_patents.append(
-                    patent
-                )
-
-        technology.patent_count = (
-            len(related_patents)
-        )
-
-        # -------------------------------------------------
-        # Funding Opportunities
-        # -------------------------------------------------
-
-        related_funding = []
-
-        for funding in funding_list:
-
-            searchable_text = " ".join(
-                filter(
-                    None,
-                    [
-                        funding.title,
-                        funding.description,
-                        funding.funding_category,
-                        funding.research_area,
-                        funding.eligibility,
-                    ],
-                )
-            ).lower()
-
-            if technology_name in searchable_text:
-
-                related_funding.append(
-                    funding
-                )
-
-        technology.funding_opportunity_count = (
-            len(related_funding)
-        )
-
-        # -------------------------------------------------
-        # Technology Domain
-        # -------------------------------------------------
-
         domains = set()
-
         for paper in related_papers:
-
             if paper.research_domain:
-
-                domains.add(
-                    paper.research_domain
-                )
+                domains.add(paper.research_domain)
 
         for patent in related_patents:
-
             if patent.technology_domain:
+                domains.add(patent.technology_domain)
 
-                domains.add(
-                    patent.technology_domain
-                )
+        for funding in related_funding:
+            if funding.research_area:
+                domains.add(funding.research_area)
 
         if domains:
-
-            technology.technology_domain = (
-                ", ".join(
-                    sorted(domains)
-                )
-            )
+            technology.technology_domain = ", ".join(sorted(domains)[:4])
 
         # -------------------------------------------------
-        # Emerging Technology Score
+        # Emerging Technology Score & Status
         # -------------------------------------------------
-
-        technology.emerging_score = (
-            calculate_emerging_score(
-                technology.research_paper_count,
-                technology.patent_count,
-                technology.funding_opportunity_count,
-            )
+        technology.emerging_score = calculate_emerging_score(
+            technology.research_paper_count,
+            technology.patent_count,
+            technology.funding_opportunity_count,
         )
 
-        # -------------------------------------------------
-        # Emerging Status
-        # -------------------------------------------------
-
-        technology.emerging_status = (
-            calculate_emerging_status(
-                technology.emerging_score
-            )
+        technology.emerging_status = calculate_emerging_status(
+            technology.emerging_score
         )
 
-        # -------------------------------------------------
-        # Source
-        # -------------------------------------------------
-
-        technology.source = (
-            "Research Papers, Patents and Funding"
-        )
+        technology.source = "Research Papers, Patents and Funding"
 
     # =================================================
     # Save changes
     # =================================================
-
     db.commit()
 
-    # Refresh objects
     for technology in technologies:
         db.refresh(technology)
 
