@@ -1,0 +1,524 @@
+/* =========================================================================
+   Technology Adoption & Trajectory Styling
+   Design System: Enterprise SaaS / R&D Intelligence Platform
+   ========================================================================= */
+
+.tech-adoption-container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  color: #0f2942;
+}
+
+/* Page Header Block */
+.page-header-block {
+  margin-bottom: 8px;
+}
+
+.page-title {
+  font-size: 1.65rem !important;
+  font-weight: 800 !important;
+  color: #0f2942 !important;
+  margin: 0 0 0.4rem 0 !important;
+  letter-spacing: -0.015em !important;
+  line-height: 1.25 !important;
+}
+
+.page-subtitle {
+  color: #475569 !important;
+  font-size: 0.92rem !important;
+  line-height: 1.55 !important;
+  margin: 0 !important;
+}
+
+.page-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.tech-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.tech-selector-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f2942;
+}
+
+.tech-select-dropdown {
+  padding: 0.5rem 1.15rem;
+  background: #ffffff;
+  border: 1.5px solid #0d9488;
+  color: #0f766e;
+  font-weight: 700;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Section Headings */
+.section-head-wrap {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 1.25rem !important;
+  font-weight: 750 !important;
+  color: #0f2942 !important;
+  margin: 0 0 0.35rem 0 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+  text-align: left !important;
+  display: block !important;
+  line-height: 1.35 !important;
+}
+
+.section-subtitle {
+  font-size: 0.88rem !important;
+  color: #64748b !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+  text-align: left !important;
+  max-width: 100% !important;
+  display: block !important;
+}
+
+/* Reusable Surface Card */
+.surface-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 28px 32px;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+}
+
+/* Trajectory Main Card */
+.chart-main-card {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Trajectory Legend */
+.trajectory-legend-row {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.legend-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend-indicator {
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Chart Controls */
+.chart-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1.25rem 0 1.5rem 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.signal-toggles-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.signal-pill-btn {
+  padding: 0.4rem 0.95rem;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.signal-pill-btn.active.combined {
+  background: #0f2942;
+  color: #ffffff;
+  border-color: #0f2942;
+}
+
+.signal-pill-btn.active.research {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.signal-pill-btn.active.patents {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #7c3aed;
+}
+
+.signal-pill-btn.active.organizations {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+.time-range-group {
+  display: flex;
+  background: #f1f5f9;
+  padding: 0.25rem;
+  border-radius: 8px;
+  gap: 0.2rem;
+}
+
+.time-btn {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.time-btn.active {
+  background: #ffffff;
+  color: #0f766e;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Trajectory SVG Viewport */
+.trajectory-chart-wrapper {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem 0.75rem 0.75rem 0.75rem;
+}
+
+.svg-chart {
+  width: 100%;
+  height: 340px;
+  overflow: visible;
+}
+
+/* Selected Year Inspector Panel */
+.selected-year-panel {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  padding: 1.25rem 1.75rem;
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.eyebrow-teal {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0d9488;
+}
+
+.inspector-year-heading {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f2942;
+  margin: 0.15rem 0 0 0;
+}
+
+.inspector-stats-row {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.inspector-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.insp-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.insp-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.trajectory-summary-box {
+  margin-top: 1.5rem;
+  color: #334155;
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+/* Activity Ribbon Container */
+.activity-ribbon-card {
+  margin-top: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+}
+
+.ribbon-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+}
+
+.ribbon-track {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  height: 64px;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid #e2e8f0;
+  margin-top: 0.75rem;
+}
+
+.ribbon-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  cursor: pointer;
+  position: relative;
+}
+
+.ribbon-bar {
+  width: 100%;
+  max-width: 24px;
+  background: linear-gradient(180deg, #0d9488 0%, #0f766e 100%);
+  border-radius: 4px 4px 0 0;
+  transition: all 0.2s ease;
+}
+
+.ribbon-bar:hover,
+.ribbon-bar.selected {
+  background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
+  transform: scaleY(1.05);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4);
+}
+
+.ribbon-year-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-top: 0.35rem;
+}
+
+/* Table Search & Filter Toolbar */
+.table-toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.table-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.table-search-input {
+  width: 280px;
+  height: 40px;
+  padding: 0 2rem 0 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: #0f2942;
+  outline: none;
+  background: #ffffff;
+}
+
+.table-search-input:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
+.table-search-clear {
+  position: absolute;
+  right: 8px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.table-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.filter-group-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-right: 0.25rem;
+}
+
+/* Evidence Table */
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  background: #ffffff;
+}
+
+.metrics-table th {
+  text-align: left;
+  padding: 14px 18px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 800;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid #e2e8f0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.metrics-table th:hover {
+  background: #f1f5f9;
+  color: #0f766e;
+}
+
+.metrics-table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.metrics-table tr:hover {
+  background: #f8fafc;
+}
+
+.metrics-table tr.expanded-row-parent {
+  background: #f0fdfa;
+  font-weight: 600;
+}
+
+/* Activity Visualizer Bar */
+.activity-visualizer-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.act-mini-track {
+  width: 90px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.act-mini-fill {
+  height: 100%;
+  background: #0d9488;
+  border-radius: 3px;
+}
+
+/* Growth Badges */
+.growth-badge {
+  display: inline-flex;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.growth-badge.positive {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.growth-badge.negative {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.growth-badge.neutral {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+@media (max-width: 768px) {
+  .page-header-flex {
+    flex-direction: column;
+  }
+  .tech-selector-wrap {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .chart-controls-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .selected-year-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .table-toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .table-search-input {
+    width: 100%;
+  }
+}

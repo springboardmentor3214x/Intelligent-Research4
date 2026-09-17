@@ -11,6 +11,10 @@ import Profile from './pages/Profile'
 import ResearchPapers from './pages/ResearchPapers'
 import FundingIntelligence from './pages/FundingIntelligence'
 import PatentLandscape from './pages/PatentLandscape'
+import TechnologyIntelligence from './pages/TechnologyIntelligence'
+import TechnologyMaturity from './pages/TechnologyMaturity'
+import TechnologyAdoption from './pages/TechnologyAdoption'
+import TechnologyTrends from './pages/TechnologyTrends'
 import './App.css'
 
 function AppContent() {
@@ -27,6 +31,10 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/patents" element={<PatentLandscape />} />
+          <Route path="/technologies" element={<TechnologyIntelligence />} />
+          <Route path="/technologies/maturity" element={<TechnologyMaturity />} />
+          <Route path="/technologies/adoption" element={<TechnologyAdoption />} />
+          <Route path="/technologies/trends" element={<TechnologyTrends />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/research-papers" element={<ResearchPapers />} />
