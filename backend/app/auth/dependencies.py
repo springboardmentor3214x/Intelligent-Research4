@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+from typing import Callable, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -46,3 +46,12 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+
+def require_roles(*allowed_roles: str) -> Callable:
+    """Require a valid authenticated user with one of the permitted roles."""
+    def role_guard(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this resource")
+        return current_user
+    return role_guard

@@ -44,6 +44,10 @@ class ResearchPaperImportRequest(BaseModel):
 
 class ResearchPaperSearchResponse(BaseModel):
     total: int
-    skip: int
-    limit: int
-    papers: list[ResearchPaperResponse]
+    skip: int = 0
+    limit: int = 20
+    page: int = 1
+    page_size: int = 20
+    total_pages: int = 1
+    sources: dict[str, int] = {}
+    papers: list[ResearchPaperResponse]

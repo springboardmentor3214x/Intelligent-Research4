@@ -3,14 +3,10 @@ import unittest
 import uuid
 from datetime import timedelta
 
-# Set dummy DATABASE_URL and JWT_SECRET_KEY before importing backend modules
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-auth-testing-12345"
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.security import (
@@ -19,33 +15,12 @@ from backend.app.auth.security import (
     hash_password,
     verify_password,
 )
-from backend.app.database.base import Base
 from backend.app.database.connection import get_db
 from backend.app.main import app
 from backend.app.models.user import User
-
-# In-memory SQLite engine for tests
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-test_engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-
-Base.metadata.create_all(bind=test_engine)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+from backend.tests_common import TestingSessionLocal, override_get_db
 
 app.dependency_overrides[get_db] = override_get_db
-
 client = TestClient(app)
 
 
@@ -86,6 +61,7 @@ class TestAuthModule(unittest.TestCase):
             "role": "researcher",
             "phone_number": "+1234567890",
             "organization": "Institute for Advanced Study",
+            "department": "School of Mathematics",
             "designation": "Principal Investigator",
             "country": "United Kingdom",
             "research_domain": "Computer Science & Cryptography",
@@ -97,6 +73,7 @@ class TestAuthModule(unittest.TestCase):
         self.assertEqual(data["email"], email.lower())
         self.assertEqual(data["name"], "Dr. Alan Turing")
         self.assertEqual(data["role"], "researcher")
+        self.assertEqual(data["department"], "School of Mathematics")
         self.assertIn("id", data)
         self.assertNotIn("password", data)
         self.assertNotIn("password_hash", data)
@@ -116,6 +93,11 @@ class TestAuthModule(unittest.TestCase):
             "email": email,
             "password": "Password123!",
             "role": "researcher",
+            "phone_number": "+1234567890",
+            "organization": "Test University",
+            "designation": "Researcher",
+            "country": "USA",
+            "research_domain": "Computer Science",
         }
 
         res1 = client.post("/auth/register", json=payload)
@@ -133,6 +115,11 @@ class TestAuthModule(unittest.TestCase):
             "email": email,
             "password": password,
             "role": "innovator",
+            "phone_number": "+1234567890",
+            "organization": "Test Labs",
+            "designation": "Innovator",
+            "country": "USA",
+            "research_domain": "Technology",
         }
         res_reg = client.post("/auth/register", json=register_payload)
         self.assertEqual(res_reg.status_code, 201)
@@ -161,6 +148,11 @@ class TestAuthModule(unittest.TestCase):
             "email": email,
             "password": "CorrectPassword123!",
             "role": "researcher",
+            "phone_number": "+1234567890",
+            "organization": "Test University",
+            "designation": "Researcher",
+            "country": "USA",
+            "research_domain": "Computer Science",
         }
         client.post("/auth/register", json=register_payload)
 
@@ -195,6 +187,9 @@ class TestAuthModule(unittest.TestCase):
             "role": "researcher",
             "organization": "MIT",
             "country": "USA",
+            "phone_number": "+1234567890",
+            "designation": "Researcher",
+            "research_domain": "Computer Science",
         }
         res_reg = client.post("/auth/register", json=register_payload)
         self.assertEqual(res_reg.status_code, 201)
