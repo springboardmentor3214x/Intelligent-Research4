@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.database.connection import get_db
 from backend.app.models.technology import Technology
+from backend.app.models.technology_activity import TechnologyActivity
 from backend.app.services.technology_service import sync_technologies
 
 
@@ -107,6 +108,93 @@ def search_technologies(
 
     return technologies
 
+@router.get("/activity/summary")
+def get_activity_summary(
+    db: Session = Depends(get_db),
+):
+    """
+    Return year-wise activity for all technologies.
+    """
+
+    technologies = (
+        db.query(Technology)
+        .order_by(Technology.technology_name.asc())
+        .all()
+    )
+
+    result = []
+
+    for technology in technologies:
+
+        activity = (
+            db.query(TechnologyActivity)
+            .filter(
+                TechnologyActivity.technology_id
+                == technology.id
+            )
+            .order_by(
+                TechnologyActivity.year.asc()
+            )
+            .all()
+        )
+
+        result.append(
+            {
+                "technology_id": technology.id,
+                "technology_name": technology.technology_name,
+                "activity": activity,
+            }
+        )
+
+    return {
+        "technologies": result,
+        "technology_count": len(result),
+    }
+
+@router.get("/{technology_id}/activity")
+def get_technology_activity(
+    technology_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """
+    Return year-wise technology activity data.
+
+    Provides historical research, patent,
+    citation, organization and application
+    diversity indicators.
+    """
+
+    technology = (
+        db.query(Technology)
+        .filter(
+            Technology.id == technology_id
+        )
+        .first()
+    )
+
+    if not technology:
+        raise HTTPException(
+            status_code=404,
+            detail="Technology not found",
+        )
+
+    activity = (
+        db.query(TechnologyActivity)
+        .filter(
+            TechnologyActivity.technology_id
+            == technology_id
+        )
+        .order_by(
+            TechnologyActivity.year.asc()
+        )
+        .all()
+    )
+
+    return {
+        "technology_id": technology.id,
+        "technology_name": technology.technology_name,
+        "activity": activity,
+    }
 
 @router.get("/{technology_id}")
 def get_technology(
