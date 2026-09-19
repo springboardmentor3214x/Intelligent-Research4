@@ -1,4 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+import os
+import secrets
+from urllib.parse import urlencode
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -13,14 +19,110 @@ from backend.app.database.connection import get_db
 from backend.app.models.user import User
 from backend.app.schemas.user import UserCreate, UserResponse
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 ALLOWED_PUBLIC_ROLES = {"researcher", "innovator", "investor", "reviewer", "user"}
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+def _google_settings() -> tuple[str, str, str, str]:
+    """Read OAuth credentials from the environment."""
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/oauth/google/callback")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    if not all((client_id, client_secret, redirect_uri)):
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
+    return client_id, client_secret, redirect_uri, frontend_url.rstrip("/")
+
+
+@router.get("/oauth/google", summary="Start Google OAuth2 login")
+def google_login() -> RedirectResponse:
+    client_id, _, redirect_uri, _ = _google_settings()
+    state = secrets.token_urlsafe(32)
+    query = urlencode({
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "prompt": "select_account",
+    })
+    response = RedirectResponse(f"{GOOGLE_AUTH_URL}?{query}")
+    response.set_cookie(
+        "oauth_google_state",
+        state,
+        max_age=600,
+        httponly=True,
+        secure=redirect_uri.startswith("https"),
+        samesite="lax",
+    )
+    return response
+
+
+@router.get("/oauth/google/callback", summary="Complete Google OAuth2 login")
+async def google_callback(
+    request: Request,
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    client_id, client_secret, redirect_uri, frontend_url = _google_settings()
+    if not secrets.compare_digest(state, request.cookies.get("oauth_google_state", "")):
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            token_response = await client.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
+            token_response.raise_for_status()
+            user_response = await client.get(
+                GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {token_response.json()['access_token']}"},
+            )
+            user_response.raise_for_status()
+    except (httpx.HTTPError, KeyError) as error:
+        logger.warning("Google OAuth verification failed: %s", error)
+        raise HTTPException(status_code=401, detail="Google sign-in could not be verified")
+
+    identity = user_response.json()
+    email = str(identity.get("email", "")).strip().lower()
+    if not email or not identity.get("email_verified"):
+        raise HTTPException(status_code=401, detail="Google account email is not verified")
+
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user:
+        user = User(
+            name=str(identity.get("name") or email.split("@", 1)[0]),
+            email=email,
+            password_hash=hash_password(secrets.token_urlsafe(48)),
+            role="researcher",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    token = create_access_token({"sub": str(user.id), "email": user.email, "role": user.role})
+    response = RedirectResponse(f"{frontend_url}/oauth/callback?{urlencode({'token': token})}")
+    response.delete_cookie("oauth_google_state")
+    return response
 
 
 @router.post(
@@ -32,12 +134,6 @@ class TokenResponse(BaseModel):
 def register(user_in: UserCreate, db: Session = Depends(get_db)) -> User:
     """
     Register a new user account.
-    
-    - Validates email uniqueness.
-    - Hashes password securely using Argon2 (pwdlib).
-    - Prevents unprivileged self-assignment of admin roles during public registration.
-    - Persists user into PostgreSQL database.
-    - Returns sanitized user details without password/hash.
     """
     normalized_email = user_in.email.strip().lower()
 
@@ -88,7 +184,7 @@ def login(
     db: Session = Depends(get_db)
 ) -> TokenResponse:
     """
-    Authenticate user with OAuth2 password request form (username treated as email) and password, returning a JWT access token.
+    Authenticate user with OAuth2 password request form and password, returning a JWT access token.
     """
     normalized_email = credentials.username.strip().lower()
 

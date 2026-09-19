@@ -1,12 +1,18 @@
 from collections import defaultdict
-
+from typing import List, Optional, Set
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from backend.app.models.technology import Technology
 from backend.app.models.technology_activity import TechnologyActivity
 from backend.app.models.research_paper import ResearchPaper
 from backend.app.models.patent import Patent
 from backend.app.models.funding_opportunity import FundingOpportunity
+from backend.app.services.technology_analysis_service import (
+    get_query_concept_terms,
+    matches_concept,
+    analyze_technology_intelligence,
+)
 
 
 def get_or_create_technology(
@@ -16,7 +22,6 @@ def get_or_create_technology(
     """
     Get an existing technology or create a new one.
     """
-
     technology = (
         db.query(Technology)
         .filter(
@@ -55,22 +60,11 @@ def matches_technology(
     text_values: list[str | None],
 ) -> bool:
     """
-    Check whether a record is related to a technology.
-
-    Matching is performed against title, abstract,
-    keywords, domains and other available source fields.
+    Check whether a record is related to a technology using concept expansion.
     """
-
-    technology_name = technology_name.lower()
-
-    searchable_text = " ".join(
-        filter(
-            None,
-            text_values,
-        )
-    ).lower()
-
-    return technology_name in searchable_text
+    concept_terms = get_query_concept_terms(technology_name)
+    searchable_text = " ".join(filter(None, text_values))
+    return matches_concept(searchable_text, concept_terms)
 
 
 def sync_technology_activity(
@@ -80,10 +74,8 @@ def sync_technology_activity(
     patents: list[Patent],
 ) -> None:
     """
-    Build year-wise TechnologyActivity records
-    from real research paper and patent data.
+    Build year-wise TechnologyActivity records from real research paper and patent data.
     """
-
     yearly_activity = defaultdict(
         lambda: {
             "research_papers": [],
@@ -91,354 +83,161 @@ def sync_technology_activity(
         }
     )
 
-    # -------------------------------------------------
-    # Research papers by publication year
-    # -------------------------------------------------
+    concept_terms = get_query_concept_terms(technology.technology_name)
 
+    # Group research papers by publication year
     for paper in papers:
-
         if not paper.publication_year:
             continue
+        text_corpus = " ".join(filter(None, [
+            paper.title, paper.abstract, paper.authors, paper.keywords, paper.research_domain
+        ]))
+        if matches_concept(text_corpus, concept_terms):
+            yearly_activity[int(paper.publication_year)]["research_papers"].append(paper)
 
-        if matches_technology(
-            technology.technology_name,
-            [
-                paper.title,
-                paper.abstract,
-                paper.authors,
-                paper.keywords,
-                paper.research_domain,
-            ],
-        ):
-            yearly_activity[
-                paper.publication_year
-            ]["research_papers"].append(paper)
-
-    # -------------------------------------------------
-    # Patents by filing year
-    # -------------------------------------------------
-
+    # Group patents by filing year
     for patent in patents:
-
-        if not patent.filing_date:
+        y = patent.filing_date.year if patent.filing_date else (patent.publication_date.year if patent.publication_date else None)
+        if not y:
             continue
+        text_corpus = " ".join(filter(None, [
+            patent.title, patent.abstract, patent.assignee, patent.inventors,
+            patent.classification, patent.technology_domain
+        ]))
+        if matches_concept(text_corpus, concept_terms):
+            yearly_activity[y]["patents"].append(patent)
 
-        if matches_technology(
-            technology.technology_name,
-            [
-                patent.title,
-                patent.abstract,
-                patent.assignee,
-                patent.inventors,
-                patent.classification,
-                patent.technology_domain,
-            ],
-        ):
-            yearly_activity[
-                patent.filing_date.year
-            ]["patents"].append(patent)
-
-    # -------------------------------------------------
-    # Create / update yearly records
-    # -------------------------------------------------
-
+    # Upsert yearly records
     for year, activity in yearly_activity.items():
+        related_papers = activity["research_papers"]
+        related_patents = activity["patents"]
 
-        related_papers = activity[
-            "research_papers"
-        ]
+        research_citations = sum(p.citation_count or 0 for p in related_papers)
+        patent_citations = sum(pt.citation_count or 0 for pt in related_patents)
 
-        related_patents = activity[
-            "patents"
-        ]
-
-        research_citations = sum(
-            paper.citation_count or 0
-            for paper in related_papers
-        )
-
-        patent_citations = sum(
-            patent.citation_count or 0
-            for patent in related_patents
-        )
-
-        # Unique organizations from patent assignees
         organizations = {
-            patent.assignee.strip()
-            for patent in related_patents
-            if patent.assignee
-            and patent.assignee.strip()
+            pt.assignee.strip()
+            for pt in related_patents
+            if pt.assignee and pt.assignee.strip()
         }
 
-        # Application diversity is represented by the
-        # number of unique research domains and patent
-        # classifications available for that year.
         applications = set()
-
-        for paper in related_papers:
-
-            if paper.research_domain:
-                applications.add(
-                    paper.research_domain.strip().lower()
-                )
-
-        for patent in related_patents:
-
-            if patent.classification:
-
-                classifications = (
-                    patent.classification.split(",")
-                )
-
-                for classification in classifications:
-
-                    classification = (
-                        classification.strip().lower()
-                    )
-
-                    if classification:
-                        applications.add(
-                            classification
-                        )
+        for p in related_papers:
+            if p.research_domain:
+                applications.add(p.research_domain.strip().lower())
+        for pt in related_patents:
+            if pt.technology_domain:
+                applications.add(pt.technology_domain.strip().lower())
+            if pt.classification:
+                for cl in pt.classification.split(","):
+                    if cl.strip():
+                        applications.add(cl.strip().lower())
 
         activity_record = (
             db.query(TechnologyActivity)
             .filter(
-                TechnologyActivity.technology_id
-                == technology.id,
-                TechnologyActivity.year
-                == year,
+                TechnologyActivity.technology_id == technology.id,
+                TechnologyActivity.year == year,
             )
             .first()
         )
 
         if not activity_record:
-
             activity_record = TechnologyActivity(
                 technology_id=technology.id,
                 year=year,
             )
-
             db.add(activity_record)
 
-        activity_record.research_paper_count = (
-            len(related_papers)
-        )
-
-        activity_record.patent_count = (
-            len(related_patents)
-        )
-
-        activity_record.citation_count = (
-            research_citations
-            + patent_citations
-        )
-
-        activity_record.organization_count = (
-            len(organizations)
-        )
-
-        activity_record.application_diversity = (
-            float(len(applications))
-        )
+        activity_record.research_paper_count = len(related_papers)
+        activity_record.patent_count = len(related_patents)
+        activity_record.citation_count = research_citations + patent_citations
+        activity_record.organization_count = len(organizations)
+        activity_record.application_diversity = float(len(applications))
 
 
-def sync_technologies(db: Session):
+def sync_technologies(db: Session) -> List[Technology]:
     """
-    Synchronize Technology Intelligence data
-    from Research Papers, Patents and Funding.
-
-    This function provides the raw historical
-    activity data required for Technology
-    Intelligence and Maturity Analysis.
+    Synchronize Technology Intelligence data from Research Papers, Patents, and Funding.
+    Derives real multi-year statistics and updates technology models.
     """
-
-    # =================================================
-    # Technology candidates
-    # =================================================
-
     technology_candidates = {
         "Artificial Intelligence",
         "Machine Learning",
+        "Deep Learning",
+        "Medical Imaging AI",
+        "Edge AI",
+        "Quantum Computing",
+        "Generative AI",
+        "Computer Vision",
+        "Natural Language Processing",
+        "Robotics",
+        "Cybersecurity",
+        "Biotechnology",
+        "Clean Energy",
     }
 
-    # =================================================
-    # Create technology records
-    # =================================================
-
-    for technology_name in technology_candidates:
-
-        get_or_create_technology(
-            db,
-            technology_name,
-        )
+    # Ensure all candidate technologies exist
+    for tech_name in technology_candidates:
+        get_or_create_technology(db, tech_name)
 
     db.commit()
 
-    # =================================================
-    # Load source data
-    # =================================================
-
-    papers = (
-        db.query(ResearchPaper)
-        .all()
-    )
-
-    patents = (
-        db.query(Patent)
-        .all()
-    )
-
-    funding_list = (
-        db.query(FundingOpportunity)
-        .all()
-    )
-
-    technologies = (
-        db.query(Technology)
-        .all()
-    )
-
-    # =================================================
-    # Process each technology
-    # =================================================
+    papers = db.query(ResearchPaper).all()
+    patents = db.query(Patent).all()
+    funding_list = db.query(FundingOpportunity).all()
+    technologies = db.query(Technology).all()
 
     for technology in technologies:
+        concept_terms = get_query_concept_terms(technology.technology_name)
 
-        technology_name = (
-            technology.technology_name
-            .lower()
-        )
-
-        # -------------------------------------------------
-        # Research papers
-        # -------------------------------------------------
-
+        # Related research papers
         related_papers = [
-            paper
-            for paper in papers
-            if matches_technology(
-                technology_name,
-                [
-                    paper.title,
-                    paper.abstract,
-                    paper.authors,
-                    paper.keywords,
-                    paper.research_domain,
-                ],
-            )
+            p for p in papers
+            if matches_concept(" ".join(filter(None, [p.title, p.abstract, p.authors, p.keywords, p.research_domain])), concept_terms)
         ]
+        technology.research_paper_count = len(related_papers)
+        technology.citation_count = sum(p.citation_count or 0 for p in related_papers)
 
-        technology.research_paper_count = (
-            len(related_papers)
-        )
-
-        technology.citation_count = sum(
-            paper.citation_count or 0
-            for paper in related_papers
-        )
-
-        # -------------------------------------------------
-        # Patents
-        # -------------------------------------------------
-
+        # Related patents
         related_patents = [
-            patent
-            for patent in patents
-            if matches_technology(
-                technology_name,
-                [
-                    patent.title,
-                    patent.abstract,
-                    patent.assignee,
-                    patent.inventors,
-                    patent.classification,
-                    patent.technology_domain,
-                ],
-            )
+            pt for pt in patents
+            if matches_concept(" ".join(filter(None, [pt.title, pt.abstract, pt.assignee, pt.inventors, pt.classification, pt.technology_domain])), concept_terms)
         ]
+        technology.patent_count = len(related_patents)
 
-        technology.patent_count = (
-            len(related_patents)
-        )
-
-        # -------------------------------------------------
-        # Funding opportunities
-        # -------------------------------------------------
-
+        # Related funding
         related_funding = [
-            funding
-            for funding in funding_list
-            if matches_technology(
-                technology_name,
-                [
-                    funding.title,
-                    funding.description,
-                    funding.funding_category,
-                    funding.research_area,
-                    funding.eligibility,
-                ],
-            )
+            f for f in funding_list
+            if matches_concept(" ".join(filter(None, [f.title, f.description, f.funding_category, f.research_area, f.eligibility])), concept_terms)
         ]
+        technology.funding_opportunity_count = len(related_funding)
 
-        technology.funding_opportunity_count = (
-            len(related_funding)
-        )
-
-        # -------------------------------------------------
-        # Technology domains
-        # -------------------------------------------------
-
+        # Domains
         domains = set()
-
-        for paper in related_papers:
-
-            if paper.research_domain:
-                domains.add(
-                    paper.research_domain
-                )
-
-        for patent in related_patents:
-
-            if patent.technology_domain:
-                domains.add(
-                    patent.technology_domain
-                )
-
+        for p in related_papers:
+            if p.research_domain:
+                domains.add(p.research_domain)
+        for pt in related_patents:
+            if pt.technology_domain:
+                domains.add(pt.technology_domain)
         if domains:
+            domain_str = ", ".join(sorted(domains))
+            technology.technology_domain = domain_str[:250]
 
-            technology.technology_domain = (
-                ", ".join(
-                    sorted(domains)
-                )
-            )
+        # Sync activity
+        sync_technology_activity(db, technology, papers, patents)
 
-        # -------------------------------------------------
-        # Historical activity
-        # -------------------------------------------------
-
-        sync_technology_activity(
-            db,
-            technology,
-            papers,
-            patents,
-        )
-
-        # -------------------------------------------------
-        # Source
-        # -------------------------------------------------
-
-        technology.source = (
-            "Research Papers, Patents and Funding"
-        )
-
-    # =================================================
-    # Save everything
-    # =================================================
+        # Compute full data-driven analysis to update emerging score and status
+        analysis = analyze_technology_intelligence(db, technology.technology_name)
+        technology.emerging_score = analysis.weighted_score.total
+        technology.emerging_status = analysis.stage.classification
+        technology.research_growth_rate = analysis.indicators["research_growth"].normalized_score
+        technology.patent_growth_rate = analysis.indicators["patent_growth"].normalized_score
+        technology.source = "Research Papers, Patents and Funding"
 
     db.commit()
 
-    # Refresh objects
     for technology in technologies:
         db.refresh(technology)
 
