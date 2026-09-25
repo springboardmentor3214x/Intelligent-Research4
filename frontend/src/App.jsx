@@ -15,11 +15,19 @@ import TechnologyIntelligence from './pages/TechnologyIntelligence'
 import TechnologyMaturity from './pages/TechnologyMaturity'
 import TechnologyAdoption from './pages/TechnologyAdoption'
 import TechnologyTrends from './pages/TechnologyTrends'
+import InnovationScoring from './pages/InnovationScoring'
+import Commercialization from './pages/Commercialization'
+import TechIntelligenceFloatingNav from './components/TechIntelligenceFloatingNav'
+import PlatformGlobalFloatingNav from './components/PlatformGlobalFloatingNav'
 import './App.css'
 
 function AppContent() {
   const location = useLocation()
   const isLandingPage = location.pathname === '/'
+  const isTechIntelligenceSection = 
+    location.pathname.startsWith('/technologies') || 
+    location.pathname.startsWith('/innovation') ||
+    location.pathname.startsWith('/commercialization')
 
   return (
     <div className="application">
@@ -35,6 +43,9 @@ function AppContent() {
           <Route path="/technologies/maturity" element={<TechnologyMaturity />} />
           <Route path="/technologies/adoption" element={<TechnologyAdoption />} />
           <Route path="/technologies/trends" element={<TechnologyTrends />} />
+          <Route path="/innovation" element={<InnovationScoring />} />
+          <Route path="/innovation-scoring" element={<InnovationScoring />} />
+          <Route path="/commercialization" element={<Commercialization />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/research-papers" element={<ResearchPapers />} />
@@ -44,6 +55,8 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      {isLandingPage && <PlatformGlobalFloatingNav />}
+      {isTechIntelligenceSection && <TechIntelligenceFloatingNav />}
     </div>
   )
 }

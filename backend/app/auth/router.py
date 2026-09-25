@@ -1,15 +1,16 @@
-import logging
 import os
 import secrets
+import logging
 from urllib.parse import urlencode
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from starlette.responses import RedirectResponse
 
-from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.dependencies import get_current_user, require_roles
 from backend.app.auth.security import (
     create_access_token,
     hash_password,
@@ -17,13 +18,14 @@ from backend.app.auth.security import (
 )
 from backend.app.database.connection import get_db
 from backend.app.models.user import User
-from backend.app.schemas.user import UserCreate, UserResponse
+from backend.app.schemas.user import UserCreate, UserResponse, UserUpdate
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-ALLOWED_PUBLIC_ROLES = {"researcher", "innovator", "investor", "reviewer", "user"}
+# Administrators must be provisioned by an existing administrator, never by public sign-up.
+ALLOWED_PUBLIC_ROLES = {"researcher", "startup_founder", "innovation_manager", "innovator", "investor", "reviewer", "user"}
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -36,7 +38,7 @@ class TokenResponse(BaseModel):
 
 
 def _google_settings() -> tuple[str, str, str, str]:
-    """Read OAuth credentials from the environment."""
+    """Read OAuth credentials only from the environment, never from source."""
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
     redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/oauth/google/callback")
@@ -92,16 +94,19 @@ async def google_callback(
                     "grant_type": "authorization_code",
                 },
             )
+            if token_response.is_error:
+                logger.error("Google token exchange error status %s: %s", token_response.status_code, token_response.text)
             token_response.raise_for_status()
             user_response = await client.get(
                 GOOGLE_USERINFO_URL,
                 headers={"Authorization": f"Bearer {token_response.json()['access_token']}"},
             )
+            if user_response.is_error:
+                logger.error("Google userinfo error status %s: %s", user_response.status_code, user_response.text)
             user_response.raise_for_status()
     except (httpx.HTTPError, KeyError) as error:
         logger.warning("Google OAuth verification failed: %s", error)
         raise HTTPException(status_code=401, detail="Google sign-in could not be verified")
-
     identity = user_response.json()
     email = str(identity.get("email", "")).strip().lower()
     if not email or not identity.get("email_verified"):
@@ -118,6 +123,11 @@ async def google_callback(
         db.add(user)
         db.commit()
         db.refresh(user)
+
+    token = create_access_token({"sub": str(user.id), "email": user.email, "role": user.role})
+    response = RedirectResponse(f"{frontend_url}/oauth/callback?{urlencode({'token': token})}")
+    response.delete_cookie("oauth_google_state")
+    return response
 
     token = create_access_token({"sub": str(user.id), "email": user.email, "role": user.role})
     response = RedirectResponse(f"{frontend_url}/oauth/callback?{urlencode({'token': token})}")
@@ -145,10 +155,12 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> User:
             detail="Email already registered"
         )
 
-    # Protect against privileged role self-assignment on public registration
+    # Protect against privileged role self-assignment on public registration.
     role_requested = (user_in.role or "researcher").strip().lower()
+    if role_requested == "administrator":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator accounts must be provisioned by the platform")
     if role_requested not in ALLOWED_PUBLIC_ROLES:
-        role_requested = "researcher"
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid user role")
 
     # Hash the password
     hashed_password = hash_password(user_in.password)
@@ -161,6 +173,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> User:
         role=role_requested,
         phone_number=user_in.phone_number,
         organization=user_in.organization,
+        department=user_in.department,
         designation=user_in.designation,
         country=user_in.country,
         research_domain=user_in.research_domain,
@@ -223,3 +236,23 @@ def get_me(current_user: User = Depends(get_current_user)) -> User:
     Retrieve the profile of the currently authenticated user using the JWT Bearer token.
     """
     return current_user
+
+
+@router.put("/me", response_model=UserResponse, summary="Update current authenticated user profile")
+def update_me(profile_in: UserUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+    """Update only the authenticated user's own basic profile fields."""
+    updates = profile_in.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide at least one profile field to update")
+    for field, value in updates.items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.get("/admin/access-check", summary="Administrator-only authorization check")
+def administrator_access_check(current_user: User = Depends(require_roles("administrator"))) -> dict[str, str]:
+    """A protected endpoint used to verify server-side administrator authorization."""
+    return {"message": f"Administrator access granted for {current_user.email}"}
+

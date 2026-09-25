@@ -30,7 +30,7 @@ export default function Login() {
 
   return <div className="login-layout">
     <section className="auth-card login-card">
-      <div className="card-heading"><p className="eyebrow">WELCOME BACK</p><h2>Sign in to your workspace</h2><p>Use your email and password to continue.</p></div>
+      <div className="auth-header"><p className="eyebrow">WELCOME BACK</p><h2>Sign in to your workspace</h2><p>Use your email and password to continue.</p></div>
       <form onSubmit={submit} noValidate>
         <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="name@organization.com" /></label>
         <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" placeholder="Enter your password" /></label>

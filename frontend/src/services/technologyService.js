@@ -79,4 +79,52 @@ export const technologyService = {
   async getSourcesStatus() {
     return apiFetch('/technologies/sources/status')
   },
+
+  // Module 7: Innovation Scoring Engine (5 Factors, Weights 30/20/15/20/15)
+  async getInnovationScore(technologyName, ideaText = null) {
+    const params = new URLSearchParams()
+    if (ideaText) params.append('idea_text', ideaText)
+    const queryString = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch(`/innovation/technologies/${encodeURIComponent(technologyName)}${queryString}`)
+  },
+
+  async assessInnovation(payload) {
+    return apiFetch('/innovation/assess', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  },
+
+  async analyzeIdea(payload) {
+    return apiFetch('/innovation/analyze-idea', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  },
+
+  async compareTechnologies(technologies) {
+    return apiFetch('/innovation/compare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ technologies }),
+    })
+  },
+
+  async generateGrokBrief(technology, includeWebSearch = false) {
+    return apiFetch('/innovation/grok-brief', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ technology, include_web_search: includeWebSearch }),
+    })
+  },
+
+  async askAnalyst(technology, question, chatHistory = []) {
+    return apiFetch('/innovation/ask-analyst', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ technology, question, chat_history: chatHistory }),
+    })
+  },
 }

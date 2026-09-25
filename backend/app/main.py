@@ -1,4 +1,12 @@
 import os
+import logging
+from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
+
+# Ensure environment variables are loaded regardless of how uvicorn was started
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -8,17 +16,32 @@ from backend.app.database.connection import engine
 from backend.app.routers.research_paper import router as research_paper_router
 from backend.app.routers.funding_opportunity import router as funding_router
 from backend.app.routers.patent import router as patent_router
+from backend.app.routers.patents import router as profile_patents_router
+from backend.app.routers.platform import router as platform_router
+from backend.app.routers.profile import router as profile_router
+from backend.app.routers.publications import router as publications_router
+from backend.app.routers.research_details import router as research_details_router
 from backend.app.routers.technology import router as technology_router
+from backend.app.routers.commercialization import router as commercialization_router
+from backend.app.routers import tech_intelligence, innovation_assessment
 
 app = FastAPI(
     title="Research Funding & Innovation Intelligence Platform"
 )
 
-# Configure CORS Middleware
-cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
-if "*" not in origins:
-    origins.extend(["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"])
+# CORS configuration
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+env_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
+origins = list(set(default_origins + env_origins))
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,11 +51,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include core application routers
 app.include_router(auth_router)
+app.include_router(profile_router)
+app.include_router(research_details_router)
+app.include_router(publications_router)
+app.include_router(profile_patents_router)
 app.include_router(research_paper_router)
 app.include_router(funding_router)
 app.include_router(patent_router)
 app.include_router(technology_router)
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    try:
+        body = await request.body()
+        logger.error(f"422 Validation Error on {request.method} {request.url.path}: {exc.errors()} | Raw body: {body.decode('utf-8', errors='ignore')}")
+    except Exception as e:
+        logger.error(f"422 Validation Error on {request.method} {request.url.path}: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(exc.body)},
+    )
+
+app.include_router(platform_router)
+app.include_router(tech_intelligence.router)
+app.include_router(innovation_assessment.router)
+app.include_router(commercialization_router)
 
 
 @app.get("/")
@@ -50,3 +98,5 @@ def database_health():
             "database": "connected",
             "test": result.scalar()
         }
+
+

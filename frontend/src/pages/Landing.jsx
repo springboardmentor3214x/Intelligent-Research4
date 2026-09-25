@@ -2,6 +2,7 @@ import { useEffect, useState, useContext, useRef, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context/auth-context'
 import patentService from '../services/patentService'
+import { technologyService } from '../services/technologyService'
 import PatentSemanticMap3D from '../components/PatentSemanticMap3D'
 import PatentSemanticMap from '../components/PatentSemanticMap'
 import './Landing.css'
@@ -44,12 +45,31 @@ export default function Landing() {
   const [showIdeaOnMapLanding, setShowIdeaOnMapLanding] = useState(true)
   const [ideaJurisdictionTab, setIdeaJurisdictionTab] = useState('all')
 
+  // Technology Intelligence & Innovation Intelligence Interactive States
+  const [customTechQuery, setCustomTechQuery] = useState('')
+  const [selectedMaturityStage, setSelectedMaturityStage] = useState('emerging')
+  const [activeExplainFactor, setActiveExplainFactor] = useState('research_growth')
+  const [activeInnovationFactor, setActiveInnovationFactor] = useState('research_novelty')
+  const [activeTechComparePair, setActiveTechComparePair] = useState('qc_vs_genai')
+  const [activeAnalystQuestion, setActiveAnalystQuestion] = useState(0)
+  const [liveTechPreviewIndex, setLiveTechPreviewIndex] = useState(0)
+
   // Sample prompt chips for Idea Analyzer
   const sampleIdeaPrompts = [
     'An AI system that detects brain tumors from MRI scans and generates 3D volumetric visualization.',
     'Perovskite-silicon tandem solar cell with self-healing polymer protective layer and automated defect passivation.',
     'Quantum key distribution protocol using entangled photon orbital angular momentum for optical networks.',
     'Autonomous drone system with multispectral vision and edge AI for precision agricultural weed detection.'
+  ]
+
+  // Sample dynamic technology queries for Technology Intelligence quick-launch
+  const sampleTechQueries = [
+    'Quantum Computing',
+    'Synthetic Biology',
+    'Space Technology',
+    'Brain-Computer Interfaces',
+    'Smart Materials',
+    'Photonic Neural Networks'
   ]
 
   // Fetch real patent cluster summary & real patents on mount
@@ -102,6 +122,8 @@ export default function Landing() {
       'funding',
       'idea-funding',
       'patents',
+      'technology-intelligence',
+      'innovation-intelligence',
       'innovation-mapping',
       'platform',
       'features',
@@ -231,10 +253,12 @@ export default function Landing() {
     { id: 'funding', label: '04 Funding', tag: 'Grants' },
     { id: 'idea-funding', label: '05 Idea Analyzer', tag: 'Innovation' },
     { id: 'patents', label: '06 Patent Landscape', tag: '3D WebGL' },
-    { id: 'innovation-mapping', label: '07 Technology Triad', tag: 'Ecosystem' },
-    { id: 'platform', label: '08 Platform Hub', tag: 'Explore' },
-    { id: 'features', label: '09 Capabilities', tag: 'Verified' },
-    { id: 'about', label: '10 Ecosystem', tag: 'Community' },
+    { id: 'technology-intelligence', label: '07 Technology Intelligence', tag: 'Maturity & 3D' },
+    { id: 'innovation-intelligence', label: '08 Innovation Intelligence', tag: '5-Factor Score' },
+    { id: 'innovation-mapping', label: '09 Connected Workflow', tag: 'Ecosystem' },
+    { id: 'platform', label: '10 Platform Hub', tag: 'Explore' },
+    { id: 'features', label: '11 Capabilities', tag: 'Verified' },
+    { id: 'about', label: '12 Ecosystem', tag: 'Community' },
   ]
 
   // 5 Radial Nodes around Central "Research Intelligence" Engine in Hero Visual
@@ -271,23 +295,23 @@ export default function Landing() {
     },
     {
       id: 'technology',
-      targetId: 'innovation-mapping',
+      targetId: 'technology-intelligence',
       label: 'Technology',
-      tag: 'Innovation Mapping',
+      tag: 'Technology Intelligence',
       icon: '⚡',
       posClass: 'node-bot-left',
       expandedPos: 'expanded-bot-left',
-      info: 'Synthesize research literature, available funding capital, and patent frontiers into commercialization vectors.'
+      info: 'Track technology evolution across research, patents, organizations, and adoption to evaluate maturity and trajectories.'
     },
     {
       id: 'insights',
-      targetId: 'research',
-      label: 'AI Insights',
-      tag: 'Methodology & Gaps',
-      icon: '🧠',
+      targetId: 'innovation-intelligence',
+      label: 'Innovation',
+      tag: 'Innovation Intelligence',
+      icon: '💡',
       posClass: 'node-top-left',
       expandedPos: 'expanded-top-left',
-      info: 'Decompose complex scientific papers into research problems, architectures, findings, limitations, and future directions.'
+      info: 'Evaluate innovation potential through a transparent 5-factor deterministic evidence score and AI analyst briefs.'
     }
   ]
 
@@ -477,6 +501,24 @@ export default function Landing() {
       link: '/patents',
       linkText: 'Explore Patent Landscape →'
     },
+    technology: {
+      title: 'Technology Intelligence',
+      badge: 'Multi-Source Maturity & 3D Landscape',
+      icon: '⚡',
+      desc: 'Track how technologies evolve across research publications, patent filings, organizations, and market adoption signals. Evaluate maturity with 6 weighted indicators and explore the interactive 3D technology landscape.',
+      features: ['6-Factor Multi-Year Maturity Classification', 'Interactive 3D Technology Landscape Explorer', 'Dynamic Custom Technology Analysis', 'Indian Patent & Organization Evidence'],
+      link: '/technologies',
+      linkText: 'Explore Technology Intelligence →'
+    },
+    innovation: {
+      title: 'Innovation Intelligence & Scoring',
+      badge: '5-Factor Deterministic Assessment',
+      icon: '💡',
+      desc: 'Evaluate innovation potential with our transparent 5-factor scoring engine (Research Novelty, Patent Strength, Technology Maturity, Market Potential, Funding Relevance) coupled with AI-assisted analyst insights.',
+      features: ['100% Deterministic Weighted Score (30/20/15/20/15)', 'Analyze My Idea with Patent Differentiation', 'Transparent Multi-Technology Comparison', 'AI Innovation Analyst Explainability'],
+      link: '/innovation',
+      linkText: 'Explore Innovation Intelligence →'
+    },
     profile: {
       title: 'Researcher Profile Calibration',
       badge: 'Structured Research Identity',
@@ -485,82 +527,80 @@ export default function Landing() {
       features: ['Domain & Specialization Fingerprinting', 'Publication & Patent Portfolio Sync', 'Dynamic Keyword & Focus Tuning', 'Isolated Multi-Tenant Security'],
       link: user ? '/profile' : '/login',
       linkText: 'Configure Research Profile →'
-    },
-    insights: {
-      title: 'Strategic Innovation Insights',
-      badge: 'Synthesis & Technology Forecasting',
-      icon: '📊',
-      desc: 'Synthesize research literature, available grant capital, and protected patent technologies into a cohesive innovation vector. Uncover strategic white-spaces where commercialization opportunities are highest.',
-      features: ['Research vs. Patent Gap Analysis', 'Funding Deadline Tracking Dashboard', 'Technology Cluster Centrality Ranking', 'Actionable Differentiation Playbooks'],
-      link: user ? '/dashboard' : '/login',
-      linkText: 'Open Intelligence Dashboard →'
     }
   }
 
-  // Professional Product Capabilities Grid
+  // Professional Product Capabilities Grid (10 Verified Core Capabilities)
   const productCapabilities = [
     {
-      title: 'Structured Research Profile',
-      category: 'Research Identity',
-      desc: 'Define your research domain, areas of specialization, active keywords, publications, and patents to calibrate personalized matching.',
-      icon: '👤',
-      link: user ? '/profile' : '/login'
+      title: 'Technology Maturity Analysis',
+      category: 'Technology Intelligence',
+      desc: 'Understand whether technologies are emerging, developing, mature, or declining using multi-year evidence across research, patents, and organizations.',
+      icon: '⚡',
+      link: '/technologies/maturity'
     },
     {
-      title: 'Multi-Source Paper Discovery',
-      category: 'Literature Search',
-      desc: 'Search and filter across ArXiv, PubMed, and CrossRef simultaneously with instant query imports into your workspace.',
+      title: '3D Technology Landscape',
+      category: 'Interactive Spatial 3D',
+      desc: 'Explore research, patent, and organization activity across technologies in an interactive 3D WebGL spatial coordinate system.',
+      icon: '🌐',
+      link: '/technologies'
+    },
+    {
+      title: 'Dynamic Technology Analysis',
+      category: 'Open Exploration',
+      desc: 'Analyze any custom technology topic beyond predefined lists with real-time multi-source evidence extraction and trajectory classification.',
       icon: '🔎',
-      link: user ? '/research-papers' : '/login'
+      link: '/technologies'
     },
     {
-      title: 'AI Research Paper Analysis',
-      category: 'Structured Intelligence',
-      desc: 'Extract 5 structured dimensions from research papers: problem, methodology, empirical findings, limitations, and future vectors.',
-      icon: '🧠',
-      link: user ? '/research-papers' : '/login'
+      title: 'Indian Patent & Innovation Activity',
+      category: 'Indian Evidence',
+      desc: 'Explore Indian patent filings, domestic organizations, classifications, and regional funding signals mapped to technology domains.',
+      icon: '🇮🇳',
+      link: '/technologies'
     },
     {
-      title: 'Research Trends & Gap Detection',
-      category: 'Literature Insights',
-      desc: 'Uncover emerging scientific topics, recurring technical limitations, and unaddressed research opportunities across disciplines.',
-      icon: '📈',
-      link: user ? '/research-papers' : '/login'
+      title: '5-Factor Innovation Scoring',
+      category: 'Innovation Intelligence',
+      desc: 'Evaluate innovation potential through five measurable evidence factors: Research Novelty (30%), Patent Strength (20%), Tech Maturity (15%), Market (20%), and Funding (15%).',
+      icon: '🎯',
+      link: '/innovation'
+    },
+    {
+      title: 'Analyze My Idea',
+      category: 'Idea Intelligence',
+      desc: 'Connect a research or startup concept with literature similarity, patent landscapes, technology maturity, and potential differentiation areas.',
+      icon: '💡',
+      link: '/innovation'
+    },
+    {
+      title: 'Technology Comparison',
+      category: 'Evidence Benchmarking',
+      desc: 'Compare technologies side-by-side across research novelty, patent strength, maturity, market signals, and funding relevance without arbitrary winner declarations.',
+      icon: '⚖️',
+      link: '/innovation'
+    },
+    {
+      title: 'AI Innovation Analyst',
+      category: 'Explainability Engine',
+      desc: 'Ask deep questions about research trends, patent barriers, funding opportunities, and evidence interpretations with AI-assisted synthesis.',
+      icon: '🤖',
+      link: '/innovation'
     },
     {
       title: 'Semantic Funding Matching',
       category: 'Grant Intelligence',
-      desc: 'Match researcher profiles against grant calls (ANRF, BIRAC, MeitY, DST, ICMR) using cosine similarity and keyword intersections.',
-      icon: '🎯',
+      desc: 'Discover government and global funding opportunities (ANRF, BIRAC, MeitY, DST, ICMR) aligned with your research profile and technology vectors.',
+      icon: '💰',
       link: user ? '/funding' : '/login'
     },
     {
-      title: 'Grant Tracking & Deadlines',
-      category: 'Funding Management',
-      desc: 'Bookmark opportunities to your personal dashboard, track closing-soon application deadlines, and review eligibility criteria.',
-      icon: '⏰',
-      link: user ? '/funding' : '/login'
-    },
-    {
-      title: 'Patent Landscape Intelligence',
-      category: 'IP Intelligence',
-      desc: 'Query authentic European Patent Office records with official publication links, applicant tracking, and classification mapping.',
-      icon: '📜',
-      link: '/patents'
-    },
-    {
-      title: '3D Patent Semantic Landscape',
-      category: 'WebGL Visual Vectors',
-      desc: 'Visualize 384D sentence-transformer embeddings in interactive 3D PCA coordinate space with orbit controls and glowing idea projections.',
-      icon: '🌐',
-      link: '/patents'
-    },
-    {
-      title: 'Check Your Innovation',
-      category: 'Idea Intelligence',
-      desc: 'Analyze custom research or startup ideas against real patent prior art, feature-level overlap matrices, and differentiation playbooks.',
-      icon: '💡',
-      link: '/patents'
+      title: 'Evidence Explorer',
+      category: 'Traceable Intelligence',
+      desc: 'Trace the underlying peer-reviewed papers, official patent records, and funding calls supporting every analytical insight on the platform.',
+      icon: '🔍',
+      link: '/technologies'
     }
   ]
 
@@ -652,7 +692,7 @@ export default function Landing() {
         >
           <div className="hero-badge hero-item-1">
             <span className="hero-badge-dot" />
-            <span>AI-POWERED RESEARCH &amp; INNOVATION INTELLIGENCE</span>
+            <span>CONNECTED RESEARCH &amp; INNOVATION INTELLIGENCE PLATFORM</span>
           </div>
 
           <h1 className="hero-main-heading hero-item-2">
@@ -660,40 +700,46 @@ export default function Landing() {
           </h1>
 
           <p className="hero-description hero-item-4">
-            An enterprise-grade AI intelligence platform connecting scientific literature, government &amp; global funding calls, and 3D patent landscapes into actionable innovation vectors.
+            Discover research directions, track emerging technologies, explore patent landscapes, identify relevant funding opportunities, and evaluate innovation potential using evidence from connected intelligence sources.
           </p>
 
           <div className="hero-actions hero-item-5">
             {user ? (
-              <Link to="/dashboard" className="primary-btn hero-primary-btn">
-                <span>Go to Dashboard</span>
-                <svg className="btn-arrow-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                  <polyline points="12 5 19 12 12 19" />
-                </svg>
-              </Link>
+              <>
+                <Link to="/dashboard" className="primary-btn hero-primary-btn">
+                  <span>Go to Dashboard</span>
+                  <svg className="btn-arrow-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </Link>
+                <Link to="/innovation" className="secondary-btn hero-secondary-btn">
+                  <span>Analyze an Idea</span>
+                </Link>
+              </>
             ) : (
               <>
-                <button type="button" onClick={() => scrollToSection('platform')} className="primary-btn hero-primary-btn">
-                  <span>Explore Platform Capabilities</span>
+                <button type="button" onClick={() => scrollToSection('technology-intelligence')} className="primary-btn hero-primary-btn">
+                  <span>Explore Intelligence</span>
                   <svg className="btn-arrow-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />
                   </svg>
                 </button>
-                <button type="button" onClick={() => scrollToSection('how-it-works')} className="secondary-btn hero-secondary-btn">
-                  <span>See How It Works</span>
-                </button>
+                <Link to="/innovation" className="secondary-btn hero-secondary-btn">
+                  <span>Analyze an Idea</span>
+                </Link>
               </>
             )}
           </div>
 
           <div className="hero-tags hero-item-6">
             <span className="hero-tag interactive-pill">🔬 Literature Discovery</span>
-            <span className="hero-tag interactive-pill">🧠 AI Paper Analysis</span>
-            <span className="hero-tag interactive-pill">🎯 Semantic Grant Matching</span>
-            <span className="hero-tag interactive-pill">🌐 3D Patent Landscape</span>
-            <span className="hero-tag interactive-pill">💡 Idea to Innovation</span>
+            <span className="hero-tag interactive-pill">💰 Grant Matching</span>
+            <span className="hero-tag interactive-pill">📜 Patent Landscapes</span>
+            <span className="hero-tag interactive-pill">⚡ Technology Trends</span>
+            <span className="hero-tag interactive-pill">🎯 Innovation Scoring</span>
+            <span className="hero-tag interactive-pill">💡 Idea to Impact</span>
           </div>
         </div>
 
@@ -734,19 +780,24 @@ export default function Landing() {
 
             <div className={`network-nodes-container ${activeHoverNode ? `dim-others-${activeHoverNode}` : ''}`}>
               {/* Dynamic SVG Pulsing Connection Lines with Flowing Light Particles */}
-              <svg className="network-lines-svg" viewBox="0 0 460 480">
-                <line x1="230" y1="255" x2="230" y2="60" className={`graph-line ${activeHoverNode === 'research' ? 'highlight' : ''}`} />
-                <line x1="230" y1="255" x2="385" y2="135" className={`graph-line ${activeHoverNode === 'funding' ? 'highlight' : ''}`} />
-                <line x1="230" y1="255" x2="380" y2="425" className={`graph-line ${activeHoverNode === 'patents' ? 'highlight' : ''}`} />
-                <line x1="230" y1="255" x2="80" y2="425" className={`graph-line ${activeHoverNode === 'technology' ? 'highlight' : ''}`} />
-                <line x1="230" y1="255" x2="75" y2="135" className={`graph-line ${activeHoverNode === 'insights' ? 'highlight' : ''}`} />
+              <svg className="network-lines-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                {/* Top: Research (50%, 12%) */}
+                <line x1="50" y1="50" x2="50" y2="12" className={`graph-line ${activeHoverNode === 'research' ? 'highlight' : ''}`} />
+                {/* Top-Right: Funding (82%, 24%) */}
+                <line x1="50" y1="50" x2="82" y2="24" className={`graph-line ${activeHoverNode === 'funding' ? 'highlight' : ''}`} />
+                {/* Bottom-Right: Patents (78%, 82%) */}
+                <line x1="50" y1="50" x2="78" y2="82" className={`graph-line ${activeHoverNode === 'patents' ? 'highlight' : ''}`} />
+                {/* Bottom-Left: Technology (22%, 82%) */}
+                <line x1="50" y1="50" x2="22" y2="82" className={`graph-line ${activeHoverNode === 'technology' ? 'highlight' : ''}`} />
+                {/* Top-Left: Innovation (18%, 24%) */}
+                <line x1="50" y1="50" x2="18" y2="24" className={`graph-line ${activeHoverNode === 'insights' ? 'highlight' : ''}`} />
 
                 {/* Animated light particles flowing along connection lines */}
-                <circle cx="230" cy="155" r="2.5" className="light-particle flow-to-center" />
-                <circle cx="310" cy="195" r="2.5" className="light-particle delay-1 flow-from-center" />
-                <circle cx="305" cy="340" r="2.5" className="light-particle delay-2 flow-to-center" />
-                <circle cx="155" cy="340" r="2.5" className="light-particle delay-3 flow-from-center" />
-                <circle cx="150" cy="195" r="2.5" className="light-particle delay-4 flow-to-center" />
+                <circle cx="50" cy="30" r="1.5" className="light-particle flow-to-center" />
+                <circle cx="66" cy="37" r="1.5" className="light-particle delay-1 flow-from-center" />
+                <circle cx="64" cy="66" r="1.5" className="light-particle delay-2 flow-to-center" />
+                <circle cx="36" cy="66" r="1.5" className="light-particle delay-3 flow-from-center" />
+                <circle cx="34" cy="37" r="1.5" className="light-particle delay-4 flow-to-center" />
               </svg>
 
               {/* Central Engine Node with Rotating Outer Ring and Pulse */}
@@ -1553,6 +1604,886 @@ export default function Landing() {
       </section>
 
       {/* =========================================================
+          8. FEATURE: TECHNOLOGY INTELLIGENCE & 3D LANDSCAPE
+          ========================================================= */}
+      <section className="landing-section tech-intelligence-section reveal-on-scroll" id="technology-intelligence">
+        <div className="section-header">
+          <p className="eyebrow">TECHNOLOGY INTELLIGENCE</p>
+          <h2 className="section-title">UNDERSTAND WHERE TECHNOLOGY IS GOING</h2>
+          <div className="section-title-line" />
+          <p className="section-subtitle">
+            Track how technologies evolve across research, patents, organizations, applications, and adoption signals to understand whether a technology is emerging, developing, mature, or declining.
+          </p>
+        </div>
+
+        {/* 8A. Technology Maturity Methodology & Weighted Indicators */}
+        <div className="tech-maturity-card">
+          <div className="maturity-card-header">
+            <div>
+              <div className="tech-badge-row">
+                <span className="badge-patent-tech">Multi-Year Evidence Engine</span>
+                <span className="badge-weight-total">100% Deterministic Evidence</span>
+              </div>
+              <h3 className="maturity-main-heading">Evidence-Based Technology Maturity Analysis</h3>
+              <p className="maturity-subtext">
+                Evaluates technology maturity using multi-year activity and growth trends across 6 calibrated indicators rather than arbitrary AI labels.
+              </p>
+            </div>
+            <Link to="/technologies/maturity" className="primary-btn sm-btn">
+              <span>Explore Maturity Workspace</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </Link>
+          </div>
+
+          {/* 6 Core Maturity Weights Grid */}
+          <div className="maturity-weights-grid">
+            <div className={`weight-box ${activeExplainFactor === 'research_growth' ? 'active-weight' : ''}`} onClick={() => setActiveExplainFactor('research_growth')}>
+              <div className="weight-top">
+                <span className="weight-pct">25%</span>
+                <span className="weight-icon">📈</span>
+              </div>
+              <h4>Research Growth</h4>
+              <p>CAGR and year-over-year expansion in peer-reviewed scientific publications.</p>
+              <div className="weight-bar"><div className="weight-fill" style={{ width: '25%' }} /></div>
+            </div>
+
+            <div className={`weight-box ${activeExplainFactor === 'patent_growth' ? 'active-weight' : ''}`} onClick={() => setActiveExplainFactor('patent_growth')}>
+              <div className="weight-top">
+                <span className="weight-pct">25%</span>
+                <span className="weight-icon">📜</span>
+              </div>
+              <h4>Patent Growth</h4>
+              <p>Filing momentum and priority date velocity across patent authorities.</p>
+              <div className="weight-bar"><div className="weight-fill" style={{ width: '25%' }} /></div>
+            </div>
+
+            <div className={`weight-box ${activeExplainFactor === 'research_activity' ? 'active-weight' : ''}`} onClick={() => setActiveExplainFactor('research_activity')}>
+              <div className="weight-top">
+                <span className="weight-pct">15%</span>
+                <span className="weight-icon">🔬</span>
+              </div>
+              <h4>Research Activity</h4>
+              <p>Absolute volume of preprints and published papers in the current window.</p>
+              <div className="weight-bar"><div className="weight-fill" style={{ width: '15%' }} /></div>
+            </div>
+
+            <div className={`weight-box ${activeExplainFactor === 'patent_activity' ? 'active-weight' : ''}`} onClick={() => setActiveExplainFactor('patent_activity')}>
+              <div className="weight-top">
+                <span className="weight-pct">15%</span>
+                <span className="weight-icon">📑</span>
+              </div>
+              <h4>Patent Activity</h4>
+              <p>Cumulative protected claims and active patent publications indexed.</p>
+              <div className="weight-bar"><div className="weight-fill" style={{ width: '15%' }} /></div>
+            </div>
+
+            <div className={`weight-box ${activeExplainFactor === 'org_participation' ? 'active-weight' : ''}`} onClick={() => setActiveExplainFactor('org_participation')}>
+              <div className="weight-top">
+                <span className="weight-pct">10%</span>
+                <span className="weight-icon">🏛️</span>
+              </div>
+              <h4>Organization Participation</h4>
+              <p>Breadth of academic labs, startups, and enterprises actively publishing or filing.</p>
+              <div className="weight-bar"><div className="weight-fill" style={{ width: '10%' }} /></div>
+            </div>
+
+            <div className={`weight-box ${activeExplainFactor === 'app_diversity' ? 'active-weight' : ''}`} onClick={() => setActiveExplainFactor('app_diversity')}>
+              <div className="weight-top">
+                <span className="weight-pct">10%</span>
+                <span className="weight-icon">🌐</span>
+              </div>
+              <h4>Application Diversity</h4>
+              <p>Cross-disciplinary dispersion across technology classifications and industry verticals.</p>
+              <div className="weight-bar"><div className="weight-fill" style={{ width: '10%' }} /></div>
+            </div>
+          </div>
+
+          {/* 4 Maturity Stages Showcase with Explainability Accordion */}
+          <div className="maturity-stages-row">
+            <div className="stages-nav">
+              <span className="stages-nav-title">Evidence-Based Classifications:</span>
+              <button
+                type="button"
+                className={`stage-pill-btn emerging ${selectedMaturityStage === 'emerging' ? 'active' : ''}`}
+                onClick={() => setSelectedMaturityStage('emerging')}
+              >
+                ● Emerging
+              </button>
+              <button
+                type="button"
+                className={`stage-pill-btn developing ${selectedMaturityStage === 'developing' ? 'active' : ''}`}
+                onClick={() => setSelectedMaturityStage('developing')}
+              >
+                ● Developing
+              </button>
+              <button
+                type="button"
+                className={`stage-pill-btn mature ${selectedMaturityStage === 'mature' ? 'active' : ''}`}
+                onClick={() => setSelectedMaturityStage('mature')}
+              >
+                ● Mature
+              </button>
+              <button
+                type="button"
+                className={`stage-pill-btn declining ${selectedMaturityStage === 'declining' ? 'active' : ''}`}
+                onClick={() => setSelectedMaturityStage('declining')}
+              >
+                ● Declining
+              </button>
+            </div>
+
+            {/* "Why This Technology?" Interactive Explainability Card */}
+            <div className="why-technology-card animated-fade">
+              <div className="why-tech-header">
+                <span className="why-icon">💡</span>
+                <div>
+                  <h4>
+                    Why is a technology classified as{' '}
+                    <span className={`stage-highlight ${selectedMaturityStage}`}>
+                      {selectedMaturityStage.toUpperCase()}
+                    </span>?
+                  </h4>
+                  <small>Interactive Demonstration &bull; Evidence Breakdown</small>
+                </div>
+              </div>
+
+              {selectedMaturityStage === 'emerging' && (
+                <div className="why-evidence-content">
+                  <div className="evidence-signals-grid">
+                    <div className="evidence-sig-item high">
+                      <span className="sig-arrow">↑</span>
+                      <div>
+                        <strong>Research Growth: High Velocity</strong>
+                        <small>Steep surge in academic preprints &amp; fundamental discoveries</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item moderate">
+                      <span className="sig-arrow">↗</span>
+                      <div>
+                        <strong>Patent Growth: Early Stage</strong>
+                        <small>Foundational claims filed by research labs and frontier pioneers</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item moderate">
+                      <span className="sig-arrow">↗</span>
+                      <div>
+                        <strong>Organization Activity: Expanding</strong>
+                        <small>Academic institutions &amp; early-stage deep-tech startups entering</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item moderate">
+                      <span className="sig-arrow">↗</span>
+                      <div>
+                        <strong>Application Diversity: Focused</strong>
+                        <small>Concentrated primarily in core laboratory proofs-of-concept</small>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="evidence-disclaimer-note">
+                    Classification is calculated from multi-year evidence signals and defined weights.
+                  </p>
+                </div>
+              )}
+
+              {selectedMaturityStage === 'developing' && (
+                <div className="why-evidence-content">
+                  <div className="evidence-signals-grid">
+                    <div className="evidence-sig-item high">
+                      <span className="sig-arrow">↑</span>
+                      <div>
+                        <strong>Research Growth: Sustained</strong>
+                        <small>High citation density and specialized translational methodologies</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item high">
+                      <span className="sig-arrow">↑</span>
+                      <div>
+                        <strong>Patent Growth: Accelerating</strong>
+                        <small>Corporate R&amp;D and commercial applicant filing momentum</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item high">
+                      <span className="sig-arrow">↑</span>
+                      <div>
+                        <strong>Organization Activity: Diversifying</strong>
+                        <small>Broad participation across global universities, enterprises, and venture labs</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item high">
+                      <span className="sig-arrow">↑</span>
+                      <div>
+                        <strong>Application Diversity: Multi-Sector</strong>
+                        <small>Spanning multiple industry verticals and commercial prototypes</small>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="evidence-disclaimer-note">
+                    Classification is calculated from multi-year evidence signals and defined weights.
+                  </p>
+                </div>
+              )}
+
+              {selectedMaturityStage === 'mature' && (
+                <div className="why-evidence-content">
+                  <div className="evidence-signals-grid">
+                    <div className="evidence-sig-item moderate">
+                      <span className="sig-arrow">→</span>
+                      <div>
+                        <strong>Research Activity: High &amp; Stable</strong>
+                        <small>Steady publication volume focusing on incremental optimizations</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item moderate">
+                      <span className="sig-arrow">→</span>
+                      <div>
+                        <strong>Patent Activity: High Density</strong>
+                        <small>Large established patent families and cross-licensing portfolios</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item high">
+                      <span className="sig-arrow">✓</span>
+                      <div>
+                        <strong>Organization Participation: Widespread</strong>
+                        <small>Global industry standards, commercial vendors, and mass supply chains</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item high">
+                      <span className="sig-arrow">✓</span>
+                      <div>
+                        <strong>Application Diversity: Broad Market</strong>
+                        <small>Standardized across mainstream consumer and enterprise domains</small>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="evidence-disclaimer-note">
+                    Classification is calculated from multi-year evidence signals and defined weights.
+                  </p>
+                </div>
+              )}
+
+              {selectedMaturityStage === 'declining' && (
+                <div className="why-evidence-content">
+                  <div className="evidence-signals-grid">
+                    <div className="evidence-sig-item low">
+                      <span className="sig-arrow">↓</span>
+                      <div>
+                        <strong>Research Growth: Decelerating</strong>
+                        <small>Fewer novel publications as scientific frontier transitions to newer paradigms</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item low">
+                      <span className="sig-arrow">↓</span>
+                      <div>
+                        <strong>Patent Filings: Decreasing</strong>
+                        <small>Decline in new priority filings and R&amp;D patent investment</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item low">
+                      <span className="sig-arrow">↓</span>
+                      <div>
+                        <strong>Organization Participation: Consolidating</strong>
+                        <small>Participants shifting R&amp;D budgets to next-generation alternatives</small>
+                      </div>
+                    </div>
+                    <div className="evidence-sig-item moderate">
+                      <span className="sig-arrow">→</span>
+                      <div>
+                        <strong>Application Diversity: Legacy Support</strong>
+                        <small>Maintenance of legacy deployments with limited new vertical adoption</small>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="evidence-disclaimer-note">
+                    Classification is calculated from multi-year evidence signals and defined weights.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 8B. 3D Technology Landscape & Dynamic Analysis Row */}
+        <div className="tech-interactive-grid">
+          {/* 3D Technology Landscape Showcase Card */}
+          <div className="tech-landscape-3d-card">
+            <div className="card-top-head">
+              <div className="title-grp">
+                <span className="badge-patent-tech">Spatial Coordinate Modeling</span>
+                <h4>Explore the Technology Landscape in 3D</h4>
+              </div>
+              <Link to="/technologies" className="btn-explore-3d">
+                Open 3D Landscape ⤢
+              </Link>
+            </div>
+            <p className="card-subnote">
+              Visualize technologies mapped in 3D space across Research Activity (X-axis), Patent Activity (Y-axis), and Organization Participation (Z-axis). Rotate, zoom, and inspect clusters.
+            </p>
+
+            <div className="landscape-3d-interactive-preview">
+              <div className="preview-3d-axes-hud">
+                <span className="axis-label-x">X: Research Activity</span>
+                <span className="axis-label-y">Y: Patent Activity</span>
+                <span className="axis-label-z">Z: Organization Participation</span>
+              </div>
+
+              <div className="preview-3d-spatial-stage">
+                <div className="spatial-orbit-ring ring-1" />
+                <div className="spatial-orbit-ring ring-2" />
+                <div className="spatial-orbit-ring ring-3" />
+
+                <div className="tech-node-point node-qc" style={{ top: '28%', left: '32%' }}>
+                  <span className="node-dot" />
+                  <span className="node-pill">Quantum Computing &bull; Emerging</span>
+                </div>
+                <div className="tech-node-point node-genai" style={{ top: '42%', left: '68%' }}>
+                  <span className="node-dot" />
+                  <span className="node-pill">Generative AI &bull; Developing</span>
+                </div>
+                <div className="tech-node-point node-bci" style={{ top: '70%', left: '25%' }}>
+                  <span className="node-dot" />
+                  <span className="node-pill">Brain-Computer Interfaces &bull; Emerging</span>
+                </div>
+                <div className="tech-node-point node-battery" style={{ top: '60%', left: '75%' }}>
+                  <span className="node-dot" />
+                  <span className="node-pill">Solid-State Batteries &bull; Developing</span>
+                </div>
+                <div className="tech-node-point node-synbio" style={{ top: '20%', left: '70%' }}>
+                  <span className="node-dot" />
+                  <span className="node-pill">Synthetic Biology &bull; Developing</span>
+                </div>
+              </div>
+
+              <div className="preview-3d-controls-bar">
+                <span>🖱️ Rotate: Left Click + Drag</span>
+                <span>🔍 Zoom: Scroll Wheel</span>
+                <span>↔ Pan: Right Click + Drag</span>
+                <Link to="/technologies" className="link-open-full">
+                  Launch Interactive 3D Canvas →
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Dynamic Technology Analysis Widget */}
+          <div className="tech-dynamic-query-card">
+            <div className="card-top-head">
+              <div className="title-grp">
+                <span className="badge-patent-tech">Open Search &amp; Synthesis</span>
+                <h4>Analyze Any Technology</h4>
+              </div>
+            </div>
+            <p className="card-subnote">
+              Users are not restricted to predefined categories. Query any emerging technology domain to synthesize live multi-source intelligence.
+            </p>
+
+            <div className="dynamic-search-box">
+              <div className="dynamic-input-group">
+                <input
+                  type="text"
+                  className="dynamic-tech-input"
+                  placeholder="Enter any technology... (e.g. Photonic Neural Networks)"
+                  value={customTechQuery}
+                  onChange={(e) => setCustomTechQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && customTechQuery.trim()) {
+                      navigate(`/technologies?query=${encodeURIComponent(customTechQuery.trim())}`)
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-analyze-tech-action"
+                  onClick={() => {
+                    if (customTechQuery.trim()) {
+                      navigate(`/technologies?query=${encodeURIComponent(customTechQuery.trim())}`)
+                    } else {
+                      navigate('/technologies')
+                    }
+                  }}
+                >
+                  Analyze Technology →
+                </button>
+              </div>
+
+              <div className="sample-tech-chips-tray">
+                <span className="tray-label">Try an example:</span>
+                {sampleTechQueries.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className="tech-query-chip"
+                    onClick={() => {
+                      setCustomTechQuery(q)
+                      navigate(`/technologies?query=${encodeURIComponent(q)}`)
+                    }}
+                  >
+                    ⚡ {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Indian Technology & Patent Intelligence Capability Callout */}
+            <div className="indian-intelligence-callout">
+              <div className="indian-callout-header">
+                <span className="indian-flag-icon">🇮🇳</span>
+                <div>
+                  <h5>Explore Indian Innovation Activity</h5>
+                  <small>Domestic Evidence &amp; National Capabilities</small>
+                </div>
+              </div>
+              <p className="indian-callout-desc">
+                Analyze technology activity using available Indian patent evidence, domestic research organizations, technology classifications, and national grant schemes.
+              </p>
+              <div className="indian-features-tags">
+                <span className="in-tag">✓ Indian Patent Filings</span>
+                <span className="in-tag">✓ Academic &amp; R&amp;D Organizations</span>
+                <span className="in-tag">✓ Technology Classifications</span>
+                <span className="in-tag">✓ National Funding Schemes</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
+          9. FEATURE: INNOVATION INTELLIGENCE & 5-FACTOR SCORING
+          ========================================================= */}
+      <section className="landing-section innovation-intelligence-section reveal-on-scroll" id="innovation-intelligence">
+        <div className="section-header">
+          <p className="eyebrow">INNOVATION INTELLIGENCE</p>
+          <h2 className="section-title">FROM TECHNOLOGY SIGNALS TO INNOVATION POTENTIAL</h2>
+          <div className="section-title-line" />
+          <p className="section-subtitle">
+            Combine research, patent, technology, market, and funding evidence into an explainable innovation assessment.
+          </p>
+        </div>
+
+        {/* 9A. 5-Factor Innovation Score Engine */}
+        <div className="innovation-score-engine-card">
+          <div className="engine-card-header">
+            <div>
+              <div className="tech-badge-row">
+                <span className="badge-patent-tech">Deterministic Scoring Methodology</span>
+                <span className="badge-weight-total">100% Total Calibrated Weight</span>
+              </div>
+              <h3 className="engine-main-title">How the Innovation Score Works</h3>
+              <p className="engine-subtext">
+                The score is calculated from measurable evidence and defined weights rather than generated directly by an AI model.
+              </p>
+            </div>
+            <Link to="/innovation" className="primary-btn sm-btn">
+              <span>Open Innovation Workspace</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </Link>
+          </div>
+
+          {/* Connected Flow Diagram: Research -> Patent -> Tech -> Market -> Funding -> Score */}
+          <div className="score-pipeline-horizontal">
+            <div className="pipe-node">
+              <span className="pipe-num">1</span>
+              <span className="pipe-icon">📚</span>
+              <strong>Research Evidence</strong>
+              <small>Novelty &bull; 30%</small>
+            </div>
+            <div className="pipe-arrow">→</div>
+
+            <div className="pipe-node">
+              <span className="pipe-num">2</span>
+              <span className="pipe-icon">📜</span>
+              <strong>Patent Evidence</strong>
+              <small>Strength &bull; 20%</small>
+            </div>
+            <div className="pipe-arrow">→</div>
+
+            <div className="pipe-node">
+              <span className="pipe-num">3</span>
+              <span className="pipe-icon">⚡</span>
+              <strong>Tech Intelligence</strong>
+              <small>Maturity &bull; 15%</small>
+            </div>
+            <div className="pipe-arrow">→</div>
+
+            <div className="pipe-node">
+              <span className="pipe-num">4</span>
+              <span className="pipe-icon">📊</span>
+              <strong>Market Signals</strong>
+              <small>Adoption &bull; 20%</small>
+            </div>
+            <div className="pipe-arrow">→</div>
+
+            <div className="pipe-node">
+              <span className="pipe-num">5</span>
+              <span className="pipe-icon">💰</span>
+              <strong>Funding Relevance</strong>
+              <small>Capital &bull; 15%</small>
+            </div>
+            <div className="pipe-arrow">→</div>
+
+            <div className="pipe-node active-score-node">
+              <span className="pipe-num">★</span>
+              <span className="pipe-icon">🎯</span>
+              <strong>Innovation Score</strong>
+              <small>Explainable Index</small>
+            </div>
+          </div>
+
+          {/* 5 Connected Cards around Innovation Score Hub */}
+          <div className="five-factors-interactive-layout">
+            <div
+              className={`factor-card ${activeInnovationFactor === 'research_novelty' ? 'active-factor' : ''}`}
+              onClick={() => setActiveInnovationFactor('research_novelty')}
+            >
+              <div className="factor-header">
+                <span className="factor-weight-tag">30% Weight</span>
+                <span className="factor-icon">📚</span>
+              </div>
+              <h4>Research Novelty</h4>
+              <p>Assesses publication velocity, preprint citations, methodological uniqueness, and scientific white-spaces.</p>
+              <div className="factor-contribution">Weight Contribution: 30 pts</div>
+            </div>
+
+            <div
+              className={`factor-card ${activeInnovationFactor === 'patent_strength' ? 'active-factor' : ''}`}
+              onClick={() => setActiveInnovationFactor('patent_strength')}
+            >
+              <div className="factor-header">
+                <span className="factor-weight-tag">20% Weight</span>
+                <span className="factor-icon">📜</span>
+              </div>
+              <h4>Patent Strength</h4>
+              <p>Evaluates prior-art density, semantic patent clustering, applicant diversity, and international filings.</p>
+              <div className="factor-contribution">Weight Contribution: 20 pts</div>
+            </div>
+
+            <div
+              className={`factor-card ${activeInnovationFactor === 'technology_maturity' ? 'active-factor' : ''}`}
+              onClick={() => setActiveInnovationFactor('technology_maturity')}
+            >
+              <div className="factor-header">
+                <span className="factor-weight-tag">15% Weight</span>
+                <span className="factor-icon">⚡</span>
+              </div>
+              <h4>Technology Maturity</h4>
+              <p>Analyzes empirical trajectory stages across emerging, developing, mature, and declining classifications.</p>
+              <div className="factor-contribution">Weight Contribution: 15 pts</div>
+            </div>
+
+            <div
+              className={`factor-card ${activeInnovationFactor === 'market_potential' ? 'active-factor' : ''}`}
+              onClick={() => setActiveInnovationFactor('market_potential')}
+            >
+              <div className="factor-header">
+                <span className="factor-weight-tag">20% Weight</span>
+                <span className="factor-icon">📊</span>
+              </div>
+              <h4>Market Potential</h4>
+              <p>Synthesizes commercial adoption signals, organization participation, and cross-domain applications.</p>
+              <div className="factor-contribution">Weight Contribution: 20 pts</div>
+            </div>
+
+            <div
+              className={`factor-card ${activeInnovationFactor === 'funding_relevance' ? 'active-factor' : ''}`}
+              onClick={() => setActiveInnovationFactor('funding_relevance')}
+            >
+              <div className="factor-header">
+                <span className="factor-weight-tag">15% Weight</span>
+                <span className="factor-icon">💰</span>
+              </div>
+              <h4>Funding Relevance</h4>
+              <p>Measures alignment with active government (ANRF, BIRAC, MeitY) and international grant schemes.</p>
+              <div className="factor-contribution">Weight Contribution: 15 pts</div>
+            </div>
+          </div>
+
+          {/* "Why This Score?" Explainability Inspector Preview */}
+          <div className="why-score-inspector-card">
+            <div className="inspector-top">
+              <span className="inspector-badge">Why This Score? &bull; Explainability Breakdown</span>
+              <span className="demo-disclaimer-pill">Example Multi-Factor Analysis</span>
+            </div>
+            <div className="inspector-factors-table">
+              <div className="factor-row">
+                <div className="row-title">
+                  <strong>Research Novelty (30%)</strong>
+                  <small>Strong growth in recent preprints and high citation acceleration</small>
+                </div>
+                <div className="row-bar-track">
+                  <div className="row-bar-fill teal" style={{ width: '85%' }} />
+                </div>
+                <span className="row-eval">High Evidence</span>
+              </div>
+
+              <div className="factor-row">
+                <div className="row-title">
+                  <strong>Patent Strength (20%)</strong>
+                  <small>Active patent clusters with distinct potential differentiation areas</small>
+                </div>
+                <div className="row-bar-track">
+                  <div className="row-bar-fill blue" style={{ width: '72%' }} />
+                </div>
+                <span className="row-eval">Moderate Density</span>
+              </div>
+
+              <div className="factor-row">
+                <div className="row-title">
+                  <strong>Technology Maturity (15%)</strong>
+                  <small>Classified as Developing stage with accelerating adoption momentum</small>
+                </div>
+                <div className="row-bar-track">
+                  <div className="row-bar-fill emerald" style={{ width: '68%' }} />
+                </div>
+                <span className="row-eval">Developing Stage</span>
+              </div>
+
+              <div className="factor-row">
+                <div className="row-title">
+                  <strong>Market Potential (20%)</strong>
+                  <small>Multiple industry verticals actively participating in deployment</small>
+                </div>
+                <div className="row-bar-track">
+                  <div className="row-bar-fill amber" style={{ width: '78%' }} />
+                </div>
+                <span className="row-eval">Expanding Signals</span>
+              </div>
+
+              <div className="factor-row">
+                <div className="row-title">
+                  <strong>Funding Relevance (15%)</strong>
+                  <small>Strong alignment with active translational grant schemes</small>
+                </div>
+                <div className="row-bar-track">
+                  <div className="row-bar-fill purple" style={{ width: '80%' }} />
+                </div>
+                <span className="row-eval">High Alignment</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 9B. "Have an Idea?" + Patent Differentiation + Tech Comparison Grid */}
+        <div className="innovation-advanced-grid">
+          {/* Have an Idea? Workflow Card */}
+          <div className="idea-innovation-card">
+            <div className="card-top-head">
+              <div className="title-grp">
+                <span className="badge-patent-tech">Concept to Intelligence</span>
+                <h4>Have an Idea?</h4>
+              </div>
+              <Link to="/innovation" className="btn-open-workspace">
+                Open Idea Workspace →
+              </Link>
+            </div>
+            <p className="card-subnote">
+              Turn a research or startup idea into an evidence-based innovation profile. Connect your concept directly to research, patents, maturity, and funding.
+            </p>
+
+            <div className="idea-workflow-steps-vertical">
+              <div className="v-step">
+                <span className="v-num">1</span>
+                <div>
+                  <strong>Your Concept</strong>
+                  <small>Enter your research hypothesis, algorithm, or startup idea</small>
+                </div>
+              </div>
+              <div className="v-step">
+                <span className="v-num">2</span>
+                <div>
+                  <strong>Research &amp; Patent Similarity</strong>
+                  <small>Map potential similarity and potential overlap against prior art</small>
+                </div>
+              </div>
+              <div className="v-step">
+                <span className="v-num">3</span>
+                <div>
+                  <strong>Technology Maturity Alignment</strong>
+                  <small>Correlate with underlying technology evolution vectors</small>
+                </div>
+              </div>
+              <div className="v-step">
+                <span className="v-num">4</span>
+                <div>
+                  <strong>Funding Relevance &amp; Grant Matching</strong>
+                  <small>Discover applicable government and international grant calls</small>
+                </div>
+              </div>
+              <div className="v-step active-v-step">
+                <span className="v-num">5</span>
+                <div>
+                  <strong>Innovation Evidence Profile</strong>
+                  <small>Explainable score, potential differentiation areas, and AI brief</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="idea-cta-action-box">
+              <Link to="/innovation" className="primary-btn btn-analyze-my-idea">
+                <span>Analyze My Idea in Workspace</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </Link>
+              <small className="disclaimer-mini-text">
+                * Evaluates potential similarity, overlap, and differentiation areas. Intelligence assistance, not legal advice.
+              </small>
+            </div>
+          </div>
+
+          {/* Technology Comparison & AI Innovation Analyst Card */}
+          <div className="comparison-analyst-card">
+            {/* Compare Technologies Showcase */}
+            <div className="compare-tech-subcard">
+              <div className="card-top-head">
+                <div className="title-grp">
+                  <span className="badge-patent-tech">Transparent Benchmarking</span>
+                  <h4>Compare Technologies with Evidence</h4>
+                </div>
+                <Link to="/innovation" className="btn-open-compare">
+                  Compare Technologies →
+                </Link>
+              </div>
+              <p className="card-subnote">
+                Compare technologies across 6 objective dimensions without declaring arbitrary winners. Transparent evidence-based comparison.
+              </p>
+
+              <div className="compare-demo-table">
+                <div className="table-header-row">
+                  <span className="dim-head">Evaluation Dimension</span>
+                  <span className="tech-head">Quantum Computing</span>
+                  <span className="tech-head">Generative AI</span>
+                </div>
+                <div className="table-data-row">
+                  <span className="dim-cell">Research Novelty</span>
+                  <span className="val-cell high">High (Foundational)</span>
+                  <span className="val-cell high">High (Applied Velocity)</span>
+                </div>
+                <div className="table-data-row">
+                  <span className="dim-cell">Patent Strength</span>
+                  <span className="val-cell mod">Moderate (Emerging)</span>
+                  <span className="val-cell high">High (Accelerating)</span>
+                </div>
+                <div className="table-data-row">
+                  <span className="dim-cell">Technology Maturity</span>
+                  <span className="val-cell tag-emerging">● Emerging</span>
+                  <span className="val-cell tag-developing">● Developing</span>
+                </div>
+                <div className="table-data-row">
+                  <span className="dim-cell">Market Potential</span>
+                  <span className="val-cell mod">Long-Term Deep Tech</span>
+                  <span className="val-cell high">Immediate Enterprise</span>
+                </div>
+                <div className="table-data-row">
+                  <span className="dim-cell">Funding Relevance</span>
+                  <span className="val-cell high">National Quantum Missions</span>
+                  <span className="val-cell high">Cross-Sector Innovation</span>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Innovation Analyst Feature */}
+            <div className="ai-analyst-subcard">
+              <div className="analyst-header">
+                <span className="analyst-icon">🤖</span>
+                <div>
+                  <h5>AI Innovation Analyst</h5>
+                  <small>Ask questions and explore evidence through AI-assisted analysis</small>
+                </div>
+              </div>
+              <p className="analyst-desc">
+                AI assists with explanation, summarization, and insight generation while platform evidence remains the foundation of scoring.
+              </p>
+
+              <div className="sample-analyst-questions">
+                <div className="question-chip" onClick={() => navigate('/innovation')}>
+                  "Why is this technology considered emerging?"
+                </div>
+                <div className="question-chip" onClick={() => navigate('/innovation')}>
+                  "What are the strongest innovation signals?"
+                </div>
+                <div className="question-chip" onClick={() => navigate('/innovation')}>
+                  "What research gaps and patent overlaps are visible?"
+                </div>
+                <div className="question-chip" onClick={() => navigate('/innovation')}>
+                  "Which funding opportunities are relevant?"
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 9C. "AI That Works With Evidence" & "See Intelligence in Action" Row */}
+        <div className="evidence-ai-action-row">
+          {/* Evidence-First AI Differentiator */}
+          <div className="evidence-first-card">
+            <div className="diff-badge">PLATFORM DIFFERENTIATOR</div>
+            <h4>AI That Works With Evidence</h4>
+            <p>
+              AI assists with research understanding, semantic matching, clustering, explanations, and recommendations while measurable platform evidence remains the foundation of scoring.
+            </p>
+            <div className="evidence-first-chain">
+              <div className="chain-link">
+                <strong>Real Data</strong>
+                <small>EPO, ArXiv, ICMR</small>
+              </div>
+              <span className="chain-arrow">→</span>
+              <div className="chain-link">
+                <strong>Evidence</strong>
+                <small>Vectors &amp; Signals</small>
+              </div>
+              <span className="chain-arrow">→</span>
+              <div className="chain-link">
+                <strong>Analysis</strong>
+                <small>Deterministic Engine</small>
+              </div>
+              <span className="chain-arrow">→</span>
+              <div className="chain-link active-link">
+                <strong>AI Explanation</strong>
+                <small>Grounded Synthesis</small>
+              </div>
+            </div>
+          </div>
+
+          {/* See Intelligence in Action Preview */}
+          <div className="live-preview-box">
+            <div className="live-preview-top">
+              <span className="preview-indicator">● Interactive Preview</span>
+              <span className="tech-name-tag">Quantum Computing</span>
+            </div>
+            <div className="live-metrics-preview-grid">
+              <div className="preview-stat">
+                <span className="stat-lbl">Research Activity</span>
+                <strong className="stat-val high">↑ High Growth</strong>
+              </div>
+              <div className="preview-stat">
+                <span className="stat-lbl">Patent Filings</span>
+                <strong className="stat-val high">↑ Accelerating</strong>
+              </div>
+              <div className="preview-stat">
+                <span className="stat-lbl">Organizations</span>
+                <strong className="stat-val high">↑ Global Labs</strong>
+              </div>
+              <div className="preview-stat">
+                <span className="stat-lbl">Maturity Status</span>
+                <strong className="stat-val stage-dev">Developing</strong>
+              </div>
+            </div>
+            <div className="live-preview-footer">
+              <Link to="/technologies" className="btn-explore-live-action">
+                Explore Technology Evidence →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
           8. TECHNOLOGY & INNOVATION MAPPING ECOSYSTEM
           ========================================================= */}
       <section className="landing-section innovation-mapping-section reveal-on-scroll" id="innovation-mapping">
@@ -1687,17 +2618,24 @@ export default function Landing() {
             </button>
             <button
               type="button"
+              className={`hub-nav-btn ${activeExploreTab === 'technology' ? 'active' : ''}`}
+              onClick={() => setActiveExploreTab('technology')}
+            >
+              <span>⚡</span> Technology Intelligence
+            </button>
+            <button
+              type="button"
+              className={`hub-nav-btn ${activeExploreTab === 'innovation' ? 'active' : ''}`}
+              onClick={() => setActiveExploreTab('innovation')}
+            >
+              <span>💡</span> Innovation Intelligence
+            </button>
+            <button
+              type="button"
               className={`hub-nav-btn ${activeExploreTab === 'profile' ? 'active' : ''}`}
               onClick={() => setActiveExploreTab('profile')}
             >
               <span>👤</span> Researcher Profile
-            </button>
-            <button
-              type="button"
-              className={`hub-nav-btn ${activeExploreTab === 'insights' ? 'active' : ''}`}
-              onClick={() => setActiveExploreTab('insights')}
-            >
-              <span>📊</span> Strategic Insights
             </button>
           </div>
 
@@ -1842,7 +2780,7 @@ export default function Landing() {
               <span className="brand-title">Research Intelligence</span>
             </Link>
             <p className="footer-tagline">
-              AI-Powered Research, Funding &amp; Patent Landscape Intelligence Platform.
+              AI-Powered Research, Funding, Patent &amp; Technology Innovation Intelligence Platform.
             </p>
           </div>
 
@@ -1852,16 +2790,19 @@ export default function Landing() {
               <button type="button" onClick={() => scrollToSection('how-it-works')} className="footer-link">How It Works</button>
               <button type="button" onClick={() => scrollToSection('research')} className="footer-link">Research Discovery</button>
               <button type="button" onClick={() => scrollToSection('funding')} className="footer-link">Funding Intelligence</button>
-              <button type="button" onClick={() => scrollToSection('idea-funding')} className="footer-link">Idea Analyzer</button>
               <button type="button" onClick={() => scrollToSection('patents')} className="footer-link">Patent Landscape</button>
+              <button type="button" onClick={() => scrollToSection('technology-intelligence')} className="footer-link">Technology Intelligence</button>
+              <button type="button" onClick={() => scrollToSection('innovation-intelligence')} className="footer-link">Innovation Intelligence</button>
             </div>
 
             <div className="footer-col">
               <h4>Capabilities</h4>
-              <Link to="/profile" className="footer-link">Researcher Profile</Link>
-              <Link to="/research-papers" className="footer-link">Literature Discovery</Link>
-              <Link to="/funding" className="footer-link">Grant Matching</Link>
-              <Link to="/patents" className="footer-link">Patent Landscape (3D/2D)</Link>
+              <Link to="/technologies" className="footer-link">Technology Intelligence</Link>
+              <Link to="/technologies/maturity" className="footer-link">Maturity Analysis (6 Weights)</Link>
+              <Link to="/innovation" className="footer-link">Innovation Scoring (5 Factors)</Link>
+              <Link to="/innovation" className="footer-link">Analyze My Idea</Link>
+              <Link to="/patents" className="footer-link">3D Patent Landscape</Link>
+              <Link to="/funding" className="footer-link">Funding Intelligence</Link>
             </div>
 
             <div className="footer-col">

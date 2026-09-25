@@ -159,26 +159,45 @@ export default function TechnologyMaturity({ customAnalysis, onClearCustom }) {
           {/* 3. Six Indicators Grid */}
           <h3 className="section-title">Core Indicator Breakdown (100% Weight Matrix)</h3>
           <div className="indicator-cards-grid">
-            {indicatorsList.map((ind) => (
-              <div key={ind.key} className="ind-metric-card">
-                <div className="ind-card-head">
-                  <span className="ind-weight-badge">Weight: {ind.weight_percentage}</span>
-                  <span className={`ind-trend-pill trend-${(ind.trend_direction || 'stable').toLowerCase()}`}>
-                    {ind.trend_direction}
-                  </span>
+            {indicatorsList.map((ind) => {
+              const isNA = ind.normalized_score === null || ind.normalized_score === undefined
+              const isZero = ind.normalized_score === 0.0
+              return (
+                <div key={ind.key} className="ind-metric-card">
+                  <div className="ind-card-head">
+                    <span className="ind-weight-badge">Weight: {ind.weight_percentage}</span>
+                    <span className={`ind-trend-pill trend-${(ind.trend_direction || 'stable').toLowerCase().replace(/\s+/g, '-')}`}>
+                      {ind.trend_direction || 'Stable'}
+                    </span>
+                  </div>
+                  <h4 className="ind-title">{ind.name}</h4>
+                  <div className="ind-score-line">
+                    {isNA ? (
+                      <>
+                        <span className="ind-norm-num" style={{ color: '#94a3b8' }}>N/A</span>
+                        <span className="ind-pts-tag" style={{ background: '#f1f5f9', color: '#64748b' }}>Insufficient History</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="ind-norm-num">{ind.normalized_score}</span>
+                        <span className="ind-norm-max">/ 100</span>
+                        <span className="ind-pts-tag">+{ind.weighted_score} pts</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="ind-progress-track">
+                    <div
+                      className="ind-progress-fill"
+                      style={{
+                        width: isNA ? '0%' : `${ind.normalized_score}%`,
+                        background: isZero ? '#94a3b8' : undefined
+                      }}
+                    ></div>
+                  </div>
+                  <p className="ind-desc">{ind.interpretation}</p>
                 </div>
-                <h4 className="ind-title">{ind.name}</h4>
-                <div className="ind-score-line">
-                  <span className="ind-norm-num">{ind.normalized_score}</span>
-                  <span className="ind-norm-max">/ 100</span>
-                  <span className="ind-pts-tag">+{ind.weighted_score} pts</span>
-                </div>
-                <div className="ind-progress-track">
-                  <div className="ind-progress-fill" style={{ width: `${ind.normalized_score}%` }}></div>
-                </div>
-                <p className="ind-desc">{ind.interpretation}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       ) : (

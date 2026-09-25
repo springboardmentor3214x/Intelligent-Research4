@@ -95,6 +95,8 @@ class PatentsViewAdapter(BaseSourceAdapter):
 
             cache_manager.set(self.source_name, query, records)
         except Exception as e:
-            logger.warning(f"PatentsView fetch failed gracefully: {e}")
+            # Cache empty records for this query so subsequent calls and related concepts don't retry and stall
+            cache_manager.set(self.source_name, query, [])
+            logger.debug(f"PatentsView endpoint unreachable ({e}). Relying on IP India, EPO, and local databases.")
 
         return records

@@ -267,8 +267,8 @@ export default function TechnologyIntelligence() {
           <div className="platform-tag">DATA-DRIVEN &amp; EXPLAINABLE INTELLIGENCE</div>
           <h1 className="page-title">Technology Intelligence &amp; Evolution Workspace</h1>
           <p className="page-subtitle">
-            Synthesizing multi-year evidence from Research Publications (Module 3), Patent &amp; IP Filings (Module 5),
-            and Public Grants (Module 4) with 6 core weighted maturity indicators and independent market adoption.
+            Synthesizing multi-year evidence from Research Publications (Research Intelligence), Patent &amp; IP Filings (Patent Intelligence),
+            and Public Grants (Funding Intelligence) with 6 core weighted maturity indicators and independent market adoption.
           </p>
         </div>
         <div className="sync-actions-box">
@@ -502,8 +502,8 @@ export default function TechnologyIntelligence() {
                       </div>
                       <div className="source-chip">
                         <span className="chip-status available">✓</span>
-                        <span className="chip-name">Module 3 DB</span>
-                        <span className="chip-count">{analysisData.coverage?.source_coverage?.['Module 3 Research DB'] || 0}</span>
+                        <span className="chip-name">Research Database</span>
+                        <span className="chip-count">{analysisData.coverage?.source_coverage?.['Module 3 Research DB'] || analysisData.coverage?.source_coverage?.['Research DB'] || 0}</span>
                       </div>
                     </div>
                   </div>
@@ -533,8 +533,8 @@ export default function TechnologyIntelligence() {
                       </div>
                       <div className="source-chip">
                         <span className="chip-status available">✓</span>
-                        <span className="chip-name">Module 5 DB</span>
-                        <span className="chip-count">{analysisData.coverage?.source_coverage?.['Module 5 Patent DB'] || 0}</span>
+                        <span className="chip-name">Patent Database</span>
+                        <span className="chip-count">{analysisData.coverage?.source_coverage?.['Module 5 Patent DB'] || analysisData.coverage?.source_coverage?.['Patent DB'] || 0}</span>
                       </div>
                     </div>
                   </div>
@@ -555,8 +555,8 @@ export default function TechnologyIntelligence() {
                       </div>
                       <div className="source-chip">
                         <span className="chip-status available">✓</span>
-                        <span className="chip-name">Module 4 DB (Indian)</span>
-                        <span className="chip-count">{analysisData.coverage?.source_coverage?.['Module 4 Funding DB'] || 0}</span>
+                        <span className="chip-name">Funding Database (Indian)</span>
+                        <span className="chip-count">{analysisData.coverage?.source_coverage?.['Module 4 Funding DB'] || analysisData.coverage?.source_coverage?.['Funding DB'] || 0}</span>
                       </div>
                     </div>
                   </div>
@@ -627,15 +627,24 @@ export default function TechnologyIntelligence() {
                 <div className="indicator-card">
                   <div className="indicator-card-top">
                     <span className="indicator-weight-tag">Weight: 25%</span>
-                    <span className={`indicator-trend-pill trend-${(analysisData.indicators?.research_growth?.trend_direction || 'stable').toLowerCase()}`}>
-                      {analysisData.indicators?.research_growth?.trend_direction === 'Increasing' ? '↑↑ Increasing' : analysisData.indicators?.research_growth?.trend_direction === 'Declining' ? '↓↓ Declining' : '→ Stable'}
+                    <span className={`indicator-trend-pill trend-${(analysisData.indicators?.research_growth?.trend_direction || 'stable').toLowerCase().replace(/\s+/g, '-')}`}>
+                      {analysisData.indicators?.research_growth?.trend_direction === 'Increasing' ? '↑↑ Increasing' : analysisData.indicators?.research_growth?.trend_direction === 'Declining' ? '↓↓ Declining' : analysisData.indicators?.research_growth?.normalized_score === null ? 'N/A' : '→ Stable'}
                     </span>
                   </div>
                   <h4 className="indicator-name">Research Growth</h4>
                   <div className="indicator-score-row">
-                    <span className="indicator-score-num">{analysisData.indicators?.research_growth?.normalized_score || 0}</span>
-                    <span className="indicator-score-denom">/ 100</span>
-                    <span className="indicator-pts-badge">+{analysisData.indicators?.research_growth?.weighted_score || 0} pts</span>
+                    {analysisData.indicators?.research_growth?.normalized_score === null ? (
+                      <>
+                        <span className="indicator-score-num" style={{ color: '#94a3b8' }}>N/A</span>
+                        <span className="indicator-pts-badge" style={{ background: '#f1f5f9', color: '#64748b' }}>Insufficient Baseline</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="indicator-score-num">{analysisData.indicators?.research_growth?.normalized_score}</span>
+                        <span className="indicator-score-denom">/ 100</span>
+                        <span className="indicator-pts-badge">+{analysisData.indicators?.research_growth?.weighted_score || 0} pts</span>
+                      </>
+                    )}
                   </div>
                   <div className="indicator-bar-track">
                     <div
@@ -652,15 +661,24 @@ export default function TechnologyIntelligence() {
                 <div className="indicator-card">
                   <div className="indicator-card-top">
                     <span className="indicator-weight-tag">Weight: 25%</span>
-                    <span className={`indicator-trend-pill trend-${(analysisData.indicators?.patent_growth?.trend_direction || 'stable').toLowerCase()}`}>
-                      {analysisData.indicators?.patent_growth?.trend_direction === 'Increasing' ? '↑↑ Increasing' : analysisData.indicators?.patent_growth?.trend_direction === 'Declining' ? '↓↓ Declining' : '→ Stable'}
+                    <span className={`indicator-trend-pill trend-${(analysisData.indicators?.patent_growth?.trend_direction || 'stable').toLowerCase().replace(/\s+/g, '-')}`}>
+                      {analysisData.indicators?.patent_growth?.trend_direction === 'Increasing' ? '↑↑ Increasing' : analysisData.indicators?.patent_growth?.trend_direction === 'Declining' ? '↓↓ Declining' : analysisData.indicators?.patent_growth?.normalized_score === null ? 'N/A' : '→ Stable'}
                     </span>
                   </div>
                   <h4 className="indicator-name">Patent Growth</h4>
                   <div className="indicator-score-row">
-                    <span className="indicator-score-num">{analysisData.indicators?.patent_growth?.normalized_score || 0}</span>
-                    <span className="indicator-score-denom">/ 100</span>
-                    <span className="indicator-pts-badge">+{analysisData.indicators?.patent_growth?.weighted_score || 0} pts</span>
+                    {analysisData.indicators?.patent_growth?.normalized_score === null ? (
+                      <>
+                        <span className="indicator-score-num" style={{ color: '#94a3b8' }}>N/A</span>
+                        <span className="indicator-pts-badge" style={{ background: '#f1f5f9', color: '#64748b' }}>Insufficient Baseline</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="indicator-score-num">{analysisData.indicators?.patent_growth?.normalized_score}</span>
+                        <span className="indicator-score-denom">/ 100</span>
+                        <span className="indicator-pts-badge">+{analysisData.indicators?.patent_growth?.weighted_score || 0} pts</span>
+                      </>
+                    )}
                   </div>
                   <div className="indicator-bar-track">
                     <div
@@ -683,9 +701,9 @@ export default function TechnologyIntelligence() {
                   </div>
                   <h4 className="indicator-name">Research Activity</h4>
                   <div className="indicator-score-row">
-                    <span className="indicator-score-num">{analysisData.indicators?.research_activity?.normalized_score || 0}</span>
+                    <span className="indicator-score-num">{analysisData.indicators?.research_activity?.normalized_score ?? 0}</span>
                     <span className="indicator-score-denom">/ 100</span>
-                    <span className="indicator-pts-badge">+{analysisData.indicators?.research_activity?.weighted_score || 0} pts</span>
+                    <span className="indicator-pts-badge">+{analysisData.indicators?.research_activity?.weighted_score ?? 0} pts</span>
                   </div>
                   <div className="indicator-bar-track">
                     <div
@@ -708,9 +726,9 @@ export default function TechnologyIntelligence() {
                   </div>
                   <h4 className="indicator-name">Patent Activity</h4>
                   <div className="indicator-score-row">
-                    <span className="indicator-score-num">{analysisData.indicators?.patent_activity?.normalized_score || 0}</span>
+                    <span className="indicator-score-num">{analysisData.indicators?.patent_activity?.normalized_score ?? 0}</span>
                     <span className="indicator-score-denom">/ 100</span>
-                    <span className="indicator-pts-badge">+{analysisData.indicators?.patent_activity?.weighted_score || 0} pts</span>
+                    <span className="indicator-pts-badge">+{analysisData.indicators?.patent_activity?.weighted_score ?? 0} pts</span>
                   </div>
                   <div className="indicator-bar-track">
                     <div
@@ -733,9 +751,9 @@ export default function TechnologyIntelligence() {
                   </div>
                   <h4 className="indicator-name">Organization Participation</h4>
                   <div className="indicator-score-row">
-                    <span className="indicator-score-num">{analysisData.indicators?.organization_participation?.normalized_score || 0}</span>
+                    <span className="indicator-score-num">{analysisData.indicators?.organization_participation?.normalized_score ?? 0}</span>
                     <span className="indicator-score-denom">/ 100</span>
-                    <span className="indicator-pts-badge">+{analysisData.indicators?.organization_participation?.weighted_score || 0} pts</span>
+                    <span className="indicator-pts-badge">+{analysisData.indicators?.organization_participation?.weighted_score ?? 0} pts</span>
                   </div>
                   <div className="indicator-bar-track">
                     <div
@@ -758,9 +776,9 @@ export default function TechnologyIntelligence() {
                   </div>
                   <h4 className="indicator-name">Technology / App Diversity</h4>
                   <div className="indicator-score-row">
-                    <span className="indicator-score-num">{analysisData.indicators?.application_diversity?.normalized_score || 0}</span>
+                    <span className="indicator-score-num">{analysisData.indicators?.application_diversity?.normalized_score ?? 0}</span>
                     <span className="indicator-score-denom">/ 100</span>
-                    <span className="indicator-pts-badge">+{analysisData.indicators?.application_diversity?.weighted_score || 0} pts</span>
+                    <span className="indicator-pts-badge">+{analysisData.indicators?.application_diversity?.weighted_score ?? 0} pts</span>
                   </div>
                   <div className="indicator-bar-track">
                     <div

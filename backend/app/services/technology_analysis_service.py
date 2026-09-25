@@ -165,7 +165,7 @@ CONCEPT_EXPANSIONS: Dict[str, List[str]] = {
 
 
 # ---------------------------------------------------------------------------
-# Concept Normalization and Matching
+# Concept Normalization and Dynamic Expansion
 # ---------------------------------------------------------------------------
 
 def normalize_text(text: Optional[str]) -> str:
@@ -176,19 +176,80 @@ def normalize_text(text: Optional[str]) -> str:
     return " ".join(text.split())
 
 
+def _generate_dynamic_variations(norm_query: str) -> List[str]:
+    """
+    Generates algorithmic morphological, acronym, compound, and n-gram variations
+    for arbitrary unseen technologies (e.g. 'Autonomous Agricultural Drones').
+    """
+    variations: Set[str] = set()
+    tokens = [tok for tok in norm_query.split() if tok not in STOP_WORDS and len(tok) >= 2]
+    
+    if not tokens:
+        return []
+
+    # 1. Singular/Plural stemming heuristics
+    for tok in tokens:
+        if tok.endswith("ies") and len(tok) > 4:
+            variations.add(tok[:-3] + "y")
+        elif tok.endswith("es") and len(tok) > 3:
+            variations.add(tok[:-2])
+        elif tok.endswith("s") and not tok.endswith("ss") and len(tok) > 3:
+            variations.add(tok[:-1])
+        else:
+            variations.add(tok + "s")
+            variations.add(tok)
+
+    # 2. Acronym generation if multiple words (e.g. "Brain Computer Interface" -> "BCI")
+    if len(tokens) >= 2:
+        acronym = "".join(tok[0] for tok in tokens)
+        if len(acronym) >= 2:
+            variations.add(acronym)
+            variations.add(f"{acronym} technology")
+
+    # 3. Sub-phrase bi-grams and tri-grams
+    for i in range(len(tokens)):
+        for j in range(i + 1, min(i + 4, len(tokens) + 1)):
+            sub = " ".join(tokens[i:j])
+            if sub != norm_query:
+                variations.add(sub)
+
+    # 4. Common technical suffix/prefix interchange
+    # tech / technology, bio / biological, neuro / neural, system / systems
+    replacements = [
+        ("tech", "technology"), ("technology", "tech"),
+        ("ai", "artificial intelligence"), ("artificial intelligence", "ai"),
+        ("ml", "machine learning"), ("machine learning", "ml"),
+        ("bio", "biological"), ("neural", "neuro"),
+        ("smart", "intelligent"), ("adaptive", "responsive"),
+        ("robotic", "robotics"), ("autonomous", "self-driving"),
+    ]
+    for r_from, r_to in replacements:
+        if r_from in norm_query:
+            variations.add(norm_query.replace(r_from, r_to))
+
+    return list(variations)
+
+
 def get_query_concept_terms(query: str) -> List[str]:
     norm_query = normalize_text(query)
     if not norm_query:
         return []
 
-    # Check direct ontology match or partial match
+    # Start with normalized query
     expanded_terms: List[str] = [norm_query]
 
+    # Check curated concept dictionary
     for concept, terms in CONCEPT_EXPANSIONS.items():
         if concept in norm_query or norm_query in concept:
             for t in terms:
                 if t not in expanded_terms:
                     expanded_terms.append(t)
+
+    # Add dynamic morphological variations for arbitrary new technologies
+    dynamic_terms = _generate_dynamic_variations(norm_query)
+    for dt in dynamic_terms:
+        if dt not in expanded_terms and len(dt) >= 3:
+            expanded_terms.append(dt)
 
     # Filter stop words from individual query tokens
     tokens = [tok for tok in norm_query.split() if tok not in STOP_WORDS and len(tok) >= 2]
@@ -463,24 +524,39 @@ def analyze_technology_intelligence(
     total_orgs_count = len(all_distinct_orgs)
     total_apps_count = len(all_distinct_applications)
 
-    # Check for insufficient evidence early
-    is_insufficient_evidence = (total_papers_count + total_patents_count) < 2 or num_years < 2
+    # Check for insufficient evidence early: if total records across papers & patents is 0 or no active years
+    is_insufficient_evidence = (total_papers_count + total_patents_count) == 0 or num_years == 0
 
-    # Research Growth Indicator (Weight = 25%)
-    rg_series = [(y, len(yearly_dict[y]["papers"])) for y in active_years]
-    rg_slope = calculate_linear_slope(rg_series) if num_years >= 2 else 0.0
-    mean_papers = (total_papers_count / num_years) if num_years > 0 else 0.0
-    norm_rg_slope = rg_slope / (mean_papers + 1e-4) if mean_papers > 0 else 0.0
+    # -----------------------------------------------------------------------
+    # A. Research Growth Indicator (Weight = 25%)
+    # -----------------------------------------------------------------------
+    rg_series = [(y, len(yearly_dict[y]["papers"])) for y in active_years if len(yearly_dict[y]["papers"]) > 0]
+    has_research_history = len(rg_series) >= 2
 
-    recent_rg_yoys = [item.yoy_research_growth for item in yearly_evidence if item.yoy_research_growth is not None]
-    avg_recent_rg = (sum(recent_rg_yoys) / len(recent_rg_yoys)) if recent_rg_yoys else 0.0
-
-    if num_years < 2 or total_papers_count == 0:
-        rg_score = 0.0
-        rg_level = "Insufficient Data"
+    if total_papers_count == 0:
+        rg_status = "true_zero"
+        rg_score: Optional[float] = None
+        rg_slope = 0.0
+        rg_level = "No Evidence"
+        rg_trend = "No Evidence"
+        rg_interp = "No empirical research papers recorded across connected sources for this query."
+    elif not has_research_history:
+        rg_status = "insufficient_evidence"
+        rg_score = None
+        rg_slope = 0.0
+        rg_level = "N/A"
         rg_trend = "Insufficient Data"
-        rg_interp = "Insufficient historical research records across connected sources to compute multi-year growth trend."
+        rg_interp = f"Observed in only {len(rg_series)} active publication year ({active_years[-1] if active_years else 'N/A'}); multi-year research growth requires at least 2 observation years."
     else:
+        rg_status = "available"
+        full_rg_series = [(y, len(yearly_dict[y]["papers"])) for y in active_years]
+        rg_slope = calculate_linear_slope(full_rg_series)
+        mean_papers = (total_papers_count / num_years) if num_years > 0 else 0.0
+        norm_rg_slope = rg_slope / (mean_papers + 1e-4) if mean_papers > 0 else 0.0
+
+        recent_rg_yoys = [item.yoy_research_growth for item in yearly_evidence if item.yoy_research_growth is not None]
+        avg_recent_rg = (sum(recent_rg_yoys) / len(recent_rg_yoys)) if recent_rg_yoys else 0.0
+
         base_rg = 50.0 + (norm_rg_slope * 35.0) + (min(max(avg_recent_rg, -50.0), 100.0) * 0.25)
         rg_score = round(min(100.0, max(0.0, base_rg)), 1)
         if norm_rg_slope > 0.10 or avg_recent_rg > 15.0:
@@ -496,21 +572,36 @@ def analyze_technology_intelligence(
             rg_trend = "Stable"
             rg_interp = f"Research publication activity has maintained steady volume across active years."
 
-    # Patent Growth Indicator (Weight = 25%)
-    pg_series = [(y, len(yearly_dict[y]["patents"])) for y in active_years]
-    pg_slope = calculate_linear_slope(pg_series) if num_years >= 2 else 0.0
-    mean_patents = (total_patents_count / num_years) if num_years > 0 else 0.0
-    norm_pg_slope = pg_slope / (mean_patents + 1e-4) if mean_patents > 0 else 0.0
+    # -----------------------------------------------------------------------
+    # B. Patent Growth Indicator (Weight = 25%)
+    # -----------------------------------------------------------------------
+    pg_series = [(y, len(yearly_dict[y]["patents"])) for y in active_years if len(yearly_dict[y]["patents"]) > 0]
+    has_patent_history = len(pg_series) >= 2
 
-    recent_pg_yoys = [item.yoy_patent_growth for item in yearly_evidence if item.yoy_patent_growth is not None]
-    avg_recent_pg = (sum(recent_pg_yoys) / len(recent_pg_yoys)) if recent_pg_yoys else 0.0
-
-    if num_years < 2 or total_patents_count == 0:
-        pg_score = 0.0
-        pg_level = "Insufficient Data"
+    if total_patents_count == 0:
+        pg_status = "true_zero"
+        pg_score = None
+        pg_slope = 0.0
+        pg_level = "No Evidence"
+        pg_trend = "No Evidence"
+        pg_interp = "No empirical patent filings recorded across connected patent sources."
+    elif not has_patent_history:
+        pg_status = "insufficient_evidence"
+        pg_score = None
+        pg_slope = 0.0
+        pg_level = "N/A"
         pg_trend = "Insufficient Data"
-        pg_interp = "Insufficient historical patent filings across connected patent sources to establish multi-year patent momentum."
+        pg_interp = f"Observed in only {len(pg_series)} active patent filing year; multi-year patent momentum requires at least 2 observation years."
     else:
+        pg_status = "available"
+        full_pg_series = [(y, len(yearly_dict[y]["patents"])) for y in active_years]
+        pg_slope = calculate_linear_slope(full_pg_series)
+        mean_patents = (total_patents_count / num_years) if num_years > 0 else 0.0
+        norm_pg_slope = pg_slope / (mean_patents + 1e-4) if mean_patents > 0 else 0.0
+
+        recent_pg_yoys = [item.yoy_patent_growth for item in yearly_evidence if item.yoy_patent_growth is not None]
+        avg_recent_pg = (sum(recent_pg_yoys) / len(recent_pg_yoys)) if recent_pg_yoys else 0.0
+
         base_pg = 50.0 + (norm_pg_slope * 35.0) + (min(max(avg_recent_pg, -50.0), 100.0) * 0.25)
         pg_score = round(min(100.0, max(0.0, base_pg)), 1)
         if norm_pg_slope > 0.10 or avg_recent_pg > 15.0:
@@ -526,44 +617,56 @@ def analyze_technology_intelligence(
             pg_trend = "Stable"
             pg_interp = f"Patent filing activity shows stable continuation across the observed timeline."
 
-    # Research Activity Indicator (Weight = 15%)
+    # -----------------------------------------------------------------------
+    # C. Research Activity Indicator (Weight = 15%)
+    # -----------------------------------------------------------------------
     if total_papers_count == 0:
+        ra_status = "true_zero"
         ra_score = 0.0
         ra_level = "Low"
-        ra_trend = "Insufficient Data"
-        ra_interp = "No empirical research papers recorded across connected sources for this query."
+        ra_trend = "No Evidence"
+        ra_interp = "0 verified research papers found across connected databases."
     else:
+        ra_status = "available"
         volume_factor = math.log(1.0 + total_papers_count) / math.log(1.0 + max(corpus_stats["max_papers"], 50.0))
         persistence_factor = min(1.0, num_years / 5.0)
         ra_score = round(min(100.0, (volume_factor * 75.0) + (persistence_factor * 25.0)), 1)
         ra_level = "High" if ra_score >= 65.0 else ("Medium" if ra_score >= 35.0 else "Low")
-        ra_trend = rg_trend if rg_trend != "Insufficient Data" else "Stable"
+        ra_trend = rg_trend if rg_trend not in ["Insufficient Data", "No Evidence"] else "Stable"
         ra_interp = f"Empirical research volume includes {total_papers_count} unique verified papers spanning {num_years} active years."
 
-    # Patent Activity Indicator (Weight = 15%)
+    # -----------------------------------------------------------------------
+    # D. Patent Activity Indicator (Weight = 15%)
+    # -----------------------------------------------------------------------
     if total_patents_count == 0:
+        pa_status = "true_zero"
         pa_score = 0.0
         pa_level = "Low"
-        pa_trend = "Insufficient Data"
-        pa_interp = "No empirical patent filings recorded across connected patent sources."
+        pa_trend = "No Evidence"
+        pa_interp = "0 verified patent filings found across connected patent databases."
     else:
+        pa_status = "available"
         volume_factor = math.log(1.0 + total_patents_count) / math.log(1.0 + max(corpus_stats["max_patents"], 40.0))
         persistence_factor = min(1.0, num_years / 5.0)
         pa_score = round(min(100.0, (volume_factor * 75.0) + (persistence_factor * 25.0)), 1)
         pa_level = "High" if pa_score >= 65.0 else ("Medium" if pa_score >= 35.0 else "Low")
-        pa_trend = pg_trend if pg_trend != "Insufficient Data" else "Stable"
+        pa_trend = pg_trend if pg_trend not in ["Insufficient Data", "No Evidence"] else "Stable"
         pa_interp = f"Verified intellectual property volume includes {total_patents_count} unique patent records."
 
-    # Organization Participation Indicator (Weight = 10%)
+    # -----------------------------------------------------------------------
+    # E. Organization Participation Indicator (Weight = 10%)
+    # -----------------------------------------------------------------------
     org_series = [(y, len(yearly_dict[y]["orgs"])) for y in active_years]
     org_slope = calculate_linear_slope(org_series) if num_years >= 2 else 0.0
 
     if total_orgs_count == 0:
+        org_status = "true_zero"
         org_score = 0.0
         org_level = "Low"
-        org_trend = "Insufficient Data"
+        org_trend = "No Evidence"
         org_interp = "No verified organizational affiliations or assignees identified in evidence records."
     else:
+        org_status = "available"
         org_norm = math.log(1.0 + total_orgs_count) / math.log(1.0 + max(corpus_stats["max_orgs"], 15.0))
         org_score = round(min(100.0, org_norm * 90.0 + (10.0 if org_slope > 0 else 0.0)), 1)
         if org_slope > 0.10:
@@ -579,16 +682,20 @@ def analyze_technology_intelligence(
             org_trend = "Stable"
             org_interp = f"{total_orgs_count} unique organizations actively publishing, filing patents, or receiving funding."
 
-    # Technology / Application Diversity Indicator (Weight = 10%)
+    # -----------------------------------------------------------------------
+    # F. Technology / Application Diversity Indicator (Weight = 10%)
+    # -----------------------------------------------------------------------
     app_series = [(y, len(yearly_dict[y]["applications"])) for y in active_years]
     app_slope = calculate_linear_slope(app_series) if num_years >= 2 else 0.0
 
     if total_apps_count == 0:
+        app_status = "true_zero"
         app_score = 0.0
         app_level = "Limited Evidence"
-        app_trend = "Limited Evidence"
+        app_trend = "No Evidence"
         app_interp = "No distinct application domains identified in available abstracts and classifications."
     else:
+        app_status = "available"
         app_norm = math.log(1.0 + total_apps_count) / math.log(1.0 + max(corpus_stats["max_domains"], 15.0))
         app_score = round(min(100.0, app_norm * 100.0), 1)
         if app_slope > 0.10:
@@ -604,16 +711,19 @@ def analyze_technology_intelligence(
             app_trend = "Stable"
             app_interp = f"{total_apps_count} application areas identified across research and patents."
 
-    # 6. Build Indicator Map with Exact Weights (25%, 25%, 15%, 15%, 10%, 10%)
+    # -----------------------------------------------------------------------
+    # 6. Build Indicator Map with Exact Preserved Weights (25%, 25%, 15%, 15%, 10%, 10%)
+    # -----------------------------------------------------------------------
     indicators: Dict[str, IndicatorMetric] = {
         "research_growth": IndicatorMetric(
             name="Research Growth",
             weight=0.25,
             weight_percentage="25%",
-            raw_value=round(rg_slope, 2),
+            raw_value=round(rg_slope, 2) if has_research_history else None,
             raw_unit="papers/year",
             normalized_score=rg_score,
-            weighted_score=round(rg_score * 0.25, 2),
+            weighted_score=round(rg_score * 0.25, 2) if rg_score is not None else None,
+            status=rg_status,
             level=rg_level,
             trend_direction=rg_trend,
             interpretation=rg_interp,
@@ -622,10 +732,11 @@ def analyze_technology_intelligence(
             name="Patent Growth",
             weight=0.25,
             weight_percentage="25%",
-            raw_value=round(pg_slope, 2),
+            raw_value=round(pg_slope, 2) if has_patent_history else None,
             raw_unit="patents/year",
             normalized_score=pg_score,
-            weighted_score=round(pg_score * 0.25, 2),
+            weighted_score=round(pg_score * 0.25, 2) if pg_score is not None else None,
+            status=pg_status,
             level=pg_level,
             trend_direction=pg_trend,
             interpretation=pg_interp,
@@ -637,7 +748,8 @@ def analyze_technology_intelligence(
             raw_value=float(total_papers_count),
             raw_unit="papers",
             normalized_score=ra_score,
-            weighted_score=round(ra_score * 0.15, 2),
+            weighted_score=round(ra_score * 0.15, 2) if ra_score is not None else 0.0,
+            status=ra_status,
             level=ra_level,
             trend_direction=ra_trend,
             interpretation=ra_interp,
@@ -649,7 +761,8 @@ def analyze_technology_intelligence(
             raw_value=float(total_patents_count),
             raw_unit="patents",
             normalized_score=pa_score,
-            weighted_score=round(pa_score * 0.15, 2),
+            weighted_score=round(pa_score * 0.15, 2) if pa_score is not None else 0.0,
+            status=pa_status,
             level=pa_level,
             trend_direction=pa_trend,
             interpretation=pa_interp,
@@ -661,7 +774,8 @@ def analyze_technology_intelligence(
             raw_value=float(total_orgs_count),
             raw_unit="organizations",
             normalized_score=org_score,
-            weighted_score=round(org_score * 0.10, 2),
+            weighted_score=round(org_score * 0.10, 2) if org_score is not None else 0.0,
+            status=org_status,
             level=org_level,
             trend_direction=org_trend,
             interpretation=org_interp,
@@ -673,33 +787,53 @@ def analyze_technology_intelligence(
             raw_value=float(total_apps_count),
             raw_unit="domains",
             normalized_score=app_score,
-            weighted_score=round(app_score * 0.10, 2),
+            weighted_score=round(app_score * 0.10, 2) if app_score is not None else 0.0,
+            status=app_status,
             level=app_level,
             trend_direction=app_trend,
             interpretation=app_interp,
         ),
     }
 
-    # 7. Total Weighted Maturity Score
-    w_rg = indicators["research_growth"].weighted_score
-    w_pg = indicators["patent_growth"].weighted_score
-    w_ra = indicators["research_activity"].weighted_score
-    w_pa = indicators["patent_activity"].weighted_score
-    w_org = indicators["organization_participation"].weighted_score
-    w_app = indicators["application_diversity"].weighted_score
-    total_weighted_sum = round(w_rg + w_pg + w_ra + w_pa + w_org + w_app, 2)
+    # -----------------------------------------------------------------------
+    # 7. Total Weighted Maturity Score & Adjusted Weight Normalization
+    # -----------------------------------------------------------------------
+    # Calculate available sum and adjusted score to never penalize N/A historical indicators unfairly
+    valid_indicator_contributions = [
+        ind.weighted_score for ind in indicators.values() if ind.weighted_score is not None
+    ]
+    available_weights = [
+        ind.weight for ind in indicators.values() if ind.normalized_score is not None
+    ]
+    sum_valid_contributions = sum(valid_indicator_contributions)
+    available_weight_sum = round(sum(available_weights), 4)
+
+    if available_weight_sum > 0:
+        adjusted_score = round(sum_valid_contributions / available_weight_sum, 2)
+    else:
+        adjusted_score = None
+
+    raw_total_weighted_sum = round(sum_valid_contributions, 2)
 
     weighted_score = WeightedScoreBreakdown(
-        research_growth=w_rg,
-        patent_growth=w_pg,
-        research_activity=w_ra,
-        patent_activity=w_pa,
-        organization_participation=w_org,
-        application_diversity=w_app,
-        total=total_weighted_sum,
+        research_growth=indicators["research_growth"].weighted_score,
+        patent_growth=indicators["patent_growth"].weighted_score,
+        research_activity=indicators["research_activity"].weighted_score,
+        patent_activity=indicators["patent_activity"].weighted_score,
+        organization_participation=indicators["organization_participation"].weighted_score,
+        application_diversity=indicators["application_diversity"].weighted_score,
+        total=raw_total_weighted_sum,
+        adjusted_score=adjusted_score,
+        available_weight_sum=available_weight_sum,
+        missing_data_policy="Missing or insufficient historical indicators (N/A) are re-normalized across available indicator weights without assuming zero growth.",
     )
 
+    # Effective score for stage consideration
+    effective_score = adjusted_score if adjusted_score is not None else raw_total_weighted_sum
+
+    # -----------------------------------------------------------------------
     # 8. Independent Adoption Analysis (Decoupled from maturity weights)
+    # -----------------------------------------------------------------------
     commercial_orgs = [
         org for org in all_distinct_orgs.keys()
         if not any(edu in org.lower() for edu in ["univ", "college", "institute of technology", "school", "faculty", "academy"])
@@ -740,7 +874,9 @@ def analyze_technology_intelligence(
         evidence_notes=adoption_notes,
     )
 
-    # 9. Data-Driven Stage Classification & Explainability
+    # -----------------------------------------------------------------------
+    # 9. Non-Contradictory Data-Driven Stage Classification & Explainability
+    # -----------------------------------------------------------------------
     supporting_signals: List[str] = []
     limiting_signals: List[str] = []
     conflicting_signals: List[str] = []
@@ -749,30 +885,67 @@ def analyze_technology_intelligence(
         classification = "Insufficient Evidence"
         confidence = "Insufficient"
         reason = (
-            f"Connected multi-source repositories contain fewer than 2 distinct historical records or active years "
-            f"for query '{target_query}' ({total_papers_count} unique papers, {total_patents_count} unique patents). "
-            f"A reliable maturity stage cannot be determined without sufficient empirical evidence."
+            f"Connected multi-source repositories contain no verified records across research or patents "
+            f"for query '{target_query}'. A reliable maturity stage cannot be determined without empirical evidence."
         )
-        limiting_signals.append("Fewer than 2 active observation years across all data sources")
-        limiting_signals.append("Insufficient publication and patent records")
-    elif rg_trend == "Declining" and (pg_trend == "Declining" or total_patents_count == 0) and num_years >= 3:
+        limiting_signals.append("No active observation years or matching records across connected data sources")
+    elif total_papers_count == 0 and total_patents_count > 0:
+        # Patent-driven domain
+        if total_patents_count >= 10 and num_years >= 3:
+            classification = "Developing"
+            confidence = "Moderate"
+            reason = (
+                f"Patent activity is strong ({total_patents_count} filings across {num_years} active years) with "
+                f"{total_orgs_count} participating organizations, while academic research publications in connected sources remain limited."
+            )
+        else:
+            classification = "Emerging"
+            confidence = "Limited"
+            reason = (
+                f"Patent filings are present ({total_patents_count} filings across {num_years} active years), "
+                f"while available academic research publications in connected sources remain limited."
+            )
+        supporting_signals.append(f"Active patent filings ({total_patents_count} patents across {num_years} active years)")
+        conflicting_signals.append(f"0 research papers found despite {total_patents_count} active patent filings")
+        if adoption.level in ["Low", "Insufficient Evidence"]:
+            limiting_signals.append("Adoption is in exploratory/nascent stage")
+    elif total_patents_count == 0 and total_papers_count > 0:
+        # Research-driven domain
+        if total_papers_count >= 10 and num_years >= 3 and rg_trend == "Increasing":
+            classification = "Developing"
+            confidence = "Moderate"
+            reason = (
+                f"Research publication volume is substantial ({total_papers_count} papers across {num_years} years) with "
+                f"{total_orgs_count} participating institutions, while commercial patent filings in connected sources remain absent."
+            )
+        else:
+            classification = "Emerging"
+            confidence = "Limited"
+            reason = (
+                f"Initial exploratory research is present ({total_papers_count} papers across {num_years} active years), "
+                f"while commercial patent filings remain unobserved."
+            )
+        supporting_signals.append(f"Active research publications ({total_papers_count} papers across {num_years} years)")
+        conflicting_signals.append("Patent filings are currently absent; technology is progressing in academic discovery.")
+        if adoption.level in ["Low", "Insufficient Evidence"]:
+            limiting_signals.append("Adoption is in exploratory/nascent stage")
+    elif rg_trend == "Declining" and pg_trend == "Declining" and num_years >= 3:
         classification = "Declining"
-        confidence = "Moderate" if num_years >= 3 else "Limited"
+        confidence = "Moderate"
         reason = (
-            f"Available multi-source evidence indicates a persistent multi-year contraction in research and patent activity "
-            f"across {num_years} active years. Research growth slope is negative ({rg_slope:.2f}/yr) and "
-            f"organizational participation is shrinking."
+            f"Available multi-source evidence indicates a persistent multi-year contraction in both research and patent activity "
+            f"across {num_years} active years ({active_years[0]}-{active_years[-1]})."
         )
         supporting_signals.append(f"Negative research trajectory ({rg_slope:.2f} papers/yr)")
-        supporting_signals.append("Contracting publication volume across multiple consecutive periods")
+        supporting_signals.append(f"Negative patent trajectory ({pg_slope:.2f} patents/yr)")
     elif (
         num_years >= 3
         and total_papers_count >= 8
         and total_patents_count >= 5
         and total_orgs_count >= 3
         and total_apps_count >= 3
-        and (rg_trend in ["Stable", "Increasing"] or rg_score >= 50.0)
-        and (pg_trend in ["Stable", "Increasing"] or pg_score >= 50.0)
+        and (rg_trend in ["Stable", "Increasing"] or (rg_score is not None and rg_score >= 50.0))
+        and (pg_trend in ["Stable", "Increasing"] or (pg_score is not None and pg_score >= 50.0))
     ):
         classification = "Mature"
         confidence = "High" if (num_years >= 4 and total_papers_count >= 15) else "Moderate"
@@ -790,7 +963,7 @@ def analyze_technology_intelligence(
     elif (
         num_years >= 2
         and (total_papers_count >= 4 or total_patents_count >= 3)
-        and (rg_trend == "Increasing" or pg_trend == "Increasing" or total_weighted_sum >= 40.0)
+        and (rg_trend == "Increasing" or pg_trend == "Increasing" or effective_score >= 40.0)
     ):
         classification = "Developing"
         confidence = "Moderate" if num_years >= 3 else "Limited"
@@ -800,32 +973,24 @@ def analyze_technology_intelligence(
             f"Organizational participation ({total_orgs_count} orgs) and application diversity "
             f"({total_apps_count} areas) are expanding."
         )
-        supporting_signals.append(f"Sustained research expansion ({total_papers_count} papers across {num_years} years)")
+        if total_papers_count > 0:
+            supporting_signals.append(f"Sustained research activity ({total_papers_count} papers across {num_years} years)")
         if total_patents_count > 0:
             supporting_signals.append(f"Active IP filings ({total_patents_count} patents)")
         if total_orgs_count >= 2:
             supporting_signals.append(f"Growing institutional base ({total_orgs_count} organizations)")
-
-        if total_patents_count == 0 and total_papers_count >= 5:
-            conflicting_signals.append(
-                "Research publication volume is substantial, but commercial patent filings are currently absent. "
-                "The technology is actively progressing in academic/scientific discovery with nascent commercial IP translation."
-            )
-        elif total_papers_count == 0 and total_patents_count >= 3:
-            conflicting_signals.append(
-                "Patent filings show industry IP activity, but academic publication volume in connected records is limited."
-            )
         if adoption.level in ["Low", "Insufficient Evidence"]:
             limiting_signals.append("Available market adoption evidence remains low/nascent")
     else:
         classification = "Emerging"
         confidence = "Limited" if num_years <= 2 else "Moderate"
         reason = (
-            f"The technology exhibits characteristics of an Emerging domain: recent or exploratory activity "
+            f"The technology exhibits characteristics of an Emerging domain: exploratory activity "
             f"({total_papers_count} papers, {total_patents_count} patents across {num_years} active years), "
-            f"growing initial research interest, and early-stage organizational footprint ({total_orgs_count} organizations)."
+            f"early-stage organizational footprint ({total_orgs_count} organizations), and evolving technical breadth."
         )
-        supporting_signals.append(f"Early-stage exploratory research ({total_papers_count} papers)")
+        if total_papers_count > 0:
+            supporting_signals.append(f"Exploratory research records ({total_papers_count} papers)")
         if total_patents_count > 0:
             supporting_signals.append(f"Initial patent filings ({total_patents_count} patents)")
         limiting_signals.append("Limited historical time span and early organizational participation")
@@ -841,7 +1006,9 @@ def analyze_technology_intelligence(
         conflicting_signals=conflicting_signals,
     )
 
+    # -----------------------------------------------------------------------
     # 10. Coverage & Multi-Source Provenance Summary
+    # -----------------------------------------------------------------------
     span_str = f"{active_years[0]}-{active_years[-1]}" if active_years else "No historical span"
     if total_papers_count >= 5 and total_patents_count >= 3 and num_years >= 3:
         cov_status = "Strong"

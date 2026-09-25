@@ -123,7 +123,7 @@ class IndianPatentsAdapter(BaseSourceAdapter):
                             url=pt.official_link or f"https://ipindiaservices.gov.in/publicsearch",
                             domain_or_classification=pt.technology_domain or pt.classification,
                             citation_count=pt.citation_count or 0,
-                            matching_method=MatchingMethod.EXACT if query.lower() in (pt.title or "").lower() else MatchingMethod.CONCEPT,
+                            matching_method=MatchingMethod.EXACT if query.lower() in (pt.title or "").lower() else MatchingMethod.KEYWORD,
                         )
                         records.append(record)
             except Exception as e:

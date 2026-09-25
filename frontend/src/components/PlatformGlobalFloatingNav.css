@@ -1,0 +1,342 @@
+/* =========================================================
+   PLATFORM GLOBAL RADIAL NAVIGATION HUB STYLES (LANDING & GLOBAL)
+   7 Pillars of Research Intelligence arranged in a 360° circle
+   ========================================================= */
+
+.platform-floating-nav-container {
+  position: fixed;
+  z-index: 9999;
+  width: 0;
+  height: 0;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Center Floating Trigger Button */
+.platform-center-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 64px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  background: linear-gradient(135deg, #2563eb 0%, #0f172a 100%);
+  box-shadow: 0 8px 30px rgba(37, 99, 235, 0.45), 0 4px 14px rgba(15, 23, 42, 0.3);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  outline: none;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.3s ease;
+  z-index: 10;
+}
+
+.platform-center-trigger:active {
+  cursor: grabbing;
+}
+
+.is-dragging .platform-center-trigger {
+  cursor: grabbing !important;
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 16px 40px rgba(37, 99, 235, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.platform-center-trigger:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+  box-shadow: 0 12px 34px rgba(37, 99, 235, 0.5);
+}
+
+.platform-center-trigger.active-open {
+  background: linear-gradient(135deg, #0f172a 0%, #030712 100%);
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.platform-center-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.platform-center-flipper {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.platform-center-icon-main {
+  position: absolute;
+  color: #38bdf8;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
+  transition: opacity 0.25s ease, transform 0.3s ease;
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.platform-center-icon-close {
+  position: absolute;
+  color: #ffffff;
+  transition: opacity 0.25s ease, transform 0.3s ease;
+  opacity: 0;
+  transform: scale(0.6) rotate(-90deg);
+}
+
+.platform-center-trigger.active-open .platform-center-icon-main {
+  opacity: 0;
+  transform: scale(0.5) rotate(90deg);
+}
+
+.platform-center-trigger.active-open .platform-center-icon-close {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.platform-center-pulse {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: platformBeacon 2s infinite ease-in-out;
+}
+
+.platform-center-trigger.active-open .platform-center-pulse {
+  display: none;
+}
+
+@keyframes platformBeacon {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0.6; }
+}
+
+/* Subtle Aesthetic Orbital Ring Guide */
+.platform-radial-ring-guide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%) scale(0.5);
+  border-radius: 50%;
+  border: 1.5px dashed rgba(56, 189, 248, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 0;
+  animation: platformOrbitalSpin 40s linear infinite;
+}
+
+.platform-radial-ring-guide.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+@keyframes platformOrbitalSpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Radial Menu Layer with Smooth Orbiting Rotation */
+.platform-radial-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 2;
+  transform: rotate(0deg);
+  transition: opacity 0.3s ease;
+}
+
+.platform-radial-layer.visible {
+  pointer-events: auto;
+  animation: platformContinuousOrbit 30s linear infinite;
+}
+
+.platform-radial-layer:hover {
+  animation-play-state: paused;
+}
+
+@keyframes platformContinuousOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Radial Navigation Buttons */
+.platform-radial-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  z-index: 3;
+}
+
+.platform-radial-layer.visible .platform-radial-btn {
+  transform: translate(calc(-50% + var(--offset-x)), calc(-50% + var(--offset-y))) scale(1);
+  opacity: 1;
+  transition-delay: var(--item-delay, 0ms);
+}
+
+.platform-radial-btn:hover {
+  background: #0f172a;
+  border-color: #38bdf8;
+  color: #38bdf8;
+  transform: translate(calc(-50% + var(--offset-x)), calc(-50% + var(--offset-y))) scale(1.18);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.35), 0 0 12px rgba(56, 189, 248, 0.35);
+  z-index: 6;
+}
+
+.platform-radial-btn.current-route {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28), 0 10px 24px rgba(37, 99, 235, 0.38);
+}
+
+/* Button Inner wrapper to counter-rotate on exact center */
+.platform-radial-btn-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: platformCounterOrbit 30s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+.platform-radial-layer:hover .platform-radial-btn-inner {
+  animation-play-state: paused;
+}
+
+@keyframes platformCounterOrbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+.platform-radial-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  width: 22px;
+  height: 22px;
+}
+
+.platform-radial-tag {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 5px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.platform-radial-layer.visible .platform-radial-tag {
+  opacity: 1;
+}
+
+.platform-radial-btn:hover .platform-radial-tag {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+}
+
+/* Dynamic Hover Tooltip Card */
+.platform-hover-tooltip {
+  position: absolute;
+  top: -70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #ffffff;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  z-index: 10;
+}
+
+.platform-hover-tooltip strong {
+  font-size: 0.8rem;
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.platform-hover-tooltip small {
+  font-size: 0.7rem;
+  color: #cbd5e1;
+}
+
+.platform-hover-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid rgba(15, 23, 42, 0.95);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .platform-center-trigger {
+    width: 56px;
+    height: 56px;
+  }
+  .platform-radial-btn {
+    width: 42px;
+    height: 42px;
+  }
+}

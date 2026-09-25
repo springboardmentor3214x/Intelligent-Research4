@@ -89,24 +89,29 @@ class IndicatorMetric(BaseModel):
     name: str
     weight: float = Field(..., description="Indicator weight between 0.0 and 1.0 (e.g. 0.25)")
     weight_percentage: str = Field(..., description="Formatted weight (e.g. '25%')")
-    raw_value: float
+    raw_value: Optional[float] = None
     raw_unit: str
-    normalized_score: float = Field(..., ge=0, le=100, description="Normalized score 0-100")
-    weighted_score: float = Field(..., description="Score contribution = normalized_score * weight")
-    level: str = Field(..., description="'High', 'Medium', 'Low', 'Increasing', 'Stable', 'Declining', or 'Insufficient Data'")
-    trend_direction: str = Field(..., description="'Increasing', 'Stable', 'Declining', or 'Insufficient Data'")
+    normalized_score: Optional[float] = Field(None, ge=0, le=100, description="Normalized score 0-100 or None if insufficient/unavailable")
+    weighted_score: Optional[float] = Field(None, description="Score contribution = normalized_score * weight or None")
+    status: str = Field(default="available", description="'available', 'true_zero', 'insufficient_evidence', 'source_unavailable', 'no_match_found'")
+    level: str = Field(..., description="'High', 'Medium', 'Low', 'Increasing', 'Stable', 'Declining', 'N/A', or 'Insufficient Data'")
+    trend_direction: str = Field(..., description="'Increasing', 'Stable', 'Declining', 'N/A', or 'Insufficient Data'")
     interpretation: str
     provenance_note: Optional[str] = None
 
 
 class WeightedScoreBreakdown(BaseModel):
-    research_growth: float = Field(default=0.0, description="Weighted points (max 25.0)")
-    patent_growth: float = Field(default=0.0, description="Weighted points (max 25.0)")
-    research_activity: float = Field(default=0.0, description="Weighted points (max 15.0)")
-    patent_activity: float = Field(default=0.0, description="Weighted points (max 15.0)")
-    organization_participation: float = Field(default=0.0, description="Weighted points (max 10.0)")
-    application_diversity: float = Field(default=0.0, description="Weighted points (max 10.0)")
+    research_growth: Optional[float] = Field(default=0.0, description="Weighted points (max 25.0)")
+    patent_growth: Optional[float] = Field(default=0.0, description="Weighted points (max 25.0)")
+    research_activity: Optional[float] = Field(default=0.0, description="Weighted points (max 15.0)")
+    patent_activity: Optional[float] = Field(default=0.0, description="Weighted points (max 15.0)")
+    organization_participation: Optional[float] = Field(default=0.0, description="Weighted points (max 10.0)")
+    application_diversity: Optional[float] = Field(default=0.0, description="Weighted points (max 10.0)")
     total: float = Field(default=0.0, ge=0, le=100, description="Sum of all weighted scores (0-100)")
+    adjusted_score: Optional[float] = Field(default=None, description="Normalized score adjusted for available weights only")
+    available_weight_sum: float = Field(default=1.0, description="Sum of weights for indicators that have valid data")
+    missing_data_policy: str = Field(default="adjusted_weight", description="Explanation of missing data handling")
+
 
 
 # ---------------------------------------------------------------------------
