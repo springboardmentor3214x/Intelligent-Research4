@@ -12,6 +12,7 @@ import Profile from './pages/Profile'
 import ResearchPapers from './pages/ResearchPapers'
 import FundingIntelligence from './pages/FundingIntelligence'
 import PatentLandscape from './pages/PatentLandscape'
+import Reports from './pages/Reports'
 import './App.css'
 
 function AppContent() {
@@ -34,6 +35,7 @@ function AppContent() {
           <Route path="/research-papers" element={<ResearchPapers />} />
           <Route path="/funding" element={<FundingIntelligence />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/reports" element={<Reports />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
