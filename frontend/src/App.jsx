@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
+import StartupDashboard from './pages/StartupDashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import OAuthCallback from './pages/OAuthCallback'
@@ -11,6 +12,7 @@ import Profile from './pages/Profile'
 import ResearchPapers from './pages/ResearchPapers'
 import FundingIntelligence from './pages/FundingIntelligence'
 import PatentLandscape from './pages/PatentLandscape'
+import Reports from './pages/Reports'
 import './App.css'
 
 function AppContent() {
@@ -28,10 +30,12 @@ function AppContent() {
           <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/patents" element={<PatentLandscape />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/research-papers" element={<ResearchPapers />} />
-            <Route path="/funding" element={<FundingIntelligence />} />
-            <Route path="/profile" element={<Profile />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/startup-dashboard" element={<StartupDashboard />} />
+          <Route path="/research-papers" element={<ResearchPapers />} />
+          <Route path="/funding" element={<FundingIntelligence />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/reports" element={<Reports />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

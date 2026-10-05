@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context/auth-context'
+import NotificationCenter from './NotificationCenter'
 import './Navbar.css'
 
 export default function Navbar() {
@@ -267,6 +268,7 @@ export default function Navbar() {
         <div className="navbar-actions">
           {user ? (
             <div className="authenticated-actions">
+              <NotificationCenter />
               <Link
                 to="/dashboard"
                 className={`nav-pill-btn ${isCurrent('/dashboard') ? 'active-pill' : ''}`}
