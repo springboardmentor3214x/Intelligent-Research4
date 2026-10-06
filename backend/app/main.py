@@ -27,6 +27,8 @@ from backend.app.routers import (
     tech_intelligence,
     innovation_assessment,
     dashboard,
+    notifications,
+    reports,
 )
 
 app = FastAPI(
@@ -86,7 +88,8 @@ app.include_router(tech_intelligence.router)
 app.include_router(innovation_assessment.router)
 app.include_router(dashboard.router)
 app.include_router(commercialization_router)
-
+app.include_router(notifications.router)
+app.include_router(reports.router)
 
 
 @app.get("/")
