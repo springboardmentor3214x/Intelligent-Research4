@@ -23,7 +23,11 @@ from backend.app.routers.publications import router as publications_router
 from backend.app.routers.research_details import router as research_details_router
 from backend.app.routers.technology import router as technology_router
 from backend.app.routers.commercialization import router as commercialization_router
-from backend.app.routers import tech_intelligence, innovation_assessment
+from backend.app.routers import (
+    tech_intelligence,
+    innovation_assessment,
+    dashboard,
+)
 
 app = FastAPI(
     title="Research Funding & Innovation Intelligence Platform"
@@ -80,7 +84,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(platform_router)
 app.include_router(tech_intelligence.router)
 app.include_router(innovation_assessment.router)
+app.include_router(dashboard.router)
 app.include_router(commercialization_router)
+
 
 
 @app.get("/")
