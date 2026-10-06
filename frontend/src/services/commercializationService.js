@@ -8,7 +8,7 @@ import { apiFetch } from './api'
 
 export async function getFullCommercializationAnalysis(technology) {
   const encodedTech = encodeURIComponent(technology.trim())
-  return apiFetch(`/commercialization/analyze/${encodedTech}`)
+  return apiFetch(`/commercialization/analyze/${encodedTech}`, { timeout: 90000 })
 }
 
 export async function getCommercialApplications(technology) {

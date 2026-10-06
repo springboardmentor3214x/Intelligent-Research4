@@ -25,6 +25,162 @@ const FACTOR_ICONS = {
   funding_relevance: '🎯'
 }
 
+// Markdown Text Formatter with Bold, Code, Links
+function renderFormattedInlineText(text) {
+  if (!text) return null
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g)
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} style={{ color: '#0f172a', fontWeight: 600 }}>{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={index}>{part.slice(1, -1)}</em>
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={index} className="inline-code-badge">{part.slice(1, -1)}</code>
+    }
+    return part
+  })
+}
+
+// Full Structured Markdown Content Renderer (Tables, Headers, Lists, Paragraphs)
+function FormattedAnalystMessage({ content }) {
+  if (!content) return null
+
+  // Normalize single linebreaks before processing
+  const lines = content.split('\n')
+  const blocks = []
+  let currentTable = null
+  let currentList = null
+
+  const flushTable = () => {
+    if (currentTable) {
+      blocks.push({ type: 'table', rows: currentTable })
+      currentTable = null
+    }
+  }
+
+  const flushList = () => {
+    if (currentList) {
+      blocks.push({ type: 'list', items: currentList })
+      currentList = null
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i]
+    const trimmed = rawLine.trim()
+
+    // Table row detection
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      flushList()
+      // Skip markdown separator row |---|---|
+      if (/^\|(\s*[:-]+[-| :]*)\|$/.test(trimmed)) {
+        continue
+      }
+      const cells = trimmed
+        .slice(1, -1)
+        .split('|')
+        .map(c => c.trim())
+      if (!currentTable) {
+        currentTable = []
+      }
+      currentTable.push(cells)
+      continue
+    } else {
+      flushTable()
+    }
+
+    // List item detection
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || /^\d+\.\s/.test(trimmed)) {
+      const listContent = trimmed.replace(/^[-*]\s+|\d+\.\s+/, '')
+      if (!currentList) {
+        currentList = []
+      }
+      currentList.push(listContent)
+      continue
+    } else {
+      flushList()
+    }
+
+    // Empty line
+    if (!trimmed) {
+      continue
+    }
+
+    // Headers
+    if (trimmed.startsWith('### ')) {
+      blocks.push({ type: 'h3', text: trimmed.replace('### ', '') })
+    } else if (trimmed.startsWith('#### ')) {
+      blocks.push({ type: 'h4', text: trimmed.replace('#### ', '') })
+    } else if (trimmed.startsWith('## ')) {
+      blocks.push({ type: 'h2', text: trimmed.replace('## ', '') })
+    } else {
+      blocks.push({ type: 'paragraph', text: trimmed })
+    }
+  }
+
+  flushTable()
+  flushList()
+
+  return (
+    <div className="analyst-formatted-content">
+      {blocks.map((block, idx) => {
+        if (block.type === 'h2') {
+          return <h3 key={idx} className="analyst-heading-2">{renderFormattedInlineText(block.text)}</h3>
+        }
+        if (block.type === 'h3') {
+          return <h4 key={idx} className="analyst-heading-3">{renderFormattedInlineText(block.text)}</h4>
+        }
+        if (block.type === 'h4') {
+          return <h5 key={idx} className="analyst-heading-4">{renderFormattedInlineText(block.text)}</h5>
+        }
+        if (block.type === 'paragraph') {
+          return <p key={idx} className="analyst-paragraph">{renderFormattedInlineText(block.text)}</p>
+        }
+        if (block.type === 'list') {
+          return (
+            <ul key={idx} className="analyst-bullet-list">
+              {block.items.map((item, itemIdx) => (
+                <li key={itemIdx} className="analyst-list-item">{renderFormattedInlineText(item)}</li>
+              ))}
+            </ul>
+          )
+        }
+        if (block.type === 'table') {
+          const headerRow = block.rows[0]
+          const bodyRows = block.rows.slice(1)
+          return (
+            <div key={idx} className="analyst-table-wrapper">
+              <table className="analyst-table">
+                {headerRow && (
+                  <thead>
+                    <tr>
+                      {headerRow.map((h, hIdx) => (
+                        <th key={hIdx}>{renderFormattedInlineText(h)}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                )}
+                <tbody>
+                  {bodyRows.map((row, rIdx) => (
+                    <tr key={rIdx}>
+                      {row.map((cell, cIdx) => (
+                        <td key={cIdx}>{renderFormattedInlineText(cell)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+        return null
+      })}
+    </div>
+  )
+}
+
 export default function InnovationScoring() {
   const [activeTab, setActiveTab] = useState('overview') // 'overview', 'explorer', 'flow', 'idea', 'compare', 'brief', 'chat'
   const [selectedTech, setSelectedTech] = useState('Quantum Computing')
@@ -1085,17 +1241,61 @@ export default function InnovationScoring() {
       {activeTab === 'chat' && (
         <div className="grok-chat-container">
           <div className="card-heading">
-            <span>Ask Innovation Analyst ({selectedTech})</span>
-            <span className="card-heading-badge">Evidence-Grounded AI</span>
+            <div className="analyst-header-meta">
+              <span className="analyst-title-text">Ask Innovation Analyst ({selectedTech})</span>
+              <span className="card-heading-badge">Evidence-Grounded AI</span>
+            </div>
+            <button 
+              type="button" 
+              className="chat-clear-btn"
+              onClick={() => setChatMessages([
+                { role: 'assistant', content: `Hello! I am your AI Innovation Analyst for **${selectedTech}**. Ask me about research gaps, patent landscape, funding opportunities, or technology maturity.` }
+              ])}
+            >
+              🔄 Reset Chat
+            </button>
+          </div>
+
+          {/* Quick Question Chips */}
+          <div className="analyst-prompt-chips">
+            <span className="chips-label">Suggested Questions:</span>
+            {[
+              `What are the primary research gaps in ${selectedTech}?`,
+              `Summarize the patent strength and key assignees for ${selectedTech}.`,
+              `What funding opportunities or grant agencies are most active?`,
+              `How does the market potential compare with current technology maturity?`
+            ].map((qPrompt, pIdx) => (
+              <button
+                key={pIdx}
+                type="button"
+                className="analyst-chip-btn"
+                onClick={() => {
+                  setChatQuestion(qPrompt)
+                }}
+              >
+                {qPrompt}
+              </button>
+            ))}
           </div>
 
           <div className="chat-history-list">
             {chatMessages.map((msg, idx) => (
               <div key={idx} className={`chat-bubble ${msg.role}`}>
-                {msg.content}
+                {msg.role === 'assistant' ? (
+                  <FormattedAnalystMessage content={msg.content} />
+                ) : (
+                  <div className="user-message-text">{msg.content}</div>
+                )}
               </div>
             ))}
-            {chatLoading && <div className="chat-bubble assistant">Analyzing live platform evidence...</div>}
+            {chatLoading && (
+              <div className="chat-bubble assistant analyst-loading-bubble">
+                <div className="chat-typing-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <span style={{ fontSize: '0.88rem', color: '#64748b' }}>Synthesizing empirical evidence for {selectedTech}...</span>
+              </div>
+            )}
           </div>
 
           <form className="chat-input-form" onSubmit={handleSendMessage}>
@@ -1106,8 +1306,8 @@ export default function InnovationScoring() {
               value={chatQuestion}
               onChange={(e) => setChatQuestion(e.target.value)}
             />
-            <button type="submit" className="innovation-search-btn" disabled={chatLoading}>
-              Send
+            <button type="submit" className="innovation-search-btn" disabled={chatLoading || !chatQuestion.trim()}>
+              {chatLoading ? 'Analyzing...' : 'Send'}
             </button>
           </form>
         </div>

@@ -15,7 +15,7 @@ const DEFAULT_TECHNOLOGIES = [
 export default function Commercialization() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTech = searchParams.get('technology') || 'Medical Imaging AI'
-  
+
   const [searchTerm, setSearchTerm] = useState(initialTech)
   const [activeTech, setActiveTech] = useState(initialTech)
   const [data, setData] = useState(null)
@@ -25,6 +25,12 @@ export default function Commercialization() {
   // Modal / Evidence Drawer State
   const [selectedEvidence, setSelectedEvidence] = useState(null)
   const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false)
+
+  // Licensing Filters State
+  const [licensingSearch, setLicensingSearch] = useState('')
+  const [licensingRelevanceFilter, setLicensingRelevanceFilter] = useState('all')
+  const [licensingPathwayFilter, setLicensingPathwayFilter] = useState('all')
+  const [licensingIndustryFilter, setLicensingIndustryFilter] = useState('all')
 
   const fetchAnalysis = async (tech) => {
     if (!tech.trim()) return
@@ -68,8 +74,13 @@ export default function Commercialization() {
     }
   }
 
-  const openEvidenceModal = (evidenceObj, title) => {
-    setSelectedEvidence({ data: evidenceObj, title: title || 'Supporting Evidence' })
+  const openEvidenceModal = (evidenceObj, title, rationale, customPayload = null) => {
+    setSelectedEvidence({
+      data: evidenceObj,
+      title: title || 'Supporting Evidence',
+      rationale: rationale || null,
+      customPayload: customPayload || null
+    })
     setIsEvidenceModalOpen(true)
   }
 
@@ -87,8 +98,8 @@ export default function Commercialization() {
         </div>
         <h1 className="comm-title">Commercialization Intelligence</h1>
         <p className="comm-subtitle">
-          Translate empirical signals from Research Literature, Grant Funding, Patent Landscapes, 
-          Technology Maturity, and Innovation Scoring into candidate real-world application areas, 
+          Translate empirical signals from Research Literature, Grant Funding, Patent Landscapes,
+          Technology Maturity, and Innovation Scoring into candidate real-world application areas,
           product concepts, and startup opportunities for {activeTech}.
         </p>
 
@@ -217,21 +228,21 @@ export default function Commercialization() {
               <div className="comm-pipeline-step">
                 <span className="comm-step-icon">📄</span>
                 <span className="comm-step-title">Research</span>
-                <span className="comm-step-count">{data.evidence.research_papers.length} Papers</span>
+                <span className="comm-step-count">{(data.evidence?.research_papers || []).length} Papers</span>
               </div>
               <div className="comm-pipeline-arrow">➔</div>
 
               <div className="comm-pipeline-step">
                 <span className="comm-step-icon">⚡</span>
                 <span className="comm-step-title">Technology</span>
-                <span className="comm-step-count">{data.technology_stage}</span>
+                <span className="comm-step-count">{data.technology_stage || 'Active Research'}</span>
               </div>
               <div className="comm-pipeline-arrow">➔</div>
 
               <div className="comm-pipeline-step">
                 <span className="comm-step-icon">🏛️</span>
                 <span className="comm-step-title">Patent / IP</span>
-                <span className="comm-step-count">{data.evidence.patents.length} Filings</span>
+                <span className="comm-step-count">{(data.evidence?.patents || []).length} Filings</span>
               </div>
               <div className="comm-pipeline-arrow">➔</div>
 
@@ -295,26 +306,30 @@ export default function Commercialization() {
               </p>
 
               <div className="comm-readiness-grid">
-                {data.readiness_dimensions.map((dim, idx) => (
-                  <div key={idx} className="comm-readiness-card">
-                    <div className="comm-readiness-card-top">
-                      <h4 className="comm-readiness-dimension-title">{dim.dimension}</h4>
-                      <span className={`comm-readiness-status-badge status-${dim.status.toLowerCase().replace(/[\s\/]+/g, '-')}`}>
-                        {dim.status}
-                      </span>
-                    </div>
+                {data.readiness_dimensions.map((dim, idx) => {
+                  const dimTitle = dim.dimension_name || dim.dimension || `Dimension ${idx + 1}`
+                  const statusClass = (dim.status || 'unknown').toLowerCase().replace(/[\s\/]+/g, '-')
+                  return (
+                    <div key={idx} className="comm-readiness-card">
+                      <div className="comm-readiness-card-top">
+                        <h4 className="comm-readiness-dimension-title">{dimTitle}</h4>
+                        <span className={`comm-readiness-status-badge status-${statusClass}`}>
+                          {dim.status || 'Active'}
+                        </span>
+                      </div>
 
-                    <p className="comm-readiness-evidence-text">
-                      <strong>Evidence:</strong> {dim.evidence}
-                    </p>
-
-                    {dim.limitation && (
-                      <p className="comm-readiness-limitation-text">
-                        <span>ℹ️</span> <strong>Limitation:</strong> {dim.limitation}
+                      <p className="comm-readiness-evidence-text">
+                        <strong>Evidence:</strong> {dim.evidence || 'Grounding evidence identified in connected repository records.'}
                       </p>
-                    )}
-                  </div>
-                ))}
+
+                      {dim.limitation && (
+                        <p className="comm-readiness-limitation-text">
+                          <span>ℹ️</span> <strong>Limitation:</strong> {dim.limitation}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </section>
           )}
@@ -613,85 +628,308 @@ export default function Commercialization() {
           {/* =========================================================
               SECTION 6: LICENSING OPPORTUNITIES
               ========================================================= */}
-          {data.licensing_opportunities && data.licensing_opportunities.length > 0 && (
-            <section className="comm-section" id="section-licensing">
-              <div className="comm-section-header">
-                <div className="comm-section-title-wrap">
-                  <span className="comm-section-icon">📜</span>
-                  <h2 className="comm-section-title">Licensing Opportunities</h2>
-                </div>
-                <span className="comm-section-badge">{data.technology} IP Candidates</span>
-              </div>
+          {data.licensing_opportunities && data.licensing_opportunities.length > 0 && (() => {
+            // Apply dynamic search and filters on available licensing opportunities
+            const filteredLicensing = data.licensing_opportunities.filter((lic) => {
+              const query = licensingSearch.toLowerCase().trim()
+              const matchesSearch = !query || 
+                (lic.organization && lic.organization.toLowerCase().includes(query)) ||
+                (lic.industry_domain && lic.industry_domain.toLowerCase().includes(query)) ||
+                (lic.industry && lic.industry.toLowerCase().includes(query)) ||
+                (lic.technology_domain && lic.technology_domain.toLowerCase().includes(query)) ||
+                (lic.technology_capability && lic.technology_capability.toLowerCase().includes(query)) ||
+                (lic.why_relevant && lic.why_relevant.toLowerCase().includes(query)) ||
+                (lic.related_patents && lic.related_patents.some(p => p.toLowerCase().includes(query)))
 
-              <p style={{ color: '#475569', fontSize: '0.92rem', marginBottom: '1.25rem' }}>
-                Potential intellectual property transfer, non-exclusive commercialization, or joint technology licensing candidates identified from patent assignees and technology domains.
-              </p>
+              const matchesRelevance = licensingRelevanceFilter === 'all' || 
+                (lic.relevance && lic.relevance.toLowerCase() === licensingRelevanceFilter.toLowerCase())
 
-              <div className="comm-cards-grid">
-                {data.licensing_opportunities.map((lic, idx) => (
-                  <div key={idx} className="comm-card">
-                    <div>
-                      <div className="comm-card-header">
-                        <h3 className="comm-card-title">{lic.organization}</h3>
-                        <span className="comm-relevance-tag comm-relevance-medium">
-                          {lic.candidate_type}
-                        </span>
-                      </div>
+              const matchesPathway = licensingPathwayFilter === 'all' ||
+                (lic.potential_pathway && lic.potential_pathway.toLowerCase().includes(licensingPathwayFilter.toLowerCase())) ||
+                (lic.licensing_pathway && lic.licensing_pathway.toLowerCase().includes(licensingPathwayFilter.toLowerCase()))
 
-                      <div className="comm-meta-row">
-                        <span className="comm-meta-chip">
-                          <strong>Domain:</strong> {lic.industry_domain}
-                        </span>
-                        <span className="comm-meta-chip">
-                          <strong>Relevance:</strong> {lic.relevance}
-                        </span>
-                      </div>
+              const matchesIndustry = licensingIndustryFilter === 'all' ||
+                (lic.industry && lic.industry.toLowerCase().includes(licensingIndustryFilter.toLowerCase())) ||
+                (lic.industry_domain && lic.industry_domain.toLowerCase().includes(licensingIndustryFilter.toLowerCase()))
 
-                      <div className="comm-card-body">
-                        <div className="comm-field-block">
-                          <div className="comm-field-label">Why Relevant Candidate</div>
-                          <p className="comm-field-text">{lic.why_relevant}</p>
-                        </div>
+              return matchesSearch && matchesRelevance && matchesPathway && matchesIndustry
+            })
 
-                        <div className="comm-field-block">
-                          <div className="comm-field-label">Potential Licensing Pathway</div>
-                          <p className="comm-field-text" style={{ fontWeight: 600, color: '#0369a1' }}>
-                            {lic.potential_pathway}
-                          </p>
-                        </div>
+            // Extract unique industries for filter dropdown
+            const uniqueIndustries = Array.from(new Set(
+              data.licensing_opportunities
+                .map(l => l.industry || l.industry_domain?.split('/')[0]?.trim())
+                .filter(Boolean)
+            ))
 
-                        {lic.related_patents && lic.related_patents.length > 0 && (
-                          <div className="comm-field-block">
-                            <div className="comm-field-label">Related Patent Filings in Portfolio</div>
-                            <ul className="comm-list-items">
-                              {lic.related_patents.map((patName, pIdx) => (
-                                <li key={pIdx}>{patName}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="comm-card-footer">
-                      <div className="comm-next-step-box">
-                        <div className="comm-next-step-title">Suggested Next Step</div>
-                        <p className="comm-next-step-desc">{lic.suggested_action}</p>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="comm-view-evidence-btn"
-                        onClick={() => openEvidenceModal(data.evidence, lic.organization, `Licensing candidate evaluation for ${lic.organization} in ${lic.industry_domain}`)}
-                      >
-                        <span>🔍</span> View Evidence
-                      </button>
-                    </div>
+            return (
+              <section className="comm-section" id="section-licensing">
+                <div className="comm-section-header">
+                  <div className="comm-section-title-wrap">
+                    <span className="comm-section-icon">📜</span>
+                    <h2 className="comm-section-title">Licensing Opportunities</h2>
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
+                  <span className="comm-section-badge">{data.technology} IP Candidates</span>
+                </div>
+
+                <p style={{ color: '#475569', fontSize: '0.92rem', marginBottom: '1rem' }}>
+                  Potential intellectual property transfer, non-exclusive commercialization, or joint technology licensing candidates identified from patent assignees, technology capabilities, and domain activity.
+                </p>
+
+                {/* Search & Filter Toolbar */}
+                <div className="comm-licensing-toolbar">
+                  <div className="comm-licensing-search-box">
+                    <span className="comm-toolbar-search-icon">🔍</span>
+                    <input
+                      type="text"
+                      className="comm-licensing-filter-input"
+                      value={licensingSearch}
+                      onChange={(e) => setLicensingSearch(e.target.value)}
+                      placeholder="Filter by organization, patent, domain, or capability..."
+                    />
+                    {licensingSearch && (
+                      <button 
+                        type="button" 
+                        className="comm-toolbar-clear-btn" 
+                        onClick={() => setLicensingSearch('')}
+                        title="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="comm-licensing-filter-group">
+                    <select
+                      className="comm-licensing-select"
+                      value={licensingRelevanceFilter}
+                      onChange={(e) => setLicensingRelevanceFilter(e.target.value)}
+                      aria-label="Filter by relevance"
+                    >
+                      <option value="all">All Relevance Levels</option>
+                      <option value="high">High Relevance</option>
+                      <option value="medium">Medium Relevance</option>
+                      <option value="low">Low Relevance</option>
+                    </select>
+
+                    <select
+                      className="comm-licensing-select"
+                      value={licensingPathwayFilter}
+                      onChange={(e) => setLicensingPathwayFilter(e.target.value)}
+                      aria-label="Filter by licensing pathway"
+                    >
+                      <option value="all">All Licensing Pathways</option>
+                      <option value="non-exclusive">Non-exclusive licensing</option>
+                      <option value="transfer">IP / Technology Transfer</option>
+                      <option value="evaluation">Evaluation / Agreement</option>
+                    </select>
+
+                    {uniqueIndustries.length > 1 && (
+                      <select
+                        className="comm-licensing-select"
+                        value={licensingIndustryFilter}
+                        onChange={(e) => setLicensingIndustryFilter(e.target.value)}
+                        aria-label="Filter by industry"
+                      >
+                        <option value="all">All Industries</option>
+                        {uniqueIndustries.map((ind, iIdx) => (
+                          <option key={iIdx} value={ind.toLowerCase()}>{ind}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                {filteredLicensing.length === 0 ? (
+                  <div className="comm-licensing-empty-state">
+                    <p style={{ color: '#64748b', fontSize: '0.92rem', margin: '1rem 0' }}>
+                      No potential licensing candidates match the selected filters. Try resetting your search term or filter parameters.
+                    </p>
+                    <button
+                      type="button"
+                      className="comm-pill-btn"
+                      onClick={() => {
+                        setLicensingSearch('')
+                        setLicensingRelevanceFilter('all')
+                        setLicensingPathwayFilter('all')
+                        setLicensingIndustryFilter('all')
+                      }}
+                    >
+                      Reset Filters
+                    </button>
+                  </div>
+                ) : (
+                  <div className="comm-cards-grid">
+                    {filteredLicensing.map((lic, idx) => (
+                      <div key={idx} className="comm-card comm-licensing-card">
+                        <div>
+                          <div className="comm-card-header">
+                            <div>
+                              <div className="comm-candidate-kicker">Potential Licensing Candidate</div>
+                              <h3 className="comm-card-title">{lic.organization}</h3>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                              <span className={`comm-relevance-tag comm-relevance-${(lic.relevance || 'medium').toLowerCase()}`}>
+                                {lic.relevance} Relevance {lic.relevance_score ? `(${Math.round(lic.relevance_score * 100)}%)` : ''}
+                              </span>
+                              <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>
+                                {lic.evidence_status || 'Valid Evidence'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Visual Traceability Chain */}
+                          <div className="comm-visual-chain-box">
+                            <div className="comm-chain-step">
+                              <span className="comm-chain-num">1</span>
+                              <span className="comm-chain-label">Patent</span>
+                              <strong className="comm-chain-val">
+                                {lic.patents && lic.patents.length > 0 ? (lic.patents[0].patent_number || 'Registered IP') : (lic.related_patents?.[0]?.split(' ')[0] || 'Domain IP')}
+                              </strong>
+                            </div>
+                            <span className="comm-chain-arrow">➔</span>
+
+                            <div className="comm-chain-step">
+                              <span className="comm-chain-num">2</span>
+                              <span className="comm-chain-label">Technology</span>
+                              <strong className="comm-chain-val">{lic.technology_capability || data.technology}</strong>
+                            </div>
+                            <span className="comm-chain-arrow">➔</span>
+
+                            <div className="comm-chain-step">
+                              <span className="comm-chain-num">3</span>
+                              <span className="comm-chain-label">Industry</span>
+                              <strong className="comm-chain-val">{lic.industry || lic.industry_domain}</strong>
+                            </div>
+                            <span className="comm-chain-arrow">➔</span>
+
+                            <div className="comm-chain-step">
+                              <span className="comm-chain-num">4</span>
+                              <span className="comm-chain-label">Candidate</span>
+                              <strong className="comm-chain-val">{lic.organization}</strong>
+                            </div>
+                          </div>
+
+                          <div className="comm-meta-row">
+                            <span className="comm-meta-chip">
+                              <strong>Technology / Domain:</strong> {lic.technology_domain || data.technology}
+                            </span>
+                            <span className="comm-meta-chip">
+                              <strong>Industry:</strong> {lic.industry || lic.industry_domain}
+                            </span>
+                            {lic.application_area && (
+                              <span className="comm-meta-chip">
+                                <strong>Application:</strong> {lic.application_area}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="comm-card-body">
+                            <div className="comm-field-block">
+                              <div className="comm-field-label">Why Relevant Candidate</div>
+                              <p className="comm-field-text">{lic.why_relevant}</p>
+                            </div>
+
+                            {lic.rationale && (
+                              <div className="comm-field-block">
+                                <div className="comm-field-label">Licensing Rationale</div>
+                                <p className="comm-field-text" style={{ fontSize: '0.86rem', color: '#475569' }}>
+                                  {lic.rationale}
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="comm-field-block">
+                              <div className="comm-field-label">Potential Licensing Pathway</div>
+                              <p className="comm-field-text" style={{ fontWeight: 600, color: '#0369a1' }}>
+                                {lic.potential_pathway || lic.licensing_pathway}
+                              </p>
+                            </div>
+
+                            {lic.patents && lic.patents.length > 0 ? (
+                              <div className="comm-field-block">
+                                <div className="comm-field-label">Source Patents in Portfolio ({lic.patents.length})</div>
+                                <ul className="comm-patent-evidence-list">
+                                  {lic.patents.map((pat, pIdx) => (
+                                    <li key={pIdx} className="comm-patent-evidence-item">
+                                      <span className="comm-patent-badge">{pat.patent_number || 'Patent'}</span>
+                                      <span className="comm-patent-title-text">{pat.title}</span>
+                                      {pat.official_link && (
+                                        <a 
+                                          href={pat.official_link} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="comm-patent-source-link"
+                                          title="View source patent record"
+                                        >
+                                          Official Record ↗
+                                        </a>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : lic.related_patents && lic.related_patents.length > 0 ? (
+                              <div className="comm-field-block">
+                                <div className="comm-field-label">Related Patent Filings in Portfolio</div>
+                                <ul className="comm-list-items">
+                                  {lic.related_patents.map((patName, pIdx) => (
+                                    <li key={pIdx}>{patName}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : (
+                              <div className="comm-field-block">
+                                <div className="comm-field-label">Source Patents</div>
+                                <p style={{ fontSize: '0.82rem', color: '#64748b', fontStyle: 'italic', margin: '0.2rem 0' }}>
+                                  Direct patent portfolio records unavailable; matched via organizational research participation.
+                                </p>
+                              </div>
+                            )}
+
+                            {lic.supporting_evidence && lic.supporting_evidence.length > 0 && (
+                              <div className="comm-field-block">
+                                <div className="comm-field-label">Supporting Evidence</div>
+                                <ul className="comm-list-items">
+                                  {lic.supporting_evidence.map((evItem, evIdx) => (
+                                    <li key={evIdx}>{evItem}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="comm-card-footer">
+                          <div className="comm-next-step-box">
+                            <div className="comm-next-step-title">Suggested Next Step</div>
+                            <p className="comm-next-step-desc">{lic.suggested_action || lic.suggested_next_step}</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="comm-view-evidence-btn"
+                            onClick={() => openEvidenceModal(
+                              data.evidence,
+                              `Licensing Evaluation: ${lic.organization}`,
+                              lic.rationale || `Licensing candidate evaluation for ${lic.organization} in ${lic.industry_domain}`,
+                              {
+                                isLicensing: true,
+                                licensingItem: lic,
+                                technology: data.technology
+                              }
+                            )}
+                          >
+                            <span>🔍</span> View Evidence
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )
+          })()}
 
           {/* =========================================================
               SECTION 7: INDUSTRY PARTNERSHIP OPPORTUNITIES
@@ -810,7 +1048,7 @@ export default function Commercialization() {
                       <h4 className="comm-gap-box-title">Missing / Limited Evidence Gaps</h4>
                     </div>
                     <ul className="comm-gap-list">
-                      {data.gap_analysis.missing_or_limited_evidence.map((mis, idx) => (
+                      {(data.gap_analysis.missing_evidence || data.gap_analysis.missing_or_limited_evidence || []).map((mis, idx) => (
                         <li key={idx} className="comm-gap-item-missing">
                           <span className="comm-gap-bullet">⚠️</span> {mis}
                         </li>
@@ -825,7 +1063,7 @@ export default function Commercialization() {
                     <span>📋</span> Recommended Commercialization Actions
                   </h4>
                   <div className="comm-gap-action-steps">
-                    {data.gap_analysis.recommended_actions.map((act, idx) => (
+                    {(data.gap_analysis.recommended_next_actions || data.gap_analysis.recommended_actions || []).map((act, idx) => (
                       <div key={idx} className="comm-gap-action-step">
                         <span className="comm-gap-action-num">{idx + 1}</span>
                         <span className="comm-gap-action-text">{act}</span>
@@ -877,7 +1115,7 @@ export default function Commercialization() {
 
                       <div className="comm-mapping-node node-application">
                         <div className="comm-node-label">2. Target Application</div>
-                        <div className="comm-node-val">{mapping.potential_application}</div>
+                        <div className="comm-node-val">{mapping.application_area || mapping.potential_application}</div>
                       </div>
                       <div className="comm-mapping-flow-arrow">➔</div>
 
@@ -918,6 +1156,147 @@ export default function Commercialization() {
                       <p className="comm-evidence-rationale-text">{selectedEvidence.rationale}</p>
                     </div>
                   )}
+
+                  {/* Specialized Licensing Evidence Flow Panel */}
+                  {selectedEvidence.customPayload?.isLicensing && selectedEvidence.customPayload?.licensingItem && (() => {
+                    const lic = selectedEvidence.customPayload.licensingItem
+                    return (
+                      <div className="comm-licensing-evidence-panel">
+                        {/* Section A: Source Patents */}
+                        <div className="comm-evidence-block">
+                          <div className="comm-evidence-heading">
+                            <span>📜</span> A. Source Patent Evidence ({lic.patents?.length || (lic.related_patents?.length ? lic.related_patents.length : 0)})
+                          </div>
+                          {lic.patents && lic.patents.length > 0 ? (
+                            <table className="comm-evidence-table">
+                              <thead>
+                                <tr>
+                                  <th>Patent Number</th>
+                                  <th>Patent Title</th>
+                                  <th>Assignee / Applicant</th>
+                                  <th>Technology Domain</th>
+                                  <th>Source / Record</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {lic.patents.map((p, pIdx) => (
+                                  <tr key={pIdx}>
+                                    <td style={{ fontWeight: 700, color: '#0284c7' }}>{p.patent_number || 'Registered'}</td>
+                                    <td style={{ fontWeight: 600 }}>{p.title}</td>
+                                    <td>{p.assignee || lic.organization}</td>
+                                    <td>{p.technology_domain || lic.technology_domain || data.technology}</td>
+                                    <td>
+                                      {p.official_link ? (
+                                        <a href={p.official_link} target="_blank" rel="noopener noreferrer" style={{ color: '#0284c7', textDecoration: 'underline' }}>
+                                          Verified Source ↗
+                                        </a>
+                                      ) : (
+                                        p.source || 'Patent Intelligence DB'
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : lic.related_patents && lic.related_patents.length > 0 ? (
+                            <ul className="comm-list-items">
+                              {lic.related_patents.map((pName, pIdx) => (
+                                <li key={pIdx}><strong>{pName}</strong> (Assignee: {lic.organization})</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p style={{ color: '#64748b', fontSize: '0.88rem', fontStyle: 'italic' }}>
+                              Direct patent portfolio records unavailable; candidate identified through organizational technical participation.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Section B: Technology Evidence */}
+                        <div className="comm-evidence-block">
+                          <div className="comm-evidence-heading">
+                            <span>⚡</span> B. Technology Capability &amp; Domain Evidence
+                          </div>
+                          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', fontSize: '0.88rem' }}>
+                            <p style={{ margin: '0 0 0.4rem' }}>
+                              <strong>Technology / Domain:</strong> {lic.technology_domain || data.technology}
+                            </p>
+                            <p style={{ margin: '0 0 0.4rem' }}>
+                              <strong>Core Capability Claim:</strong> {lic.technology_capability || 'Advanced Systems Architecture'}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                              <strong>Technology Stage &amp; Signals:</strong> {data.technology_stage} stage with {data.adoption_level} adoption across connected research publications.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Section C: Organization Evidence */}
+                        <div className="comm-evidence-block">
+                          <div className="comm-evidence-heading">
+                            <span>🏛️</span> C. Organization Evidence
+                          </div>
+                          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', fontSize: '0.88rem' }}>
+                            <p style={{ margin: '0 0 0.4rem' }}>
+                              <strong>Organization:</strong> {lic.organization}
+                            </p>
+                            <p style={{ margin: '0 0 0.4rem' }}>
+                              <strong>Portfolio &amp; R&amp;D Activity:</strong> {lic.patents?.length ? `${lic.patents.length} verified patent records in repository` : (lic.related_patents?.length ? `${lic.related_patents.length} patent filings recorded` : 'Active institutional research participant')}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                              <strong>Evidence Status:</strong> <span style={{ fontWeight: 600, color: lic.evidence_status === 'Valid Evidence' ? '#047857' : '#b45309' }}>{lic.evidence_status || 'Valid Evidence'}</span> ({lic.relevance} Relevance Match)
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Section D: Industry Evidence */}
+                        <div className="comm-evidence-block">
+                          <div className="comm-evidence-heading">
+                            <span>🏭</span> D. Industry &amp; Application Evidence
+                          </div>
+                          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', fontSize: '0.88rem' }}>
+                            <p style={{ margin: '0 0 0.4rem' }}>
+                              <strong>Target Industry Sector:</strong> {lic.industry || lic.industry_domain}
+                            </p>
+                            <p style={{ margin: '0 0 0.4rem' }}>
+                              <strong>Target Application Area:</strong> {lic.application_area || `${data.technology} Applied Systems`}
+                            </p>
+                            <p style={{ margin: 0 }}>
+                              <strong>Application Alignment:</strong> Patent claims and capabilities directly match operational deployment vectors in {lic.industry || lic.industry_domain}.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Section E: Licensing Rationale */}
+                        <div className="comm-evidence-block">
+                          <div className="comm-evidence-heading">
+                            <span>💡</span> E. Licensing Rationale
+                          </div>
+                          <p style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.5, background: '#f0f9ff', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #bae6fd', margin: 0 }}>
+                            {lic.rationale || lic.why_relevant}
+                          </p>
+                        </div>
+
+                        {/* Section F: Suggested Pathway */}
+                        <div className="comm-evidence-block">
+                          <div className="comm-evidence-heading">
+                            <span>🛤️</span> F. Potential Licensing Pathway
+                          </div>
+                          <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#0369a1', fontWeight: 600 }}>
+                            {lic.potential_pathway || lic.licensing_pathway}
+                          </div>
+                        </div>
+
+                        {/* Section G: Suggested Next Step */}
+                        <div className="comm-evidence-block">
+                          <div className="comm-evidence-heading">
+                            <span>📋</span> G. Suggested Next Step
+                          </div>
+                          <div style={{ background: '#fefce8', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #fef08a', fontSize: '0.9rem', color: '#854d0e', fontWeight: 600 }}>
+                            {lic.suggested_action || lic.suggested_next_step}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Research Papers Evidence */}
                   <div className="comm-evidence-block">

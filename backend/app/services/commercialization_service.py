@@ -253,6 +253,7 @@ class CommercializationService:
                         year=filing_yr,
                         technology_domain=pat.technology_domain,
                         classification=pat.classification,
+                        official_link=getattr(pat, "official_link", None),
                         source="Module 5 Patent Intelligence"
                     )
                 )
@@ -796,46 +797,172 @@ class CommercializationService:
         self, evidence: CommercializationEvidenceBundle, technology: str
     ) -> List[LicensingOpportunity]:
         """
-        Extracts potential licensing candidate organizations grounded strictly in patent assignees
-        and technical domain evidence. Uses careful non-definitive language.
+        Extracts potential licensing candidate organizations grounded strictly in patent assignees,
+        technology domains, and research participation evidence.
+        Establishes the traceable chain:
+        Patent -> Technology Capability -> Technology/Domain -> Industry/Application -> Relevant Organization -> Potential Licensing Candidate.
+        Uses careful non-definitive language.
         """
-        clean_tech = technology.strip()
+        clean_tech = (technology or "").strip()
         licensing_opps: List[LicensingOpportunity] = []
         
-        # Map organizations to their patents
-        org_patents: Dict[str, List[str]] = {}
+        # Deduplicate and group structured patents by assignee
+        org_patents_map: Dict[str, List[EvidencePatentItem]] = {}
+        seen_patent_nums: Set[str] = set()
+
         for pat in evidence.patents:
-            if pat.assignee and pat.assignee.lower() not in {"unknown", "none", "n/a", "individual"}:
-                org_patents.setdefault(pat.assignee, []).append(pat.title or pat.patent_number or "Related Patent")
+            p_key = (pat.patent_number or pat.title or "").strip().lower()
+            if p_key and p_key in seen_patent_nums:
+                continue
+            if p_key:
+                seen_patent_nums.add(p_key)
 
-        primary_domain = evidence.domains[0] if evidence.domains else "Advanced Technology"
+            assignee = (pat.assignee or "").strip()
+            if assignee and assignee.lower() not in {"unknown", "none", "n/a", "individual", "assigned entity", "various"}:
+                org_patents_map.setdefault(assignee, []).append(pat)
 
-        if org_patents:
-            for org, p_list in list(org_patents.items())[:4]:
+        primary_domain = evidence.domains[0] if evidence.domains else f"{clean_tech.title()} Systems"
+
+        # Check for pre-mapped domain metadata
+        matched_key = None
+        lower_tech = clean_tech.lower()
+        for k in APPLICATION_DOMAIN_MAP.keys():
+            if k in lower_tech or lower_tech in k:
+                matched_key = k
+                break
+
+        app_specs = APPLICATION_DOMAIN_MAP[matched_key]["candidate_applications"] if matched_key else []
+        default_industry = app_specs[0]["industry"] if app_specs else (f"{primary_domain} Industry" if "industry" not in primary_domain.lower() else primary_domain)
+        default_app_area = app_specs[0]["name"] if app_specs else f"{clean_tech.title()} Automated Solutions"
+
+        # 1. Primary Strategy: Ground candidates in actual registered patent assignees
+        if org_patents_map:
+            # Sort organizations deterministically by number of patents desc, then name
+            sorted_orgs = sorted(org_patents_map.items(), key=lambda item: (-len(item[1]), item[0]))
+            
+            for org, p_items in sorted_orgs[:6]:
+                # Extract primary patent and capability
+                lead_pat = p_items[0]
+                pat_title = lead_pat.title or "Patent Architecture"
+                pat_num = lead_pat.patent_number or "Registered Patent"
+                
+                # Derive clean capability from patent title
+                raw_cap = re.sub(r"(?i)^(system and method for|method and system for|apparatus for|device for|system for|method of)\s+", "", pat_title)
+                tech_capability = raw_cap[:80].strip().capitalize() if raw_cap else f"{clean_tech.title()} Core Architecture"
+                
+                pat_domain = lead_pat.technology_domain or primary_domain
+                target_industry = default_industry
+                target_app_area = default_app_area
+                
+                # Refine application area and industry if domain match found in app_specs
+                for spec in app_specs:
+                    if any(term in (pat_title + " " + pat_domain).lower() for term in spec["name"].lower().split()[:2]):
+                        target_app_area = spec["name"]
+                        target_industry = spec["industry"]
+                        break
+
+                patent_titles_or_nums = [
+                    f"{p.patent_number} ({p.title[:60]}...)" if p.patent_number and p.title else (p.title or p.patent_number or "Patent")
+                    for p in p_items[:4]
+                ]
+
+                # Deterministic scoring
+                p_count = len(p_items)
+                has_domain_match = any(pat_domain.lower() in (d or "").lower() for d in evidence.domains)
+                score = min(0.95, 0.70 + (0.10 if p_count >= 2 else 0.05) + (0.10 if has_domain_match else 0.0))
+                rel_label = "High" if score >= 0.85 else "Medium"
+
+                rationale = (
+                    f"Evidence from {p_count} patent filing{'s' if p_count > 1 else ''} confirms active technical R&D by {org} "
+                    f"in {pat_domain}. Their registered IP portfolio in '{tech_capability}' aligns directly with {target_app_area} "
+                    f"in the {target_industry} sector, presenting an evidence-backed candidate profile for technology transfer or licensing."
+                )
+
+                pathway = "Non-exclusive commercial technology licensing / IP transfer" if p_count >= 2 else "IP licensing / technology evaluation agreement"
+                next_action = f"Conduct prior-art claim alignment review against {org}'s portfolio ({pat_num}) prior to technology transfer outreach."
+
+                sup_evidence = [
+                    f"Source Patent: {pat_num} - '{pat_title}'",
+                    f"Patent Assignee: {org}",
+                    f"Technology Capability: {tech_capability}",
+                    f"Domain & Industry Alignment: {pat_domain} → {target_industry}",
+                    f"Portfolio Strength: {p_count} related patent filing{'s' if p_count > 1 else ''} indexed"
+                ]
+
                 licensing_opps.append(
                     LicensingOpportunity(
                         organization=org,
-                        relevance="High" if len(p_list) >= 2 else "Medium",
-                        industry_domain=primary_domain,
-                        related_patents=p_list[:3],
-                        why_relevant=f"Evidence from patent filings indicates active technical R&D by {org} in {primary_domain}, presenting potential alignment for intellectual property licensing.",
-                        potential_pathway="Non-exclusive commercial technology licensing / IP transfer",
-                        suggested_action=f"Conduct prior-art alignment review against {org}'s registered patent portfolio.",
+                        candidate=f"{org} ({target_industry})",
+                        relevance=rel_label,
+                        relevance_score=round(score, 2),
+                        technology_domain=pat_domain,
+                        industry=target_industry,
+                        application_area=target_app_area,
+                        industry_domain=f"{target_industry} / {pat_domain}",
+                        technology_capability=tech_capability,
+                        why_relevant=f"Patent filings demonstrate active R&D by {org} in {pat_domain}, establishing technical alignment for {target_app_area}.",
+                        rationale=rationale,
+                        potential_pathway=pathway,
+                        licensing_pathway=pathway,
+                        suggested_action=next_action,
+                        suggested_next_step=next_action,
+                        related_patents=patent_titles_or_nums,
+                        patents=p_items[:4],
+                        supporting_evidence=sup_evidence,
+                        evidence_status="Valid Evidence",
                         candidate_type="Potential licensing candidate"
                     )
                 )
+
+        # 2. Secondary Strategy: Ground in organizational research & technology participation
         elif evidence.organizations:
-            for org in evidence.organizations[:3]:
+            unique_orgs = []
+            seen_org_names: Set[str] = set()
+            for o in evidence.organizations:
+                o_clean = o.strip()
+                if o_clean and o_clean.lower() not in seen_org_names and o_clean.lower() not in {"unknown", "none", "n/a", "individual", "various"}:
+                    seen_org_names.add(o_clean.lower())
+                    unique_orgs.append(o_clean)
+
+            for org in unique_orgs[:3]:
+                tech_capability = f"{clean_tech.title()} Applied Methodologies"
+                rationale = (
+                    f"Institutional participation and scientific literature records associate {org} with {clean_tech} R&D. "
+                    f"While specific assignee patent filings are limited in the current database, domain activity in {primary_domain} "
+                    f"suggests potential relevance for exploratory research collaboration or pilot licensing."
+                )
+                pathway = "Exploratory technology evaluation / Co-development licensing"
+                next_action = f"Initiate exploratory technology transfer office inquiries with {org} to assess domain requirements."
+                
+                sup_evidence = [
+                    f"Technology Focus: {clean_tech.title()}",
+                    f"Domain Alignment: {primary_domain} → {default_industry}",
+                    f"Research Participation: Organization referenced in connected technology activity",
+                    "Patent Filings: Insufficient direct patent records in local database"
+                ]
+
                 licensing_opps.append(
                     LicensingOpportunity(
                         organization=org,
-                        relevance="Medium",
-                        industry_domain=primary_domain,
+                        candidate=f"{org} ({default_industry})",
+                        relevance="Low",
+                        relevance_score=0.55,
+                        technology_domain=primary_domain,
+                        industry=default_industry,
+                        application_area=default_app_area,
+                        industry_domain=f"{default_industry} / {primary_domain}",
+                        technology_capability=tech_capability,
+                        why_relevant=f"Institutional records associate {org} with {clean_tech} research and development in {primary_domain}.",
+                        rationale=rationale,
+                        potential_pathway=pathway,
+                        licensing_pathway=pathway,
+                        suggested_action=next_action,
+                        suggested_next_step=next_action,
                         related_patents=[],
-                        why_relevant=f"Organization participation records associate {org} with {clean_tech} research and development.",
-                        potential_pathway="Exploratory technology evaluation agreement",
-                        suggested_action=f"Initiate technology transfer office inquiries regarding domain interest.",
-                        candidate_type="Potential licensing candidate"
+                        patents=[],
+                        supporting_evidence=sup_evidence,
+                        evidence_status="Low Confidence",
+                        candidate_type="Potential technology transfer candidate"
                     )
                 )
 

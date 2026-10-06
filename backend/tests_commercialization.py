@@ -213,3 +213,47 @@ def test_evidence_bundle_integrity(db_session):
     assert isinstance(evidence.funding_opportunities, list)
     assert evidence.technology_evidence is not None
     assert evidence.innovation_score_summary is not None
+
+
+# ===========================================================================
+# 8. Complete Licensing Intelligence Flow (Patent -> Org -> Ind -> Candidate)
+# ===========================================================================
+
+def test_licensing_intelligence_flow_with_patent_evidence(db_session):
+    """
+    Test that licensing candidates follow the traceable chain:
+    Patent -> Capability -> Domain -> Industry -> Organization -> Candidate -> Pathway -> Next Step.
+    """
+    tech = "Medical Imaging AI"
+    evidence = commercialization_service.gather_connected_evidence(db_session, tech)
+    licensing_opps = commercialization_service.generate_licensing_opportunities(evidence, tech)
+    
+    assert len(licensing_opps) > 0
+    for lic in licensing_opps:
+        assert lic.organization
+        assert lic.relevance in ["High", "Medium", "Low", "Insufficient Evidence"]
+        assert lic.relevance_score is not None
+        assert 0.0 <= lic.relevance_score <= 1.0
+        assert lic.technology_domain
+        assert lic.industry
+        assert lic.application_area
+        assert lic.technology_capability
+        assert lic.why_relevant
+        assert lic.rationale
+        assert lic.potential_pathway
+        assert lic.licensing_pathway
+        assert lic.suggested_action
+        assert lic.suggested_next_step
+        assert isinstance(lic.patents, list)
+        assert isinstance(lic.supporting_evidence, list)
+        assert lic.evidence_status in ["Valid Evidence", "Low Confidence", "Insufficient Evidence"]
+        assert "Potential" in lic.candidate_type
+
+
+def test_licensing_candidate_no_evidence():
+    """Test that empty evidence returns empty licensing candidate list without fabricating data."""
+    from backend.app.schemas.commercialization import CommercializationEvidenceBundle
+    empty_evidence = CommercializationEvidenceBundle()
+    licensing_opps = commercialization_service.generate_licensing_opportunities(empty_evidence, "Unknown Tech")
+    assert licensing_opps == []
+

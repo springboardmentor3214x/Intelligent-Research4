@@ -1146,3 +1146,203 @@
   margin-bottom: 0.2rem;
 }
 
+/* =========================================================
+   LICENSING SECTION STYLING & VISUAL TRACEABILITY
+   ========================================================= */
+.comm-candidate-kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #8b5cf6;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.2rem;
+}
+
+.comm-licensing-card {
+  border-top: 4px solid #8b5cf6;
+}
+
+.comm-licensing-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.comm-licensing-search-box {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  flex: 1;
+  min-width: 240px;
+}
+
+.comm-toolbar-search-icon {
+  font-size: 0.95rem;
+  margin-right: 0.4rem;
+  color: #94a3b8;
+}
+
+.comm-licensing-filter-input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 0.88rem;
+  color: #1e293b;
+  background: transparent;
+}
+
+.comm-toolbar-clear-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 0.2rem;
+}
+
+.comm-licensing-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.comm-licensing-select {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.84rem;
+  color: #334155;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+.comm-licensing-select:focus {
+  border-color: #8b5cf6;
+}
+
+.comm-licensing-empty-state {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+}
+
+/* Compact Visual Traceability Chain */
+.comm-visual-chain-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  margin: 0.75rem 0 1rem;
+  overflow-x: auto;
+}
+
+.comm-chain-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 90px;
+}
+
+.comm-chain-num {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #8b5cf6;
+  text-transform: uppercase;
+}
+
+.comm-chain-label {
+  font-size: 0.70rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.comm-chain-val {
+  font-size: 0.80rem;
+  color: #0f172a;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.comm-chain-arrow {
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Patent Evidence List & Links */
+.comm-patent-evidence-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.comm-patent-evidence-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.84rem;
+  color: #334155;
+  background: #f8fafc;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #f1f5f9;
+}
+
+.comm-patent-badge {
+  font-size: 0.72rem;
+  font-weight: 750;
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.comm-patent-title-text {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comm-patent-source-link {
+  font-size: 0.75rem;
+  color: #0284c7;
+  font-weight: 600;
+  text-decoration: underline;
+  flex-shrink: 0;
+}
+
+.comm-licensing-evidence-panel {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+

@@ -120,6 +120,7 @@ class PubMedAdapter(BaseSourceAdapter):
 
             cache_manager.set(self.source_name, query, records)
         except Exception as e:
+            cache_manager.set(self.source_name, query, [])
             logger.warning(f"PubMed fetch failed gracefully: {e}")
 
         return records

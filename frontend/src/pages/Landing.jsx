@@ -28,7 +28,28 @@ export default function Landing() {
   const [mapZoom, setMapZoom] = useState(1)
   const [constellationActive, setConstellationActive] = useState(false)
   const [activeSectionId, setActiveSectionId] = useState('home')
+  const [activeThoughtIndex, setActiveThoughtIndex] = useState(0)
   const heroRef = useRef(null)
+
+  // Sequence of intelligence thoughts for the AI Brain / Robot animation
+  const intelligenceThoughts = useMemo(() => [
+    { id: 'research', label: 'RESEARCH', icon: '📚', desc: 'Analyzing literature, papers, and knowledge bases' },
+    { id: 'funding', label: 'FUNDING', icon: '💰', desc: 'Matching active grants, calls, and opportunities' },
+    { id: 'patents', label: 'PATENTS', icon: '🔬', desc: 'Mapping patent landscapes, claims, and clusters' },
+    { id: 'technology', label: 'TECHNOLOGY', icon: '⚡', desc: 'Tracking technology maturity and trajectories' },
+    { id: 'innovation', label: 'INNOVATION', icon: '💡', desc: 'Evaluating novelty, market readiness, and scoring' },
+    { id: 'commercialization', label: 'COMMERCIALIZATION', icon: '🚀', desc: 'Structuring IP licensing, spin-outs, and impact' },
+  ], [])
+
+  // Thought cycling effect (slow, smooth loop)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveThoughtIndex((prev) => (prev + 1) % intelligenceThoughts.length)
+    }, 3800)
+    return () => clearInterval(interval)
+  }, [intelligenceThoughts.length])
+
+  const currentThoughtId = intelligenceThoughts[activeThoughtIndex]?.id || 'research'
 
   // Real Patent Data & 3D Visualization State on Landing
   const [clustersData, setClustersData] = useState(null)
@@ -51,8 +72,11 @@ export default function Landing() {
   const [activeExplainFactor, setActiveExplainFactor] = useState('research_growth')
   const [activeInnovationFactor, setActiveInnovationFactor] = useState('research_novelty')
   const [activeTechComparePair, setActiveTechComparePair] = useState('qc_vs_genai')
-  const [activeAnalystQuestion, setActiveAnalystQuestion] = useState(0)
-  const [liveTechPreviewIndex, setLiveTechPreviewIndex] = useState(0)
+  // Commercialization section interactive states
+  const [activeWorkflowStep, setActiveWorkflowStep] = useState(3)
+  const [activeActionTab, setActiveActionTab] = useState('applications')
+  const [activeLicensingCollabTab, setActiveLicensingCollabTab] = useState('licensing')
+  const [activeEvidenceModalItem, setActiveEvidenceModalItem] = useState(null)
 
   // Sample prompt chips for Idea Analyzer
   const sampleIdeaPrompts = [
@@ -125,6 +149,7 @@ export default function Landing() {
       'technology-intelligence',
       'innovation-intelligence',
       'innovation-mapping',
+      'commercialization-capabilities',
       'platform',
       'features',
       'about'
@@ -256,12 +281,13 @@ export default function Landing() {
     { id: 'technology-intelligence', label: '07 Technology Intelligence', tag: 'Maturity & 3D' },
     { id: 'innovation-intelligence', label: '08 Innovation Intelligence', tag: '5-Factor Score' },
     { id: 'innovation-mapping', label: '09 Connected Workflow', tag: 'Ecosystem' },
-    { id: 'platform', label: '10 Platform Hub', tag: 'Explore' },
-    { id: 'features', label: '11 Capabilities', tag: 'Verified' },
-    { id: 'about', label: '12 Ecosystem', tag: 'Community' },
+    { id: 'commercialization-capabilities', label: '10 Real-World Impact', tag: 'Commercialization' },
+    { id: 'platform', label: '11 Platform Hub', tag: 'Explore' },
+    { id: 'features', label: '12 Capabilities', tag: 'Verified' },
+    { id: 'about', label: '13 Ecosystem', tag: 'Community' },
   ]
 
-  // 5 Radial Nodes around Central "Research Intelligence" Engine in Hero Visual
+  // 6 Connected Nodes around Central "Research Intelligence" Engine in Hero Visual
   const heroEcosystemNodes = [
     {
       id: 'research',
@@ -304,7 +330,7 @@ export default function Landing() {
       info: 'Track technology evolution across research, patents, organizations, and adoption to evaluate maturity and trajectories.'
     },
     {
-      id: 'insights',
+      id: 'innovation',
       targetId: 'innovation-intelligence',
       label: 'Innovation',
       tag: 'Innovation Intelligence',
@@ -312,45 +338,83 @@ export default function Landing() {
       posClass: 'node-top-left',
       expandedPos: 'expanded-top-left',
       info: 'Evaluate innovation potential through a transparent 5-factor deterministic evidence score and AI analyst briefs.'
+    },
+    {
+      id: 'commercialization',
+      targetId: 'commercialization-hub',
+      label: 'Commercialization',
+      tag: 'Market & Licensing',
+      icon: '🚀',
+      posClass: 'node-bot-center',
+      expandedPos: 'expanded-bot-center',
+      info: 'Bridge research into real-world impact, IP licensing, spinoff roadmaps, and industry partnerships.'
     }
   ]
 
-  // How It Works 5-Step Process with Deep Details for Interactive Accordion
+  // How It Works 7-Step End-to-End Intelligence Pipeline
   const howItWorksSteps = [
     {
       num: '01',
       title: 'Create Your Research Profile',
-      desc: 'Define your research domain, specializations, technical keywords, publications, and patents to establish your unique academic fingerprint.',
+      desc: "Define research domain, specialization, keywords, publications, patents, organization and technology interests to establish the user's research context.",
       icon: '👤',
-      details: 'Your calibrated profile parameters serve as the vector anchor for TF-IDF grant relevance calculations and contextual literature discovery recommendations.'
+      route: user ? '/profile' : '/login',
+      linkText: 'Configure Profile →',
+      details: "Establishes your institutional research fingerprint, indexing technical keywords, domain taxonomies, and publication vectors that anchor subsequent literature recommendations, patent searches, and grant relevance scoring."
     },
     {
       num: '02',
       title: 'Explore Research Literature',
-      desc: 'Query peer-reviewed papers across ArXiv, PubMed, and CrossRef with multi-source filtering and instant abstract imports.',
-      icon: '🔎',
-      details: 'Ingests peer-reviewed preprints and journal articles directly into your isolated workspace with automated title, author, DOI, and abstract normalization.'
+      desc: 'Discover and analyze relevant research papers, topics, trends, research directions and knowledge gaps using connected research sources.',
+      icon: '📚',
+      route: user ? '/research-papers' : '/login',
+      linkText: 'Explore Papers →',
+      details: 'Multi-source ingestion across ArXiv, PubMed, and CrossRef decomposes publications into 5 core dimensions: Problem formulation, Methodology, Key findings, Limitations, and Future directions.'
     },
     {
       num: '03',
-      title: 'Discover Relevant Funding',
-      desc: 'Match your profile against national and global grant calls with transparent relevance scores and grounded keyword overlap.',
-      icon: '🎯',
-      details: 'Computes cosine similarity against active ANRF, BIRAC, MeitY, DST, and ICMR calls with explainable factor breakdowns and deadline tracking.'
+      title: 'Discover Funding Opportunities',
+      desc: 'Match the research profile and technology interests with relevant funding opportunities using semantic and evidence-based matching.',
+      icon: '💰',
+      route: user ? '/funding' : '/login',
+      linkText: 'Match Grants →',
+      details: 'Evaluates alignment against national (ANRF, BIRAC, MeitY, DST, ICMR, DRDO) and international grant calls with transparent relevance scores, keyword overlap, and deadline tracking.'
     },
     {
       num: '04',
       title: 'Understand the Patent Landscape',
-      desc: 'Explore existing patent records, dense vector embeddings, and 3D/2D semantic maps to identify technology clusters and white-spaces.',
+      desc: 'Explore related patents, technology clusters, organizations, patent activity and semantic relationships to understand the existing intellectual-property landscape.',
       icon: '🗺️',
-      details: 'Embeds official European Patent Office texts into a 384D sentence-transformers space with K-Means clustering and interactive PCA projection.'
+      route: '/patents',
+      linkText: 'Inspect Patent Map →',
+      details: 'Embeds official patent corpora into dense 384-dimensional vector spaces, optimizing K-Means clusters and projecting 3D WebGL / 2D PCA spatial maps to reveal technology density and white spaces.'
     },
     {
       num: '05',
-      title: 'Generate Innovation Insights',
-      desc: 'Connect research activity, grant capital, and intellectual property to uncover high-impact commercialization opportunities.',
+      title: 'Analyze Technology Intelligence',
+      desc: 'Evaluate technology growth, maturity, adoption, organizations, application diversity and multi-year trends using connected research and patent evidence.',
+      icon: '⚡',
+      route: '/technologies',
+      linkText: 'Analyze Technologies →',
+      details: 'Assesses multi-year trajectories across empirical S-curve maturity stages (Emerging, Growth, Mature, Saturated), market adoption velocity, organization participation, and Indian patent activity.'
+    },
+    {
+      num: '06',
+      title: 'Measure Innovation Potential',
+      desc: 'Combine research novelty, patent strength, technology maturity, market potential and funding relevance into an explainable Innovation Score with evidence breakdown.',
+      icon: '🎯',
+      route: '/innovation',
+      linkText: 'Evaluate Innovation →',
+      details: 'Synthesizes five deterministic factors (Research Novelty 30%, Patent Strength 20%, Technology Maturity 15%, Market Potential 20%, Funding Relevance 15%) alongside AI analyst explainability.'
+    },
+    {
+      num: '07',
+      title: 'Explore Real-World Opportunities',
+      desc: 'Translate the connected intelligence into potential application areas, product/service concepts, startup opportunities, licensing candidates and industry collaboration possibilities.',
       icon: '🚀',
-      details: 'Integrates scientific literature, public grant capital, and protected prior art into strategic innovation vectors for academic and industry research.'
+      route: '/commercialization',
+      linkText: 'Discover Opportunities →',
+      details: 'Surfaces actionable downstream translational pathways: candidate applications, candidate product formulations, potential startup vectors, licensing candidates, and possible industry collaborations.'
     }
   ]
 
@@ -519,6 +583,15 @@ export default function Landing() {
       link: '/innovation',
       linkText: 'Explore Innovation Intelligence →'
     },
+    commercialization: {
+      title: 'Commercialization & Real-World Impact',
+      badge: 'Actionable Applications, Startups & Licensing',
+      icon: '🚀',
+      desc: 'Connect research, patents, funding, technology maturity, market signals, and innovation evidence to identify practical applications, products, startups, licensing opportunities, and industry collaborations.',
+      features: ['Candidate Application Discovery', 'Product/Service Concept Formulation', 'Startup Opportunity Modeling', 'Licensing & Industry Collaboration Matching'],
+      link: '/commercialization',
+      linkText: 'Explore Commercialization Intelligence →'
+    },
     profile: {
       title: 'Researcher Profile Calibration',
       badge: 'Structured Research Identity',
@@ -530,7 +603,7 @@ export default function Landing() {
     }
   }
 
-  // Professional Product Capabilities Grid (10 Verified Core Capabilities)
+  // Professional Product Capabilities Grid (12 Verified Core Capabilities)
   const productCapabilities = [
     {
       title: 'Technology Maturity Analysis',
@@ -582,6 +655,13 @@ export default function Landing() {
       link: '/innovation'
     },
     {
+      title: 'Commercialization Discovery',
+      category: 'Real-World Impact',
+      desc: 'Identify candidate application areas, product concepts, startup directions, and licensing/partnership opportunities from connected intelligence.',
+      icon: '🚀',
+      link: '/commercialization'
+    },
+    {
       title: 'AI Innovation Analyst',
       category: 'Explainability Engine',
       desc: 'Ask deep questions about research trends, patent barriers, funding opportunities, and evidence interpretations with AI-assisted synthesis.',
@@ -594,6 +674,13 @@ export default function Landing() {
       desc: 'Discover government and global funding opportunities (ANRF, BIRAC, MeitY, DST, ICMR) aligned with your research profile and technology vectors.',
       icon: '💰',
       link: user ? '/funding' : '/login'
+    },
+    {
+      title: 'Licensing & Industry Collaboration',
+      category: 'Partner Intelligence',
+      desc: 'Explore potential patent licensing candidates and industry collaboration types grounded in technology domain and assignee networks.',
+      icon: '🤝',
+      link: '/commercialization'
     },
     {
       title: 'Evidence Explorer',
@@ -743,18 +830,20 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* CONNECTED RESEARCH INTELLIGENCE ECOSYSTEM (HERO VISUAL) */}
+        {/* CONNECTED RESEARCH INTELLIGENCE ECOSYSTEM (HERO VISUAL - AI BRAIN ARCHITECTURE) */}
         <div 
           className="hero-visual"
           style={{
             transform: `translate3d(${-mouseParallax.x * 0.4}px, ${-mouseParallax.y * 0.4}px, 0)`
           }}
         >
-          <div className={`network-card ${isEngineExpanded ? 'is-expanded' : ''} ${constellationActive ? 'constellation-active' : ''}`}>
+          <div className={`network-card visual-arch-card ${isEngineExpanded ? 'is-expanded' : ''} ${constellationActive ? 'constellation-active' : ''}`}>
+            
+            {/* CARD TOP HEADER */}
             <div className="network-header">
               <div className="network-status-indicator">
                 <span className="network-status-dot pulse" />
-                <span className="network-status-text">AI Intelligence Engine &bull; Active</span>
+                <span className="network-status-text">AI INTELLIGENCE ENGINE &bull; ACTIVE</span>
               </div>
               <div className="network-header-actions">
                 <button 
@@ -778,73 +867,287 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className={`network-nodes-container ${activeHoverNode ? `dim-others-${activeHoverNode}` : ''}`}>
-              {/* Dynamic SVG Pulsing Connection Lines with Flowing Light Particles */}
-              <svg className="network-lines-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                {/* Top: Research (50%, 12%) */}
-                <line x1="50" y1="50" x2="50" y2="12" className={`graph-line ${activeHoverNode === 'research' ? 'highlight' : ''}`} />
-                {/* Top-Right: Funding (82%, 24%) */}
-                <line x1="50" y1="50" x2="82" y2="24" className={`graph-line ${activeHoverNode === 'funding' ? 'highlight' : ''}`} />
-                {/* Bottom-Right: Patents (78%, 82%) */}
-                <line x1="50" y1="50" x2="78" y2="82" className={`graph-line ${activeHoverNode === 'patents' ? 'highlight' : ''}`} />
-                {/* Bottom-Left: Technology (22%, 82%) */}
-                <line x1="50" y1="50" x2="22" y2="82" className={`graph-line ${activeHoverNode === 'technology' ? 'highlight' : ''}`} />
-                {/* Top-Left: Innovation (18%, 24%) */}
-                <line x1="50" y1="50" x2="18" y2="24" className={`graph-line ${activeHoverNode === 'insights' ? 'highlight' : ''}`} />
+            {/* AI BRAIN MAIN VISUAL CANVAS */}
+            <div className={`ai-engine-stage-layout active-thought-${currentThoughtId}`}>
+              
+              {/* Dynamic SVG Flow & Energy Particle Beams */}
+              <svg className="ai-stage-svg" viewBox="0 0 760 760" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="cloudBeamGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#0284c7" stopOpacity="0.4" />
+                  </linearGradient>
+                </defs>
 
-                {/* Animated light particles flowing along connection lines */}
-                <circle cx="50" cy="30" r="1.5" className="light-particle flow-to-center" />
-                <circle cx="66" cy="37" r="1.5" className="light-particle delay-1 flow-from-center" />
-                <circle cx="64" cy="66" r="1.5" className="light-particle delay-2 flow-to-center" />
-                <circle cx="36" cy="66" r="1.5" className="light-particle delay-3 flow-from-center" />
-                <circle cx="34" cy="37" r="1.5" className="light-particle delay-4 flow-to-center" />
+                {/* Vertical Stream: Cloud Research -> Robot AI Brain */}
+                <path 
+                  d="M 380 92 L 380 170" 
+                  className={`arch-flow-line primary-vertical ${currentThoughtId === 'research' ? 'line-active-glow' : ''}`} 
+                />
+
+                {/* Curved Energy Rays from Cloud to Top Lateral Nodes */}
+                <path 
+                  d="M 310 50 C 220 70, 150 110, 110 165" 
+                  className={`arch-flow-line ray-dashed-amber ${currentThoughtId === 'innovation' ? 'line-active-glow' : ''}`} 
+                />
+                <path 
+                  d="M 450 50 C 540 70, 610 110, 650 165" 
+                  className={`arch-flow-line ray-dashed-rose ${currentThoughtId === 'funding' ? 'line-active-glow' : ''}`} 
+                />
+
+                {/* Mid Nodes Connecting into Central Engine */}
+                <path 
+                  d="M 120 380 C 200 380, 245 380, 280 380" 
+                  className={`arch-flow-line ray-dashed-emerald ${currentThoughtId === 'technology' ? 'line-active-glow' : ''}`} 
+                />
+                <path 
+                  d="M 640 380 C 560 380, 515 380, 480 380" 
+                  className={`arch-flow-line ray-dashed-purple ${currentThoughtId === 'patents' ? 'line-active-glow' : ''}`} 
+                />
+
+                {/* Lower diagonal beams connecting to bottom lateral nodes */}
+                <path 
+                  d="M 320 450 C 260 490, 190 535, 140 575" 
+                  className={`arch-flow-line beam-curve-left ${currentThoughtId === 'commercialization' ? 'line-active-glow' : ''}`} 
+                />
+                <path 
+                  d="M 440 450 C 500 490, 570 535, 620 575" 
+                  className={`arch-flow-line beam-curve-right ${currentThoughtId === 'innovation' ? 'line-active-glow' : ''}`} 
+                />
+
+                {/* Animated flowing particles along streams */}
+                <circle cx="380" cy="130" r="3" className="flowing-stage-particle p-cyan" />
+                <circle cx="210" cy="108" r="2.5" className="flowing-stage-particle p-amber" />
+                <circle cx="550" cy="108" r="2.5" className="flowing-stage-particle p-rose" />
+                <circle cx="200" cy="380" r="2.5" className="flowing-stage-particle p-emerald" />
+                <circle cx="560" cy="380" r="2.5" className="flowing-stage-particle p-purple" />
+                <circle cx="230" cy="510" r="2.8" className="flowing-stage-particle p-cyan" />
+                <circle cx="530" cy="510" r="2.8" className="flowing-stage-particle p-cyan" />
               </svg>
 
-              {/* Central Engine Node with Rotating Outer Ring and Pulse */}
+              {/* 1. TOP CLOUD (Node 1): RESEARCH / LITERATURE INTELLIGENCE */}
               <div 
-                className="node-item node-central breathing-glow"
-                onClick={() => scrollToSection('home')}
+                className={`arch-cloud-thought ${currentThoughtId === 'research' ? 'thought-active-glow' : ''}`}
+                onClick={() => scrollToSection('research')}
+                onMouseEnter={() => setActiveHoverNode('research')}
+                onMouseLeave={() => setActiveHoverNode(null)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('home') }}
-                aria-label="Research Intelligence Engine - Core Hub"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('research') }}
+                aria-label="Research Literature Intelligence"
               >
-                <div className="central-rotating-ring" />
-                <div className="central-inner-ring" />
-                <strong>Research Intelligence</strong>
-                <small>AI Intelligence Engine</small>
-                <span className="live-status-pill">● Online</span>
+                <div className="cloud-bubble-shape">
+                  <div className="cloud-inner-badge">
+                    <span className="cloud-icon-box">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <line x1="10" y1="9" x2="8" y2="9"></line>
+                      </svg>
+                    </span>
+                    <strong className="cloud-title">Research</strong>
+                    <small className="cloud-subtitle">Literature Intelligence</small>
+                  </div>
+                </div>
+                <div className="thought-stream-dots">
+                  <span className="dot-drop d-1" />
+                  <span className="dot-drop d-2" />
+                  <span className="dot-drop d-3" />
+                </div>
               </div>
 
-              {/* Surrounding Connected Interactive Nodes (5 Radial Directions) */}
-              {heroEcosystemNodes.map((node) => (
-                <div
-                  key={node.id}
+              {/* 2. CENTRAL ROBOT / AI BRAIN (Perfect Center Alignment with integrated Research Intelligence badge) */}
+              <div className={`arch-robot-stage brain-active-${currentThoughtId}`}>
+                <div className="arch-robot-halo" />
+                <div className="arch-brain-neural-glow" />
+                <div className="arch-neural-orbs">
+                  <span className="arch-spark s-1">✦</span>
+                  <span className="arch-spark s-2">✦</span>
+                  <span className="arch-spark s-3">✦</span>
+                </div>
+                <img 
+                  src="/images/Image.png" 
+                  alt="AI Intelligence Engine Robot AI Brain" 
+                  className="arch-robot-image"
+                  loading="eager"
+                />
+
+                {/* Integrated Research Intelligence Badge on the Robot */}
+                <div 
+                  className={`robot-embedded-engine-badge ${currentThoughtId === 'research' ? 'badge-active-glow' : ''}`}
+                  onClick={() => scrollToSection('home')}
+                  onMouseEnter={() => setActiveHoverNode('research')}
+                  onMouseLeave={() => setActiveHoverNode(null)}
                   role="button"
                   tabIndex={0}
-                  className={`node-item ${node.posClass} ${isEngineExpanded ? node.expandedPos : ''} ${activeHoverNode === node.id ? 'active-hover' : ''} ${activeHoverNode && activeHoverNode !== node.id ? 'node-dimmed' : ''}`}
-                  onMouseEnter={() => setActiveHoverNode(node.id)}
-                  onMouseLeave={() => setActiveHoverNode(null)}
-                  onClick={() => scrollToSection(node.targetId)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection(node.targetId) }}
-                  aria-label={`${node.label}: ${node.info}. Click to jump to section.`}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('home') }}
+                  aria-label="Research Intelligence - AI Intelligence Engine - ONLINE"
                 >
-                  <span className="node-icon-inline">{node.icon}</span>
-                  <strong>{node.label}</strong>
-                  <small>{node.tag}</small>
+                  <div className="embedded-badge-header">
+                    <span className="badge-nucleus-icon">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#0284c7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <circle cx="6" cy="12" r="1.5" />
+                        <circle cx="18" cy="1.5" />
+                        <circle cx="12" cy="6" r="1.5" />
+                        <circle cx="12" cy="18" r="1.5" />
+                        <line x1="7.5" y1="12" x2="9" y2="12" />
+                        <line x1="15" y1="12" x2="16.5" y2="12" />
+                        <line x1="12" y1="7.5" x2="12" y2="9" />
+                        <line x1="12" y1="15" x2="12" y2="16.5" />
+                      </svg>
+                    </span>
+                    <strong className="embedded-badge-title">Research Intelligence</strong>
+                  </div>
+                  <div className="embedded-badge-subrow">
+                    <span className="embedded-badge-sub">AI Intelligence Engine</span>
+                    <span className="embedded-online-pill">● ONLINE</span>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              {/* 3. SURROUNDING 6 INTELLIGENCE NODES */}
+              
+              {/* TOP-LEFT NODE: Innovation */}
+              <div 
+                className={`arch-lateral-card card-pos-top-left ${currentThoughtId === 'innovation' ? 'thought-active-glow' : ''}`}
+                onClick={() => scrollToSection('innovation-intelligence')}
+                onMouseEnter={() => setActiveHoverNode('innovation')}
+                onMouseLeave={() => setActiveHoverNode(null)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('innovation-intelligence') }}
+              >
+                <div className="card-icon-circle icon-amber">💡</div>
+                <div className="card-info-col">
+                  <strong>Innovation</strong>
+                  <small>Innovation Intelligence</small>
+                </div>
+                <span className="card-arrow-chevron">›</span>
+              </div>
+
+              {/* TOP-RIGHT NODE: Funding */}
+              <div 
+                className={`arch-lateral-card card-pos-top-right ${currentThoughtId === 'funding' ? 'thought-active-glow' : ''}`}
+                onClick={() => scrollToSection('funding')}
+                onMouseEnter={() => setActiveHoverNode('funding')}
+                onMouseLeave={() => setActiveHoverNode(null)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('funding') }}
+              >
+                <div className="card-icon-circle icon-rose">💰</div>
+                <div className="card-info-col">
+                  <strong>Funding</strong>
+                  <small>Semantic Grant Matching</small>
+                </div>
+                <span className="card-arrow-chevron">›</span>
+              </div>
+
+              {/* MID-LEFT NODE: Technology */}
+              <div 
+                className={`arch-lateral-card card-pos-mid-left ${currentThoughtId === 'technology' ? 'thought-active-glow' : ''}`}
+                onClick={() => scrollToSection('technology-intelligence')}
+                onMouseEnter={() => setActiveHoverNode('technology')}
+                onMouseLeave={() => setActiveHoverNode(null)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('technology-intelligence') }}
+              >
+                <div className="card-icon-circle icon-emerald">⚡</div>
+                <div className="card-info-col">
+                  <strong>Technology</strong>
+                  <small>Technology Intelligence</small>
+                </div>
+                <span className="card-arrow-chevron">›</span>
+              </div>
+
+              {/* MID-RIGHT NODE: Patents */}
+              <div 
+                className={`arch-lateral-card card-pos-mid-right ${currentThoughtId === 'patents' ? 'thought-active-glow' : ''}`}
+                onClick={() => scrollToSection('patents')}
+                onMouseEnter={() => setActiveHoverNode('patents')}
+                onMouseLeave={() => setActiveHoverNode(null)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('patents') }}
+              >
+                <div className="card-icon-circle icon-purple">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9333ea" strokeWidth="2">
+                    <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                  </svg>
+                </div>
+                <div className="card-info-col">
+                  <strong>Patents</strong>
+                  <small>Landscape & Clusters</small>
+                </div>
+                <span className="card-arrow-chevron">›</span>
+              </div>
+
+              {/* BOTTOM-LEFT NODE: Commercialization (below Technology on left) */}
+              <div 
+                className={`arch-lateral-card card-pos-bot-left ${currentThoughtId === 'commercialization' ? 'thought-active-glow' : ''}`}
+                onClick={() => scrollToSection('commercialization-hub')}
+                onMouseEnter={() => setActiveHoverNode('commercialization')}
+                onMouseLeave={() => setActiveHoverNode(null)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('commercialization-hub') }}
+              >
+                <div className="card-icon-circle icon-purple-bright">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a21caf" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                    <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+                  </svg>
+                </div>
+                <div className="card-info-col">
+                  <strong>Commercialization</strong>
+                  <small>Real-World Opportunities</small>
+                </div>
+                <span className="card-arrow-chevron">›</span>
+              </div>
+
+              {/* BOTTOM-RIGHT NODE: Innovation Output (below Patents on right) */}
+              <div 
+                className={`arch-lateral-card card-pos-bot-right ${currentThoughtId === 'innovation' ? 'thought-active-glow' : ''}`}
+                onClick={() => scrollToSection('innovation-intelligence')}
+                onMouseEnter={() => setActiveHoverNode('innovation')}
+                onMouseLeave={() => setActiveHoverNode(null)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') scrollToSection('innovation-intelligence') }}
+              >
+                <div className="card-icon-circle icon-blue">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2.2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                  </svg>
+                </div>
+                <div className="card-info-col">
+                  <strong>Innovation</strong>
+                  <small>Innovation Intelligence</small>
+                </div>
+                <span className="card-arrow-chevron">›</span>
+              </div>
+
             </div>
 
-            {/* Live Contextual Tooltip / Description Bar */}
+            {/* CARD BOTTOM FOOTER DESCRIPTION */}
             <div className="network-footer">
               {activeHoverNode ? (
                 <span className="node-tooltip-text animated-fade">
                   {heroEcosystemNodes.find((n) => n.id === activeHoverNode)?.info}
                 </span>
               ) : (
-                <span className="default-footer-text">
-                  Hover to inspect intelligence vectors or click to smoothly navigate sections
+                <span className="default-footer-text animated-fade" key={intelligenceThoughts[activeThoughtIndex].id}>
+                  <strong className="footer-thought-badge">{intelligenceThoughts[activeThoughtIndex].label}:</strong> {intelligenceThoughts[activeThoughtIndex].desc}
                 </span>
               )}
             </div>
@@ -853,7 +1156,7 @@ export default function Landing() {
       </section>
 
       {/* =========================================================
-          2. FEATURE: HOW IT WORKS (5-STEP INTERACTIVE PIPELINE)
+          2. FEATURE: HOW IT WORKS (7-STEP INTERACTIVE PIPELINE)
           ========================================================= */}
       <section className="landing-section reveal-on-scroll" id="how-it-works">
         <div className="section-header">
@@ -861,19 +1164,20 @@ export default function Landing() {
           <h2 className="section-title">HOW RESEARCH INTELLIGENCE WORKS</h2>
           <div className="section-title-line" />
           <p className="section-subtitle">
-            A structured intelligence pipeline connecting research expertise with literature, funding, patents, and actionable innovation insights.
+            A structured intelligence pipeline connecting research expertise with literature, funding, patents, technology intelligence, innovation analysis, and real-world opportunities.
           </p>
         </div>
 
-        {/* 01 -> 02 -> 03 -> 04 -> 05 Sequential Progress Flow Indicator */}
-        <div className="how-progress-tracker" aria-hidden="true">
+        {/* 01 -> 02 -> 03 -> 04 -> 05 -> 06 -> 07 Sequential Progress Flow Indicator */}
+        <div className="how-progress-tracker" aria-label="Methodology 7-Step Progress Flow">
           {howItWorksSteps.map((step, idx) => (
             <div key={step.num} className="tracker-step-item">
               <button 
                 type="button"
                 className={`tracker-pill ${expandedStep === step.num ? 'active' : ''}`}
                 onClick={() => setExpandedStep(expandedStep === step.num ? null : step.num)}
-                aria-label={`View step ${step.num}`}
+                aria-label={`View step ${step.num}: ${step.title}`}
+                title={`Step ${step.num}: ${step.title}`}
               >
                 <span>{step.num}</span>
               </button>
@@ -905,6 +1209,15 @@ export default function Landing() {
                   <div className="how-card-deep-details animated-fade">
                     <span className="deep-details-tag">Workflow Detail</span>
                     <p>{step.details}</p>
+                    {step.route && (
+                      <Link 
+                        to={step.route} 
+                        className="how-card-route-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {step.linkText || 'Open Module →'}
+                      </Link>
+                    )}
                   </div>
                 )}
                 <div className="how-card-expand-prompt">
@@ -2581,6 +2894,509 @@ export default function Landing() {
       </section>
 
       {/* =========================================================
+          8B. COMMERCIALIZATION & REAL-WORLD IMPACT CAPABILITIES
+          ========================================================= */}
+      <section className="landing-section commercialization-section reveal-on-scroll" id="commercialization-capabilities">
+        <div className="section-header">
+          <p className="eyebrow">FROM INTELLIGENCE TO REAL-WORLD IMPACT</p>
+          <h2 className="section-title">Turn Research Into Actionable Opportunities</h2>
+          <div className="section-title-line" />
+          <p className="section-subtitle">
+            Connect research, patents, funding, technology maturity, market signals, and innovation evidence to identify practical applications, products, startups, licensing opportunities, and industry collaborations.
+          </p>
+        </div>
+
+        {/* 4 Commercialization Capability Cards */}
+        <div className="comm-capabilities-grid">
+          {/* Card 1: APPLICATION & COMMERCIALIZATION */}
+          <div className="comm-capability-card interactive-hover-card">
+            <div className="comm-card-header">
+              <div className="comm-card-badge-row">
+                <span className="comm-card-icon">🎯</span>
+                <span className="comm-card-pill">Discovery &amp; Translation</span>
+              </div>
+              <h3 className="comm-card-title">Application &amp; Commercialization</h3>
+              <p className="comm-card-purpose">
+                Identify where a research outcome or technology can potentially be applied across diverse vertical sectors.
+              </p>
+            </div>
+
+            <div className="comm-card-body">
+              <div className="comm-item-group">
+                <span className="comm-group-label">Candidate Application Areas</span>
+                <div className="comm-tags-list">
+                  <span className="comm-tag">Automated Clinical Diagnostics</span>
+                  <span className="comm-tag">Point-of-Care Triage</span>
+                  <span className="comm-tag">Radiological Workflow Optimization</span>
+                </div>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Candidate Industries</span>
+                <p className="comm-group-value">Healthcare &amp; MedTech, Telemedicine Providers, Medical Device Manufacturers</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Potential Users</span>
+                <p className="comm-group-value">Radiologists, Hospital IT Systems, Clinical Researchers, Triage Nurses</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Possible Use Cases</span>
+                <ul className="comm-bullet-list">
+                  <li>Real-time lesion boundary segmentation during standard MRI scans</li>
+                  <li>Automated second-reader assistance reducing diagnostic latency</li>
+                </ul>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Evidence Supporting Relevance</span>
+                <p className="comm-group-evidence">
+                  Correlated with 482 peer-reviewed PubMed/ArXiv publications (CAGR +31.4%), 148 EPO/Indian patent filings, and TRL 6-7 maturity benchmarks.
+                </p>
+              </div>
+            </div>
+
+            <div className="comm-card-footer">
+              <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="comm-action-btn">
+                <span>View Evidence &amp; Applications →</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Card 2: PRODUCT & SERVICE OPPORTUNITIES */}
+          <div className="comm-capability-card interactive-hover-card">
+            <div className="comm-card-header">
+              <div className="comm-card-badge-row">
+                <span className="comm-card-icon">📦</span>
+                <span className="comm-card-pill">Productization Pipeline</span>
+              </div>
+              <h3 className="comm-card-title">Product &amp; Service Opportunities</h3>
+              <p className="comm-card-purpose">
+                Identify how a research outcome or technology could potentially be converted into a viable product or service concept.
+              </p>
+            </div>
+
+            <div className="comm-card-body">
+              <div className="comm-pathway-badge">
+                <span>Research</span>
+                <span className="pathway-arr">→</span>
+                <span>Problem</span>
+                <span className="pathway-arr">→</span>
+                <span>Solution</span>
+                <span className="pathway-arr">→</span>
+                <span>Product/Service</span>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Problem Addressed</span>
+                <p className="comm-group-value">Manual scan review causes severe clinical backlogs and variability in multi-sequence scans.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Proposed Solution</span>
+                <p className="comm-group-value">Edge-deployed deep neural inference module with DICOM standard PACS interoperability.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Candidate Opportunity Concept</span>
+                <p className="comm-group-value"><strong>ScanAssist Edge AI:</strong> Turnkey radiological co-pilot microservice with automated quality scoring.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Technical Requirements</span>
+                <p className="comm-group-value">FP16 TensorRT inference runtime, DICOM 3.0 bridge, sub-250ms latency per slice.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Possible Delivery Model</span>
+                <p className="comm-group-value">Hybrid On-Premises Appliance / HIPAA-compliant Cloud API Subscription.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Suggested Next Step</span>
+                <p className="comm-group-step">Conduct hospital radiologist workflow simulation and benchmark latency against existing PACS.</p>
+              </div>
+            </div>
+
+            <div className="comm-card-footer">
+              <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="comm-action-btn">
+                <span>Explore Candidate Concepts →</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Card 3: STARTUP & BUSINESS OPPORTUNITIES */}
+          <div className="comm-capability-card interactive-hover-card">
+            <div className="comm-card-header">
+              <div className="comm-card-badge-row">
+                <span className="comm-card-icon">🚀</span>
+                <span className="comm-card-pill">Venture Formation</span>
+              </div>
+              <h3 className="comm-card-title">Startup &amp; Business Opportunities</h3>
+              <p className="comm-card-purpose">
+                Identify potential startup or business directions using connected intelligence across maturity, patents, and funding.
+              </p>
+            </div>
+
+            <div className="comm-card-body">
+              <div className="comm-item-group">
+                <span className="comm-group-label">Potential Startup Opportunity</span>
+                <p className="comm-group-value"><strong>NeuroVision Diagnostics:</strong> Clinical AI-as-a-Service for rapid rural diagnostic screening.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Market Problem &amp; Target Customers</span>
+                <p className="comm-group-value">Rural healthcare centers lack on-site specialists. Target: Tier-2/3 diagnostic networks &amp; regional hospitals.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Possible Business Model</span>
+                <p className="comm-group-value">Pay-per-scan B2B model + tiered enterprise annual integration subscriptions.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Competitive Context &amp; Novelty</span>
+                <p className="comm-group-value">High research novelty in lightweight model distillation; white-space identified in multi-modal Indian patent clusters.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Relevant Funding Support</span>
+                <p className="comm-group-evidence">Matched schemes: BIRAC BIG Grant, MeitY TIDE 2.0, and DST NIDHI-EIR translational calls.</p>
+              </div>
+
+              <div className="comm-item-group">
+                <span className="comm-group-label">Suggested First Actionable Step</span>
+                <p className="comm-group-step">Develop a minimal viable Dockerized pipeline for retrospective clinical validation dataset testing.</p>
+              </div>
+            </div>
+
+            <div className="comm-card-footer">
+              <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="comm-action-btn">
+                <span>Evaluate Startup Vectors →</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Card 4: LICENSING & INDUSTRY PARTNERSHIPS */}
+          <div className="comm-capability-card interactive-hover-card">
+            <div className="comm-card-header">
+              <div className="comm-card-badge-row">
+                <span className="comm-card-icon">🤝</span>
+                <span className="comm-card-pill">Licensing &amp; Partnerships</span>
+              </div>
+              <h3 className="comm-card-title">Licensing &amp; Industry Partnerships</h3>
+              <p className="comm-card-purpose">
+                Evaluate prospective IP transfer avenues and industry collaborative engagements grounded in objective domain evidence.
+              </p>
+            </div>
+
+            <div className="comm-card-body">
+              {/* Toggle switcher between Licensing and Partnership flow views */}
+              <div className="licensing-subtab-switch">
+                <button
+                  type="button"
+                  className={`subtab-btn ${activeLicensingCollabTab === 'licensing' ? 'active' : ''}`}
+                  onClick={() => setActiveLicensingCollabTab('licensing')}
+                >
+                  📜 Licensing Flow
+                </button>
+                <button
+                  type="button"
+                  className={`subtab-btn ${activeLicensingCollabTab === 'partnership' ? 'active' : ''}`}
+                  onClick={() => setActiveLicensingCollabTab('partnership')}
+                >
+                  🏢 Industry Partnerships
+                </button>
+              </div>
+
+              {activeLicensingCollabTab === 'licensing' ? (
+                <div className="licensing-content-panel animated-fade">
+                  <div className="comm-flow-diagram-mini">
+                    <span className="flow-step-tag">Patent / Tech</span>
+                    <span className="flow-arr">↓</span>
+                    <span className="flow-step-tag">Owner / Assignee</span>
+                    <span className="flow-arr">↓</span>
+                    <span className="flow-step-tag">Tech Domain</span>
+                    <span className="flow-arr">↓</span>
+                    <span className="flow-step-tag">Related Industry</span>
+                    <span className="flow-arr">↓</span>
+                    <span className="flow-step-tag active-tag">Licensing Candidate</span>
+                  </div>
+
+                  <div className="comm-item-group">
+                    <span className="comm-group-label">Relevant Patent / Technology</span>
+                    <p className="comm-group-value">Automated DICOM volumetric segmentation neural engine (EP 340192 A1 / IN Class G06T).</p>
+                  </div>
+
+                  <div className="comm-item-group">
+                    <span className="comm-group-label">Potential Licensing Candidates</span>
+                    <p className="comm-group-value">MedTech Diagnostic Equipment Manufacturers, PACS Software Vendors, OEM Sensor Providers</p>
+                  </div>
+
+                  <div className="comm-item-group">
+                    <span className="comm-group-label">Why Candidate is Relevant</span>
+                    <p className="comm-group-evidence">Active assignee citation network in IPC classes G06T 7/00 and A61B 5/00 with aligned commercial device lines.</p>
+                  </div>
+
+                  <div className="comm-item-group">
+                    <span className="comm-group-label">Candidate Status</span>
+                    <p className="comm-group-step">Candidate for Further Evaluation — non-exclusive and exclusive licensing pathways.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="partnership-content-panel animated-fade">
+                  <div className="comm-flow-diagram-mini">
+                    <span className="flow-step-tag">Technology / Research</span>
+                    <span className="flow-arr">↓</span>
+                    <span className="flow-step-tag">Relevant Organization</span>
+                    <span className="flow-arr">↓</span>
+                    <span className="flow-step-tag">Partnership Opportunity</span>
+                    <span className="flow-arr">↓</span>
+                    <span className="flow-step-tag active-tag">Collaboration Type</span>
+                  </div>
+
+                  <div className="comm-item-group">
+                    <span className="comm-group-label">Possible Collaboration Types</span>
+                    <div className="comm-tags-list">
+                      <span className="comm-tag">Research Collaboration</span>
+                      <span className="comm-tag">Pilot Project</span>
+                      <span className="comm-tag">Technology Validation</span>
+                      <span className="comm-tag">Industry Testing</span>
+                      <span className="comm-tag">Product Integration</span>
+                      <span className="comm-tag">Technology Transfer</span>
+                    </div>
+                  </div>
+
+                  <div className="comm-item-group">
+                    <span className="comm-group-label">Why Organization is Relevant</span>
+                    <p className="comm-group-evidence">Institutional alignment with shared research publication benchmarks and clinical trial capabilities.</p>
+                  </div>
+
+                  <div className="comm-item-group">
+                    <span className="comm-group-label">Suggested Next Step</span>
+                    <p className="comm-group-step">Initiate joint feasibility study proposal and establish mutual non-disclosure exploration terms.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="comm-card-footer">
+              <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="comm-action-btn">
+                <span>Explore Licensing &amp; Partners →</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* VISUAL COMMERCIALIZATION WORKFLOW */}
+        <div className="commercialization-workflow-wrapper">
+          <div className="workflow-header-box">
+            <span className="workflow-badge">END-TO-END INTELLIGENCE WORKFLOW</span>
+            <h3 className="workflow-title">The Commercialization Discovery Pipeline</h3>
+            <p className="workflow-subtitle">
+              How platform intelligence connects raw scientific research to verified real-world translational outcomes.
+            </p>
+          </div>
+
+          <div className="interactive-workflow-flow">
+            {/* Step 1 */}
+            <div 
+              className={`wf-node-box ${activeWorkflowStep === 0 ? 'active-wf' : ''}`}
+              onClick={() => setActiveWorkflowStep(0)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') setActiveWorkflowStep(0) }}
+            >
+              <div className="wf-node-icon">📚</div>
+              <div className="wf-node-text">
+                <span className="wf-step-num">Step 01</span>
+                <strong>Research &amp; Technology</strong>
+                <small>Literature, preprints &amp; discoveries</small>
+              </div>
+            </div>
+
+            <div className="wf-connector-line">
+              <span className="wf-arrow">↓</span>
+            </div>
+
+            {/* Step 2 */}
+            <div 
+              className={`wf-node-box ${activeWorkflowStep === 1 ? 'active-wf' : ''}`}
+              onClick={() => setActiveWorkflowStep(1)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') setActiveWorkflowStep(1) }}
+            >
+              <div className="wf-node-icon">🌐</div>
+              <div className="wf-node-text">
+                <span className="wf-step-num">Step 02</span>
+                <strong>Connected Intelligence</strong>
+                <small>Research + Patent + Funding + Maturity</small>
+              </div>
+            </div>
+
+            <div className="wf-connector-line">
+              <span className="wf-arrow">↓</span>
+            </div>
+
+            {/* Step 3 */}
+            <div 
+              className={`wf-node-box ${activeWorkflowStep === 2 ? 'active-wf' : ''}`}
+              onClick={() => setActiveWorkflowStep(2)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') setActiveWorkflowStep(2) }}
+            >
+              <div className="wf-node-icon">📊</div>
+              <div className="wf-node-text">
+                <span className="wf-step-num">Step 03</span>
+                <strong>Evidence &amp; Market Analysis</strong>
+                <small>Maturity stage, competitive IP &amp; grants</small>
+              </div>
+            </div>
+
+            <div className="wf-connector-line">
+              <span className="wf-arrow">↓</span>
+            </div>
+
+            {/* Step 4: Branching Step */}
+            <div 
+              className={`wf-node-box wf-central-branch ${activeWorkflowStep === 3 ? 'active-wf' : ''}`}
+              onClick={() => setActiveWorkflowStep(3)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') setActiveWorkflowStep(3) }}
+            >
+              <div className="wf-node-icon">⚡</div>
+              <div className="wf-node-text">
+                <span className="wf-step-num">Step 04</span>
+                <strong>Commercialization Opportunity Discovery</strong>
+                <small>Systematic extraction of 4 translational pathways</small>
+              </div>
+            </div>
+
+            {/* 4 Quadrants Box */}
+            <div className="wf-branch-quadrants-grid">
+              <div className="quadrant-card">
+                <span className="quad-icon">🎯</span>
+                <strong>Application</strong>
+                <small>Candidate sectors &amp; users</small>
+              </div>
+              <div className="quadrant-card">
+                <span className="quad-icon">📦</span>
+                <strong>Product / Service</strong>
+                <small>Concept, delivery &amp; tech specs</small>
+              </div>
+              <div className="quadrant-card">
+                <span className="quad-icon">🚀</span>
+                <strong>Startup</strong>
+                <small>Venture model &amp; grants</small>
+              </div>
+              <div className="quadrant-card">
+                <span className="quad-icon">🤝</span>
+                <strong>Licensing / Partnership</strong>
+                <small>IP transfer &amp; collaborations</small>
+              </div>
+            </div>
+
+            <div className="wf-connector-line">
+              <span className="wf-arrow">↓</span>
+            </div>
+
+            {/* Step 5 */}
+            <div 
+              className={`wf-node-box ${activeWorkflowStep === 4 ? 'active-wf' : ''}`}
+              onClick={() => setActiveWorkflowStep(4)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') setActiveWorkflowStep(4) }}
+            >
+              <div className="wf-node-icon">✅</div>
+              <div className="wf-node-text">
+                <span className="wf-step-num">Step 05</span>
+                <strong>Evidence-Based Next Steps</strong>
+                <small>Actionable milestones &amp; verifiable trajectories</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* EVIDENCE-FIRST CALLOUT */}
+        <div className="evidence-first-callout-card">
+          <div className="ef-icon-wrapper">
+            <span>🛡️</span>
+          </div>
+          <div className="ef-content">
+            <span className="ef-badge">EVIDENCE-FIRST PRINCIPLE</span>
+            <h4 className="ef-heading">Traceable Intelligence &bull; AI-Assisted Recommendation</h4>
+            <p className="ef-text">
+              Commercialization opportunities are derived from connected research, patent, funding, technology, market, and innovation evidence. AI assists with semantic matching, analysis, recommendation generation, and explanation, while the underlying evidence remains traceable.
+            </p>
+            <div className="ef-footer-tags">
+              <span className="ef-tag">✓ No Ungrounded Predictions</span>
+              <span className="ef-tag">✓ Real Patent &amp; Literature Sources</span>
+              <span className="ef-tag">✓ Transparent S-Curve Maturity</span>
+              <span className="ef-tag">✓ Verifiable Organization Networks</span>
+            </div>
+          </div>
+        </div>
+
+        {/* WHAT CAN YOU DO WITH A TECHNOLOGY? INTERACTIVE AREA */}
+        <div className="what-can-you-do-wrapper">
+          <div className="wcyd-header">
+            <span className="wcyd-badge">ACTIONABLE TRANSLATION</span>
+            <h3 className="wcyd-title">What Can You Do With a Technology?</h3>
+            <p className="wcyd-subtitle">
+              Select an objective to launch the dedicated platform workspace:
+            </p>
+          </div>
+
+          <div className="wcyd-options-grid">
+            {/* Option 1 */}
+            <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="wcyd-card interactive-hover-card">
+              <div className="wcyd-card-icon">🎯</div>
+              <h4 className="wcyd-card-title">Explore Applications</h4>
+              <p className="wcyd-card-desc">Identify candidate application areas, target user segments, and relevance evidence.</p>
+              <span className="wcyd-action-link">Open Applications Workspace →</span>
+            </Link>
+
+            {/* Option 2 */}
+            <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="wcyd-card interactive-hover-card">
+              <div className="wcyd-card-icon">📦</div>
+              <h4 className="wcyd-card-title">Build a Product</h4>
+              <p className="wcyd-card-desc">Convert research findings into candidate product concepts and delivery models.</p>
+              <span className="wcyd-action-link">Explore Productization →</span>
+            </Link>
+
+            {/* Option 3 */}
+            <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="wcyd-card interactive-hover-card">
+              <div className="wcyd-card-icon">🚀</div>
+              <h4 className="wcyd-card-title">Explore a Startup</h4>
+              <p className="wcyd-card-desc">Evaluate venture opportunities, business models, funding support, and first actionable steps.</p>
+              <span className="wcyd-action-link">Explore Startup Vectors →</span>
+            </Link>
+
+            {/* Option 4 */}
+            <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="wcyd-card interactive-hover-card">
+              <div className="wcyd-card-icon">📜</div>
+              <h4 className="wcyd-card-title">Evaluate Licensing</h4>
+              <p className="wcyd-card-desc">Connect patent claims and assignee networks to potential licensing candidates.</p>
+              <span className="wcyd-action-link">Evaluate Licensing →</span>
+            </Link>
+
+            {/* Option 5 */}
+            <Link to="/commercialization?technology=Medical%20Imaging%20AI" className="wcyd-card interactive-hover-card">
+              <div className="wcyd-card-icon">🤝</div>
+              <h4 className="wcyd-card-title">Find Industry Partners</h4>
+              <p className="wcyd-card-desc">Explore collaborative pilot projects, research validation, and technology transfer.</p>
+              <span className="wcyd-action-link">Find Industry Partners →</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
           9. INTERACTIVE "EXPLORE THE PLATFORM" HUB
           ========================================================= */}
       <section className="landing-section reveal-on-scroll" id="platform">
@@ -2629,6 +3445,13 @@ export default function Landing() {
               onClick={() => setActiveExploreTab('innovation')}
             >
               <span>💡</span> Innovation Intelligence
+            </button>
+            <button
+              type="button"
+              className={`hub-nav-btn ${activeExploreTab === 'commercialization' ? 'active' : ''}`}
+              onClick={() => setActiveExploreTab('commercialization')}
+            >
+              <span>🚀</span> Commercialization
             </button>
             <button
               type="button"
@@ -2793,6 +3616,7 @@ export default function Landing() {
               <button type="button" onClick={() => scrollToSection('patents')} className="footer-link">Patent Landscape</button>
               <button type="button" onClick={() => scrollToSection('technology-intelligence')} className="footer-link">Technology Intelligence</button>
               <button type="button" onClick={() => scrollToSection('innovation-intelligence')} className="footer-link">Innovation Intelligence</button>
+              <button type="button" onClick={() => scrollToSection('commercialization-capabilities')} className="footer-link">Commercialization &amp; Impact</button>
             </div>
 
             <div className="footer-col">
@@ -2801,6 +3625,7 @@ export default function Landing() {
               <Link to="/technologies/maturity" className="footer-link">Maturity Analysis (6 Weights)</Link>
               <Link to="/innovation" className="footer-link">Innovation Scoring (5 Factors)</Link>
               <Link to="/innovation" className="footer-link">Analyze My Idea</Link>
+              <Link to="/commercialization" className="footer-link">Commercialization Engine</Link>
               <Link to="/patents" className="footer-link">3D Patent Landscape</Link>
               <Link to="/funding" className="footer-link">Funding Intelligence</Link>
             </div>

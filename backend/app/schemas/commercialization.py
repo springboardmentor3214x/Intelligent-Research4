@@ -25,6 +25,7 @@ class EvidencePatentItem(BaseModel):
     year: Optional[int] = None
     technology_domain: Optional[str] = None
     classification: Optional[str] = None
+    official_link: Optional[str] = None
     source: str = "Module 5 Patent DB"
 
 
@@ -186,12 +187,24 @@ class StartupResponse(BaseModel):
 
 class LicensingOpportunity(BaseModel):
     organization: str = Field(..., description="Organization / Assignee Name")
-    relevance: str = Field(..., description="High / Medium / Low relevance")
-    industry_domain: str = Field(..., description="Primary industry domain")
-    related_patents: List[str] = Field(default_factory=list, description="Related patent titles or numbers")
+    candidate: Optional[str] = Field(None, description="Candidate name or label")
+    relevance: str = Field(..., description="High / Medium / Low / Insufficient Evidence")
+    relevance_score: Optional[float] = Field(None, description="Deterministic similarity/evidence score 0.0 to 1.0")
+    technology_domain: str = Field(..., description="Technology / Domain capability area")
+    industry: str = Field(..., description="Industry / Vertical sector")
+    application_area: str = Field(..., description="Specific application area")
+    industry_domain: str = Field(..., description="Backward-compatible combined industry/domain string")
+    technology_capability: str = Field(..., description="Extracted core patent/technology capability")
     why_relevant: str = Field(..., description="Why this organization is a potential licensing candidate")
-    potential_pathway: str = Field(..., description="e.g. Non-exclusive IP licensing, Joint research agreement, Technology transfer")
+    rationale: str = Field(..., description="Detailed evidence-grounded licensing rationale")
+    potential_pathway: str = Field(..., description="e.g. Non-exclusive technology licensing, IP licensing / technology transfer")
+    licensing_pathway: str = Field(..., description="Alias for potential_pathway for standard schema consistency")
     suggested_action: str = Field(..., description="Actionable first step")
+    suggested_next_step: str = Field(..., description="Alias for suggested_action")
+    related_patents: List[str] = Field(default_factory=list, description="Related patent titles or numbers")
+    patents: List[EvidencePatentItem] = Field(default_factory=list, description="Structured patent records with numbers, titles, assignees, URLs")
+    supporting_evidence: List[str] = Field(default_factory=list, description="Key bulleted evidence points")
+    evidence_status: str = Field("Valid Evidence", description="'Valid Evidence' | 'Low Confidence' | 'Insufficient Evidence'")
     candidate_type: str = Field("Potential licensing candidate", description="Candidate type label")
 
 

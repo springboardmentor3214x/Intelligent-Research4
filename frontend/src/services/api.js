@@ -11,7 +11,7 @@ export async function apiFetch(path, options = {}) {
     }
   }
 
-  const timeoutMs = options.timeout || 35000
+  const timeoutMs = options.timeout || 60000
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 

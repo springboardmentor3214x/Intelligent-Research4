@@ -1024,9 +1024,15 @@ class InnovationScoringService:
         ]
 
         prompt = (
-            f"You are the Innovation Analyst for '{technology}'. Answer the user's question accurately.\n"
-            f"Base your answer strictly on the following platform facts:\n"
+            f"You are the senior Innovation & IP Intelligence Analyst for '{technology}'. "
+            f"Provide a structured, insightful, well-formatted response.\n\n"
+            f"GROUND TRUTH PLATFORM EVIDENCE:\n"
             + "\n".join(f"- {p}" for p in grounded_points) + "\n\n"
+            f"FORMATTING GUIDELINES:\n"
+            f"- Use clean Markdown headers (###, ####), bullet points, and clean tables where relevant.\n"
+            f"- Ensure tables use standard markdown syntax with clean linebreaks.\n"
+            f"- Ground all metrics and insights directly on the platform evidence.\n"
+            f"- Be concise, structured, and actionable.\n\n"
             f"User Question: {question}\n"
         )
 
@@ -1038,14 +1044,21 @@ class InnovationScoringService:
             try:
                 headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
                 messages = [
-                    {"role": "system", "content": "You are a scientific and IP intelligence analyst. Be concise, objective, and truthful."}
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an expert scientific, patent, and innovation intelligence analyst. "
+                            "Format your responses using clean Markdown: structured bullet points, clean tables with headers and linebreaks, "
+                            "and bold highlights for key indicators. Never output raw collapsed single-line table strings."
+                        )
+                    }
                 ]
                 if chat_history:
                     for ch in chat_history[-4:]:
                         messages.append({"role": ch.get("role", "user"), "content": ch.get("content", "")})
                 messages.append({"role": "user", "content": prompt})
 
-                payload = {"model": model, "messages": messages, "temperature": 0.3}
+                payload = {"model": model, "messages": messages, "temperature": 0.2}
                 with httpx.Client(timeout=10.0) as client:
                     resp = client.post(f"{base_url}/chat/completions", headers=headers, json=payload)
                     if resp.status_code == 200:
@@ -1059,12 +1072,21 @@ class InnovationScoringService:
             except Exception as e:
                 logger.warning(f"Grok chat call failed ({e}), using factual template.")
 
-        # Deterministic fallback answer
+        # Deterministic structured fallback answer
         ans = (
-            f"Based on the empirical evidence for {technology}, the overall Innovation Score is {score_res.overall_score}/100 "
-            f"with a {score_res.innovation_level} rating. The strongest supporting factor is {score_res.strongest_factor} "
-            f"({score_res.factors[score_res.strongest_factor.lower().replace(' ', '_')].normalized_score}/100), "
-            f"while {score_res.weakest_factor} is comparatively moderate. Evidence coverage is {score_res.evidence_coverage}."
+            f"### Empirical Innovation Intelligence for **{technology}**\n\n"
+            f"| Metric / Indicator | Value | Status |\n"
+            f"| :--- | :--- | :--- |\n"
+            f"| **Composite Innovation Score** | **{score_res.overall_score:.1f} / 100** | {score_res.innovation_level} |\n"
+            f"| **Research Novelty** | {score_res.factors['research_novelty'].normalized_score or 'N/A'} / 100 | Weight: 30% |\n"
+            f"| **Patent Strength** | {score_res.factors['patent_strength'].normalized_score or 'N/A'} / 100 | Weight: 20% |\n"
+            f"| **Technology Maturity** | {score_res.factors['tech_maturity'].normalized_score or 'N/A'} / 100 | Weight: 15% |\n"
+            f"| **Market Potential** | {score_res.factors['market_potential'].normalized_score or 'N/A'} / 100 | Weight: 20% |\n"
+            f"| **Funding Relevance** | {score_res.factors['funding_relevance'].normalized_score or 'N/A'} / 100 | Weight: 15% |\n\n"
+            f"#### Key Analytical Observations:\n"
+            f"- **Primary Strength**: {score_res.strongest_factor} demonstrates the highest momentum in the current evidence repository.\n"
+            f"- **Improvement Area**: {score_res.weakest_factor} represents the primary development barrier.\n"
+            f"- **Evidence Reliability**: {score_res.evidence_coverage} ({score_res.weighted_evidence_coverage}% weighted empirical coverage).\n"
         )
 
         return GrokChatResponse(

@@ -38,7 +38,7 @@ class OpenAIREAdapter(BaseSourceAdapter):
                 "size": min(max_results, 40),
                 "format": "json",
             }
-            with httpx.Client(timeout=10.0) as client:
+            with httpx.Client(timeout=4.0) as client:
                 response = client.get(OPENAIRE_PRODUCTS_URL, params=params)
                 if response.status_code == 200:
                     data = response.json()
@@ -115,5 +115,6 @@ class OpenAIREAdapter(BaseSourceAdapter):
             cache_manager.set(self.source_name, query, records)
         except Exception as e:
             logger.warning(f"OpenAIRE fetch failed gracefully: {e}")
+            cache_manager.set(self.source_name, query, [])
 
         return records

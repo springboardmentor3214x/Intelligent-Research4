@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import './TechIntelligenceFloatingNav.css'
 
-// 5 Core Technology Intelligence Navigation Destinations distributed uniformly in a true mathematical circle
-// 360° / 5 = 72° per step.
+// 6 Core Technology Intelligence Navigation Destinations distributed uniformly in a true mathematical circle
+// 360° / 6 = 60° per step.
 // Starting from exact Top (12 o'clock / -90° or 270°):
 // 1. Top (270°): Maturity & S-Curve
-// 2. Top-Right (342°): Market Adoption
-// 3. Bottom-Right (54°): Innovation Scoring
-// 4. Bottom-Left (126°): Growth Trends
-// 5. Top-Left (198°): Overview & Landscape
+// 2. Top-Right (330°): Market Adoption
+// 3. Bottom-Right (30°): Commercialization & Impact
+// 4. Bottom (90°): Innovation Scoring
+// 5. Bottom-Left (150°): Growth Trends
+// 6. Top-Left (210°): Tech Landscape
 export const techIntelligenceNavigation = [
   {
     id: 'maturity',
@@ -40,7 +41,23 @@ export const techIntelligenceNavigation = [
       </svg>
     ),
     route: '/technologies/adoption',
-    angle: 342, // ~2:24 o'clock (Top-Right: 270 + 72)
+    angle: 330, // 2 o'clock (Top-Right)
+  },
+  {
+    id: 'commercialization',
+    title: 'Commercialization & Impact',
+    shortLabel: 'Impact',
+    description: 'Applications, Products, Startups & Licensing',
+    icon: (
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+        <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+        <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+        <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+      </svg>
+    ),
+    route: '/commercialization',
+    angle: 30, // 4 o'clock (Bottom-Right)
   },
   {
     id: 'innovation',
@@ -57,7 +74,7 @@ export const techIntelligenceNavigation = [
       </svg>
     ),
     route: '/innovation',
-    angle: 54, // ~4:48 o'clock (Bottom-Right: 342 + 72 - 360)
+    angle: 90, // 6 o'clock (Bottom)
   },
   {
     id: 'growth',
@@ -74,7 +91,7 @@ export const techIntelligenceNavigation = [
       </svg>
     ),
     route: '/technologies/trends',
-    angle: 126, // ~7:12 o'clock (Bottom-Left: 54 + 72)
+    angle: 150, // 8 o'clock (Bottom-Left)
   },
   {
     id: 'overview',
@@ -90,7 +107,7 @@ export const techIntelligenceNavigation = [
       </svg>
     ),
     route: '/technologies',
-    angle: 198, // ~9:36 o'clock (Top-Left: 126 + 72)
+    angle: 210, // 10 o'clock (Top-Left)
   },
 ]
 

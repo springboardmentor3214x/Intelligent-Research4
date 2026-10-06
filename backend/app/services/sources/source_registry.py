@@ -70,29 +70,30 @@ class SourceRegistry:
         raw_patents: List[RawEvidenceRecord] = []
         raw_funding: List[RawEvidenceRecord] = []
 
-        # 1. Collect Research Records
-        for adapter in self.research_adapters:
-            try:
-                recs = adapter.fetch_evidence(query=query, concept_terms=concept_terms, db=db)
-                raw_research.extend(recs)
-            except Exception:
-                pass
+        # Concurrently execute all adapters across research, patents, and funding
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        # 2. Collect Patent Records
-        for adapter in self.patent_adapters:
+        def _fetch_adapter_evidence(adapter: BaseSourceAdapter) -> tuple:
             try:
                 recs = adapter.fetch_evidence(query=query, concept_terms=concept_terms, db=db)
-                raw_patents.extend(recs)
-            except Exception:
-                pass
+                return (adapter.source_type, recs or [])
+            except Exception as e:
+                return (adapter.source_type, [])
 
-        # 3. Collect Funding Records
-        for adapter in self.funding_adapters:
-            try:
-                recs = adapter.fetch_evidence(query=query, concept_terms=concept_terms, db=db)
-                raw_funding.extend(recs)
-            except Exception:
-                pass
+        all_adapters = self.get_all_adapters()
+        with ThreadPoolExecutor(max_workers=len(all_adapters)) as executor:
+            future_to_adapter = {executor.submit(_fetch_adapter_evidence, ad): ad for ad in all_adapters}
+            for future in as_completed(future_to_adapter):
+                try:
+                    src_type, recs = future.result()
+                    if src_type == SourceType.RESEARCH:
+                        raw_research.extend(recs)
+                    elif src_type == SourceType.PATENT:
+                        raw_patents.extend(recs)
+                    elif src_type == SourceType.FUNDING:
+                        raw_funding.extend(recs)
+                except Exception:
+                    pass
 
         # 4. Deduplicate across sources
         research_dedup = deduplicate_evidence_records(raw_research)
