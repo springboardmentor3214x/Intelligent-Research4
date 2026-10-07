@@ -10,7 +10,7 @@ const REPORT_TYPES = [
     label: 'Create Intelligence Report',
     icon: '✨',
     highlight: true,
-    description: 'Consolidated 6-module intelligence synthesis across Research, Funding, Patents, Tech, Innovation & Commercialization for any research idea.',
+    description: 'Consolidated cross-intelligence synthesis across Research, Funding, Patents, Tech, Innovation & Commercialization for any research idea.',
   },
   {
     key: 'funding',
@@ -140,7 +140,7 @@ export default function Reports() {
             funding_type: fundingType || undefined,
             start_date: startDate || undefined,
             end_date: endDate || undefined,
-            limit: 50,
+            limit: 100,
           },
           token
         )
@@ -151,7 +151,7 @@ export default function Reports() {
             organization: organization || undefined,
             start_date: startDate || undefined,
             end_date: endDate || undefined,
-            limit: 50,
+            limit: 100,
           },
           token
         )
@@ -346,6 +346,19 @@ export default function Reports() {
             a.industry || 'Multi-Sector',
             a.stage || 'Emerging',
             a.why || a.reason || 'Strategic fit',
+          ]),
+        })
+      }
+
+      // Section 7: Research Gaps & Differentiation
+      if (u.research_gaps && u.research_gaps.length > 0) {
+        sections.push({
+          title: 'Research Gaps & Strategic Differentiation',
+          paragraphs: u.research_gaps,
+          table_headers: ['Identified Research Gap', 'Strategic Remediation Action'],
+          table_rows: u.research_gaps.map((gap, i) => [
+            `Gap ${i + 1}: ${gap}`,
+            'Conduct empirical validation trials & integrate multi-cohort benchmarks.',
           ]),
         })
       }
@@ -577,7 +590,7 @@ export default function Reports() {
             <div>
               <h2>Create Your Intelligence Report</h2>
               <p className="muted">
-                Turn any research idea, innovation topic, or technology into a comprehensive 6-module cross-intelligence report.
+                Turn any research idea, innovation topic, or technology into a comprehensive cross-intelligence report with evidence, funding grants, patents, and commercial pathways.
               </p>
             </div>
             <button type="button" className="btn-filter-reset" onClick={handleResetFilters}>
@@ -677,7 +690,7 @@ export default function Reports() {
             </div>
 
             <div className="module-checklist-box">
-              <label className="checklist-heading">Data Source Modules to Include:</label>
+              <label className="checklist-heading">Intelligence Dimensions to Include:</label>
               <div className="checkbox-grid">
                 <label className="checkbox-item">
                   <input
@@ -685,7 +698,7 @@ export default function Reports() {
                     checked={modules.research}
                     onChange={(e) => setModules({ ...modules, research: e.target.checked })}
                   />
-                  <span>🔬 Research Intelligence (Module 3)</span>
+                  <span>🔬 Research Literature &amp; Citations</span>
                 </label>
                 <label className="checkbox-item">
                   <input
@@ -693,7 +706,7 @@ export default function Reports() {
                     checked={modules.funding}
                     onChange={(e) => setModules({ ...modules, funding: e.target.checked })}
                   />
-                  <span>🎯 Funding Intelligence (Module 4)</span>
+                  <span>🎯 Active Funding &amp; Grant Programs</span>
                 </label>
                 <label className="checkbox-item">
                   <input
@@ -701,7 +714,7 @@ export default function Reports() {
                     checked={modules.patents}
                     onChange={(e) => setModules({ ...modules, patents: e.target.checked })}
                   />
-                  <span>📜 Patent Intelligence (Module 5)</span>
+                  <span>📜 Patent Landscape &amp; Prior Art</span>
                 </label>
                 <label className="checkbox-item">
                   <input
@@ -709,7 +722,7 @@ export default function Reports() {
                     checked={modules.technology}
                     onChange={(e) => setModules({ ...modules, technology: e.target.checked })}
                   />
-                  <span>⚙ Technology Intelligence (Module 6)</span>
+                  <span>⚙ Technology Trends &amp; Readiness</span>
                 </label>
                 <label className="checkbox-item">
                   <input
@@ -717,7 +730,7 @@ export default function Reports() {
                     checked={modules.innovation}
                     onChange={(e) => setModules({ ...modules, innovation: e.target.checked })}
                   />
-                  <span>🚀 Innovation Scoring (Module 7)</span>
+                  <span>🚀 5-Factor Innovation Assessment</span>
                 </label>
                 <label className="checkbox-item">
                   <input
@@ -725,7 +738,7 @@ export default function Reports() {
                     checked={modules.commercialization}
                     onChange={(e) => setModules({ ...modules, commercialization: e.target.checked })}
                   />
-                  <span>💡 Commercialization (Module 8)</span>
+                  <span>💡 Commercial &amp; Spinout Pathways</span>
                 </label>
               </div>
             </div>
@@ -943,10 +956,10 @@ export default function Reports() {
               </div>
             </div>
 
-            {/* Research Module Section */}
+            {/* Research Section */}
             {previewData.research && (
               <div className="preview-section-box">
-                <h3>2. Research Intelligence (Module 3)</h3>
+                <h3>2. Research Intelligence &amp; Scientific Literature</h3>
                 <p>{previewData.research.summary}</p>
                 <div className="table-responsive">
                   <table className="preview-table">
@@ -973,10 +986,10 @@ export default function Reports() {
               </div>
             )}
 
-            {/* Funding Module Section */}
+            {/* Funding Section */}
             {previewData.funding && (
               <div className="preview-section-box">
-                <h3>3. Matching Funding Opportunities (Module 4)</h3>
+                <h3>3. Matching Funding &amp; Grant Opportunities</h3>
                 <div className="table-responsive">
                   <table className="preview-table">
                     <thead>
@@ -1004,10 +1017,10 @@ export default function Reports() {
               </div>
             )}
 
-            {/* Patent Module Section */}
+            {/* Patent Section */}
             {previewData.patents && (
               <div className="preview-section-box">
-                <h3>4. Patent Prior Art &amp; Landscape (Module 5)</h3>
+                <h3>4. Patent Prior Art &amp; Innovation Landscape</h3>
                 <div className="table-responsive">
                   <table className="preview-table">
                     <thead>
@@ -1036,7 +1049,7 @@ export default function Reports() {
             {/* Innovation Scoring Section */}
             {previewData.innovation && (
               <div className="preview-section-box">
-                <h3>5. Innovation Score Breakdown (Module 7)</h3>
+                <h3>5. Innovation Score &amp; Factor Breakdown</h3>
                 <div className="factors-table-wrap">
                   <table className="preview-table">
                     <thead>
@@ -1065,7 +1078,7 @@ export default function Reports() {
             {/* Commercialization Section */}
             {previewData.commercialization && (
               <div className="preview-section-box">
-                <h3>6. Commercialization &amp; Translational Pathways (Module 8)</h3>
+                <h3>6. Commercialization &amp; Translational Pathways</h3>
                 <div className="table-responsive">
                   <table className="preview-table">
                     <thead>
@@ -1091,10 +1104,24 @@ export default function Reports() {
               </div>
             )}
 
+            {/* Research Gaps & Differentiation Section */}
+            {previewData.research_gaps?.length > 0 && (
+              <div className="preview-section-box">
+                <h3>7. Research Gaps &amp; Strategic Differentiation</h3>
+                <ul className="rec-list">
+                  {previewData.research_gaps.map((gap, i) => (
+                    <li key={i} style={{ color: '#073b5c' }}>
+                      <strong>Gap {i + 1}:</strong> {gap}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Recommended Next Steps */}
             {previewData.recommended_next_steps?.length > 0 && (
               <div className="preview-section-box recommendations-box">
-                <h3>Recommended Strategic Actions</h3>
+                <h3>8. Recommended Strategic Actions &amp; Timeline</h3>
                 <ul className="rec-list">
                   {previewData.recommended_next_steps.map((rec, i) => (
                     <li key={i}>{rec}</li>

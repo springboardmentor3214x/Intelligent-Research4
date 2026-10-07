@@ -664,8 +664,8 @@ def get_researcher_dashboard_intelligence(
 
     total_funding_opps = db.query(FundingOpportunity).count()
     funding_type_raw = (
-        db.query(func.coalesce(FundingOpportunity.funding_type, FundingOpportunity.funding_category, 'Grant'), func.count(FundingOpportunity.id))
-        .group_by(func.coalesce(FundingOpportunity.funding_type, FundingOpportunity.funding_category, 'Grant'))
+        db.query(FundingOpportunity.funding_type, func.count(FundingOpportunity.id))
+        .group_by(FundingOpportunity.funding_type)
         .order_by(func.count(FundingOpportunity.id).desc())
         .limit(6)
         .all()
@@ -678,6 +678,8 @@ def get_researcher_dashboard_intelligence(
         }
         for ft, c in funding_type_raw if ft
     ]
+    if not funding_by_type and total_funding_opps > 0:
+        funding_by_type = [{"type": "Grant", "count": total_funding_opps, "percentage": 100.0}]
 
     raw_timeline_fundings = (
         db.query(FundingOpportunity)

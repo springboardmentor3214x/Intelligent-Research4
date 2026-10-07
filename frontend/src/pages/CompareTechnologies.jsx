@@ -58,7 +58,11 @@ export default function CompareTechnologies() {
     }
   }
 
-  const results = comparisonData?.comparison || comparisonData?.technologies || comparisonData || []
+  const results =
+    comparisonData?.comparison_items ||
+    comparisonData?.comparison ||
+    comparisonData?.technologies ||
+    (Array.isArray(comparisonData) ? comparisonData : [])
 
   return (
     <div className="compare-page-container">
