@@ -130,7 +130,7 @@ def generate_pdf_report(report: ReportRequest) -> bytes:
 
     # Title & Metadata
     report_type_name = REPORT_TITLES.get(report.report_type, "Intelligence Report")
-    generated_at = report.generated_at or datetime.utcnow()
+    generated_at = getattr(report, "generated_at", None) or datetime.utcnow()
 
     story.append(Spacer(1, 10 * mm))
     story.append(Paragraph(_safe_text(report.title), title_style))
@@ -274,7 +274,7 @@ def generate_excel_report(report: ReportRequest) -> bytes:
     ws.cell(row=row, column=2, value=REPORT_TITLES.get(report.report_type, report.report_type)).font = regular_font
     row += 1
 
-    generated_at = report.generated_at or datetime.utcnow()
+    generated_at = getattr(report, "generated_at", None) or datetime.utcnow()
     ws.cell(row=row, column=1, value="Generated At:").font = meta_key_font
     ws.cell(row=row, column=2, value=generated_at.strftime("%Y-%m-%d %H:%M UTC")).font = regular_font
     row += 1

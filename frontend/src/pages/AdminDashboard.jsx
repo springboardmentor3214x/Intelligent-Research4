@@ -61,7 +61,8 @@ export default function AdminDashboard() {
 
   // Role Protection
   useEffect(() => {
-    if (user && user.role !== 'administrator') {
+    const r = (user?.role || '').toLowerCase().trim()
+    if (user && r !== 'administrator' && r !== 'admin') {
       navigate('/dashboard', { replace: true })
     }
   }, [user, navigate])

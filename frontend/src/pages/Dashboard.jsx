@@ -998,42 +998,70 @@ export default function Dashboard() {
           </div>
 
           <div className="tech-scatter-container">
-            <svg viewBox="0 0 400 240" style={{ width: '100%', height: '100%' }}>
-              {/* Axes */}
-              <line x1="40" y1="200" x2="380" y2="200" stroke="#cbd5e1" strokeWidth="1.5" />
-              <line x1="40" y1="20" x2="40" y2="200" stroke="#cbd5e1" strokeWidth="1.5" />
-              <text x="210" y="230" fill="#587083" fontSize="10" textAnchor="middle" fontWeight="700">
-                Research Growth Rate →
-              </text>
-              <text x="15" y="110" fill="#587083" fontSize="10" transform="rotate(-90 15 110)" textAnchor="middle" fontWeight="700">
-                Patent Growth Rate ↑
-              </text>
+            {techLandscape.length === 0 ? (
+              <div className="empty-state-box" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                No technology landscape records found for current criteria.
+              </div>
+            ) : (
+              <svg viewBox="0 0 400 240" style={{ width: '100%', height: '100%' }}>
+                {/* Axes */}
+                <line x1="45" y1="200" x2="385" y2="200" stroke="#cbd5e1" strokeWidth="1.5" />
+                <line x1="45" y1="20" x2="45" y2="200" stroke="#cbd5e1" strokeWidth="1.5" />
+                <text x="215" y="228" fill="#587083" fontSize="10" textAnchor="middle" fontWeight="700">
+                  Research Growth Rate →
+                </text>
+                <text x="18" y="110" fill="#587083" fontSize="10" transform="rotate(-90 18 110)" textAnchor="middle" fontWeight="700">
+                  Patent Growth Rate ↑
+                </text>
 
-              {techLandscape.map((t, idx) => {
-                const cx = 60 + ((t.research_growth_rate || 10) / 40) * 300
-                const cy = 180 - ((t.patent_growth_rate || 10) / 30) * 150
-                const r = Math.min(18, Math.max(6, (t.research_papers || 5) * 0.8))
-                return (
-                  <g key={t.id || t.name}>
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r={r}
-                      fill="#079b91"
-                      fillOpacity="0.65"
-                      stroke="#27d6c7"
-                      strokeWidth="1.5"
-                      className="tech-bubble-node"
-                    >
-                      <title>{`${t.name}: Growth +${t.research_growth_rate}%, ${t.research_papers} papers, ${t.patents} patents`}</title>
-                    </circle>
-                    <text x={cx} y={cy - r - 3} fill="#073b5c" fontSize="9" fontWeight="700" textAnchor="middle">
-                      {t.name}
-                    </text>
-                  </g>
-                )
-              })}
-            </svg>
+                {(() => {
+                  const maxR = Math.max(...techLandscape.map((t) => t.research_growth_rate || 50), 100)
+                  const minR = Math.min(...techLandscape.map((t) => t.research_growth_rate || 10), 0)
+                  const maxP = Math.max(...techLandscape.map((t) => t.patent_growth_rate || 40), 80)
+                  const minP = Math.min(...techLandscape.map((t) => t.patent_growth_rate || 10), 0)
+                  const rRange = maxR - minR || 1
+                  const pRange = maxP - minP || 1
+
+                  return techLandscape.map((t) => {
+                    const rVal = t.research_growth_rate || 50
+                    const pVal = t.patent_growth_rate || 35
+                    const cx = 65 + ((rVal - minR) / rRange) * 290
+                    const cy = 180 - ((pVal - minP) / pRange) * 140
+                    const r = Math.min(18, Math.max(7, (t.research_papers || 5) * 0.35))
+                    return (
+                      <g
+                        key={t.id || t.name}
+                        onClick={() => handleChartDrillDown('/technologies', 'search', t.name)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={r}
+                          fill="#079b91"
+                          fillOpacity="0.75"
+                          stroke="#27d6c7"
+                          strokeWidth="1.5"
+                          className="tech-bubble-node"
+                        >
+                          <title>{`${t.name}: Growth +${t.research_growth_rate}%, ${t.research_papers} papers, ${t.patents} patents`}</title>
+                        </circle>
+                        <text
+                          x={cx}
+                          y={Math.max(14, cy - r - 4)}
+                          fill="#073b5c"
+                          fontSize="9"
+                          fontWeight="700"
+                          textAnchor="middle"
+                        >
+                          {t.name}
+                        </text>
+                      </g>
+                    )
+                  })
+                })()}
+              </svg>
+            )}
           </div>
         </div>
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, List, Optional
 from pydantic import BaseModel, Field
 
@@ -14,6 +15,7 @@ class ReportRequest(BaseModel):
     title: Optional[str] = None
     organization: Optional[str] = None
     generated_by: Optional[str] = None
+    generated_at: Optional[datetime] = None
     executive_summary: Optional[str] = None
     filters: Optional[dict[str, Any]] = Field(default_factory=dict)
     sections: List[ReportSection] = Field(default_factory=list)
