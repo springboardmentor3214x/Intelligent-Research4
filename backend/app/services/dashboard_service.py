@@ -323,7 +323,7 @@ def get_startup_founder_dashboard(
                 "title": clean_html_text(f.title) if f.title else "Venture & Innovation Grant",
                 "agency": f.agency or "National Science Foundation",
                 "funding_type": f.funding_type or "Grant",
-                "award_ceiling": f.award_ceiling,
+                "award_ceiling": float(f.funding_amount) if getattr(f, "funding_amount", None) is not None else None,
                 "relevance_percentage": 82.0,
                 "deadline_status": "Active",
             }
@@ -642,7 +642,7 @@ def get_researcher_dashboard_intelligence(
                 "title": clean_html_text(f.title) if f.title else "Research Grant Opportunity",
                 "agency": f.agency or "Federal / Institutional Sponsor",
                 "funding_type": f.funding_type or f.funding_category or "Grant",
-                "award_ceiling": f.award_ceiling,
+                "award_ceiling": float(f.funding_amount) if getattr(f, "funding_amount", None) is not None else None,
                 "relevance_percentage": 78.5,
                 "deadline_status": "Active",
             }
@@ -692,7 +692,7 @@ def get_researcher_dashboard_intelligence(
             "id": str(f.id),
             "title": clean_html_text(f.title) if f.title else "Grant Call",
             "agency": f.agency or "Funding Agency",
-            "award_ceiling": f.award_ceiling,
+            "award_ceiling": float(f.funding_amount) if getattr(f, "funding_amount", None) is not None else None,
             "deadline": f.close_date.strftime("%b %d, %Y") if f.close_date else "Open / Continuous",
         }
         for f in raw_timeline_fundings

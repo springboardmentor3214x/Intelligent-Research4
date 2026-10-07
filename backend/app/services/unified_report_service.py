@@ -99,7 +99,7 @@ class UnifiedReportService:
                     "title": clean_html_text(f.title) if f.title else "Innovation & Research Grant",
                     "agency": f.agency or "National Science Foundation",
                     "funding_type": f.funding_type or "Grant",
-                    "award_ceiling": f.funding_amount or f.award_ceiling if hasattr(f, "funding_amount") and f.funding_amount else getattr(f, "award_ceiling", None),
+                    "award_ceiling": float(f.funding_amount) if getattr(f, "funding_amount", None) is not None else None,
                     "close_date": f.close_date.strftime("%Y-%m-%d") if f.close_date else "Rolling Call",
                     "deadline_status": "Active",
                 }
