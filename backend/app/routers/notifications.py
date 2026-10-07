@@ -118,3 +118,68 @@ def get_unread_notifications(
     return NotificationListResponse(
         items=notifications,
         total=total,
+        unread_count=total,
+    )
+
+
+@router.patch("/{notification_id}/read", response_model=NotificationResponse)
+def mark_notification_as_read(
+    notification_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    notification = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id,
+            Notification.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found",
+        )
+
+    notification.is_read = True
+    db.commit()
+    db.refresh(notification)
+    return notification
+
+
+@router.patch("/read-all")
+def mark_all_notifications_as_read(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db.query(Notification).filter(
+        Notification.user_id == current_user.id,
+        Notification.is_read.is_(False),
+    ).update({"is_read": True})
+    db.commit()
+    return {"message": "All notifications marked as read."}
+
+
+@router.get("/preferences", response_model=NotificationPreferencesResponse)
+def get_preferences(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_user_preferences(db, current_user.id)
+
+
+@router.put("/preferences", response_model=NotificationPreferencesResponse)
+def update_preferences(
+    preferences_update: NotificationPreferencesUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    pref = get_user_preferences(db, current_user.id)
+    update_data = preferences_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(pref, field, value)
+    pref.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(pref)
+    return pref
