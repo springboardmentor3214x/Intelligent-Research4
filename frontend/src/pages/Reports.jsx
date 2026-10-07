@@ -1,9 +1,1109 @@
-import ReportDownloadPanel from '../components/ReportDownloadPanel'
+import { useState, useEffect, useContext } from 'react'
+import { useLocation } from 'react-router-dom'
+import { AuthContext } from '../context/auth-context'
+import { reportService } from '../services/reportService'
+import './Reports.css'
+
+const REPORT_TYPES = [
+  {
+    key: 'unified',
+    label: 'Create Intelligence Report',
+    icon: '✨',
+    highlight: true,
+    description: 'Consolidated 6-module intelligence synthesis across Research, Funding, Patents, Tech, Innovation & Commercialization for any research idea.',
+  },
+  {
+    key: 'funding',
+    label: 'Funding Intelligence',
+    icon: '🎯',
+    description: 'Grant opportunities, funding agencies, deadlines, and eligibility matching criteria.',
+  },
+  {
+    key: 'patent',
+    label: 'Patent Landscape',
+    icon: '📜',
+    description: 'Filing trends, technology domains, global assignees, and citation metrics.',
+  },
+  {
+    key: 'research_trend',
+    label: 'Research Trends',
+    icon: '📊',
+    description: 'Empirical publication velocity, cross-domain topic clusters, and literature growth.',
+  },
+  {
+    key: 'innovation_intelligence',
+    label: 'Innovation Intelligence',
+    icon: '🚀',
+    description: 'Multi-factor weighted innovation scoring, novelty, maturity, and market potential.',
+  },
+  {
+    key: 'commercialization',
+    label: 'Commercialization',
+    icon: '💡',
+    description: 'Productization pathways, licensing opportunities, startup spin-offs, and partners.',
+  },
+]
+
+const SAMPLE_IDEAS = [
+  'AI-based brain tumor segmentation using MRI',
+  'AI-powered crop disease detection using drone hyperspectral imaging',
+  'Autonomous vehicle perception systems under adverse weather conditions',
+  'Renewable energy storage technology with solid-state lithium batteries',
+  'Deep learning for early cardiovascular risk prediction with wearable ECG',
+]
 
 export default function Reports() {
+  const { token, user } = useContext(AuthContext)
+  const location = useLocation()
+
+  const [selectedType, setSelectedType] = useState('unified')
+
+  // Unified report form states
+  const [idea, setIdea] = useState('AI-based brain tumor segmentation using MRI')
+  const [unifiedDomain, setUnifiedDomain] = useState('')
+  const [keywords, setKeywords] = useState('brain tumor, MRI, deep learning, segmentation')
+  const [techArea, setTechArea] = useState('Artificial Intelligence')
+  const [region, setRegion] = useState('global')
+  const [dateRange, setDateRange] = useState('all')
+  const [reportDepth, setReportDepth] = useState('standard')
+
+  // Module checklist selection
+  const [modules, setModules] = useState({
+    research: true,
+    funding: true,
+    patents: true,
+    technology: true,
+    innovation: true,
+    commercialization: true,
+  })
+
+  // Dynamic filter states for existing individual reports
+  const [researchDomain, setResearchDomain] = useState('')
+  const [fundingType, setFundingType] = useState('')
+  const [technology, setTechnology] = useState('Artificial Intelligence')
+  const [organization, setOrganization] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  // Preview & Export state
+  const [previewData, setPreviewData] = useState(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
+  const [exportingFormat, setExportingFormat] = useState(null)
+  const [error, setError] = useState('')
+  const [feedback, setFeedback] = useState('')
+  const [generationStage, setGenerationStage] = useState('')
+
+  // Read initial topic from query / navigation state if available
+  useEffect(() => {
+    if (location.state?.researchIdea) {
+      setIdea(location.state.researchIdea)
+      setSelectedType('unified')
+    }
+  }, [location.state])
+
+  // Load preview data
+  const fetchReportPreview = async () => {
+    if (!token) return
+    try {
+      setLoadingPreview(true)
+      setError('')
+      setFeedback('')
+
+      let res = null
+      if (selectedType === 'unified') {
+        if (!idea.trim()) {
+          setError('Please enter a research idea or topic concept to generate the unified report.')
+          setLoadingPreview(false)
+          return
+        }
+        setGenerationStage('Synthesizing cross-module intelligence...')
+        const payload = {
+          idea: idea.trim(),
+          research_domain: unifiedDomain || undefined,
+          keywords: keywords ? keywords.split(',').map((k) => k.trim()).filter(Boolean) : [],
+          technology_area: techArea || undefined,
+          region: region || 'global',
+          date_range: dateRange || 'all',
+          report_depth: reportDepth || 'standard',
+          include_research: modules.research,
+          include_funding: modules.funding,
+          include_patents: modules.patents,
+          include_technology: modules.technology,
+          include_innovation: modules.innovation,
+          include_commercialization: modules.commercialization,
+        }
+        res = await reportService.generateUnifiedReport(payload, token)
+      } else if (selectedType === 'funding') {
+        res = await reportService.getFundingReport(
+          {
+            research_domain: researchDomain || undefined,
+            funding_type: fundingType || undefined,
+            start_date: startDate || undefined,
+            end_date: endDate || undefined,
+            limit: 50,
+          },
+          token
+        )
+      } else if (selectedType === 'patent') {
+        res = await reportService.getPatentReport(
+          {
+            technology_domain: researchDomain || undefined,
+            organization: organization || undefined,
+            start_date: startDate || undefined,
+            end_date: endDate || undefined,
+            limit: 50,
+          },
+          token
+        )
+      } else if (selectedType === 'research_trend') {
+        res = await reportService.getResearchTrendReport(
+          {
+            research_domain: researchDomain || undefined,
+          },
+          token
+        )
+      } else if (selectedType === 'innovation_intelligence') {
+        res = await reportService.getInnovationReport(
+          {
+            technology: technology || 'Artificial Intelligence',
+          },
+          token
+        )
+      } else if (selectedType === 'commercialization') {
+        res = await reportService.getCommercializationReport(
+          {
+            technology: technology || 'Artificial Intelligence',
+          },
+          token
+        )
+      }
+
+      setPreviewData(res)
+    } catch (err) {
+      console.error('Failed to load report preview:', err)
+      setError(err.message || 'Unable to retrieve report intelligence data.')
+    } finally {
+      setLoadingPreview(false)
+      setGenerationStage('')
+    }
+  }
+
+  useEffect(() => {
+    fetchReportPreview()
+  }, [selectedType, token])
+
+  const handleApplyFilters = (e) => {
+    e.preventDefault()
+    fetchReportPreview()
+  }
+
+  const handleResetFilters = () => {
+    if (selectedType === 'unified') {
+      setIdea('AI-based brain tumor segmentation using MRI')
+      setUnifiedDomain('')
+      setKeywords('brain tumor, MRI, deep learning, segmentation')
+      setTechArea('Artificial Intelligence')
+      setRegion('global')
+      setDateRange('all')
+      setReportDepth('standard')
+      setModules({
+        research: true,
+        funding: true,
+        patents: true,
+        technology: true,
+        innovation: true,
+        commercialization: true,
+      })
+    } else {
+      setResearchDomain('')
+      setFundingType('')
+      setTechnology('Artificial Intelligence')
+      setOrganization('')
+      setStartDate('')
+      setEndDate('')
+    }
+    setTimeout(() => fetchReportPreview(), 50)
+  }
+
+  // Construct standard ReportRequest payload for PDF/Excel generation
+  const buildExportPayload = () => {
+    if (selectedType === 'unified' && previewData) {
+      const u = previewData
+      const meta = u.metadata || {}
+      const exec = u.executive_summary || {}
+      const sections = []
+      const recommendations = u.recommended_next_steps || []
+
+      // Section 1: Executive Summary
+      if (exec) {
+        sections.push({
+          title: 'Executive Intelligence Summary',
+          paragraphs: [
+            `Research Area: ${exec.research_domain || meta.idea || idea}`,
+            `Activity Overview: ${exec.research_activity_summary || 'Comprehensive multi-source analysis.'}`,
+            `Innovation Outlook: ${exec.innovation_score_summary || 'Evaluated based on 5-factor model.'}`,
+            `Commercialization Outlook: ${exec.commercialization_outlook || 'Evidence-backed pathways identified.'}`,
+          ],
+          table_headers: ['Metric Dimension', 'Evidence Value', 'Status'],
+          table_rows: [
+            ['Indexed Research Papers', String(u.research?.total_publications || 0), 'Empirically Indexed'],
+            ['Active Funding Grants', String(u.funding?.total_matching_grants || u.funding?.matching_opportunities?.length || 0), 'Available'],
+            ['Patent Prior-Art Records', String(u.patents?.total_patents || u.patents?.prior_art_patents?.length || 0), 'Classified'],
+            ['Innovation Score', `${u.innovation?.overall_score ?? 'N/A'}/100`, u.innovation?.innovation_level || 'Evaluated'],
+            ['Commercialization Pathways', String(u.commercialization?.applications?.length || 0), 'Identified'],
+          ],
+        })
+      }
+
+      // Section 2: Research Intelligence
+      if (u.research) {
+        const topPapers = (u.research.important_papers || []).slice(0, 15)
+        sections.push({
+          title: 'Research Intelligence & Key Literature',
+          paragraphs: [
+            u.research.summary || 'Analysis of relevant scientific publications.',
+            `Total indexed papers: ${u.research.total_publications || 0}. Total citations: ${u.research.total_citations || 0}.`,
+          ],
+          table_headers: ['Title', 'Authors', 'Year', 'Citations', 'Relevance'],
+          table_rows: topPapers.map((p) => [
+            p.title || 'Untitled Paper',
+            p.authors || 'Unknown',
+            String(p.publication_year || 'N/A'),
+            String(p.citation_count ?? 0),
+            p.relevance_score ? `${Math.round(p.relevance_score * 100)}%` : 'Direct',
+          ]),
+        })
+      }
+
+      // Section 3: Funding Intelligence
+      if (u.funding) {
+        const grants = (u.funding.matching_opportunities || []).slice(0, 15)
+        sections.push({
+          title: 'Funding Intelligence & Grant Programs',
+          paragraphs: [
+            `Identified ${u.funding.total_matching_grants || grants.length} active grant opportunities across leading funding agencies.`,
+          ],
+          table_headers: ['Opportunity Title', 'Agency', 'Amount', 'Deadline', 'Status'],
+          table_rows: grants.map((g) => [
+            g.title || 'Grant Program',
+            g.agency || 'Agency',
+            g.award_ceiling ? `$${Number(g.award_ceiling).toLocaleString()}` : 'Specified in Call',
+            g.close_date || 'Ongoing',
+            g.deadline_status || 'Active',
+          ]),
+        })
+      }
+
+      // Section 4: Patent Intelligence
+      if (u.patents) {
+        const pats = (u.patents.prior_art_patents || []).slice(0, 15)
+        sections.push({
+          title: 'Patent Landscape & Prior Art',
+          paragraphs: [
+            `Evaluated ${u.patents.total_patents || pats.length} patent records across international and domestic filing registries.`,
+          ],
+          table_headers: ['Patent Title', 'Patent Number', 'Assignee', 'Filing Year', 'Technology Area'],
+          table_rows: pats.map((p) => [
+            p.title || 'Patent Record',
+            p.publication_number || 'Pending',
+            p.assignee || 'Not Specified',
+            String(p.filing_year || 'N/A'),
+            p.technology_domain || 'General',
+          ]),
+        })
+      }
+
+      // Section 5: Technology & Innovation
+      if (u.innovation) {
+        const factors = u.innovation.factors || {}
+        sections.push({
+          title: 'Innovation Score Breakdown & Factor Weights',
+          paragraphs: [
+            `Overall Innovation Score: ${u.innovation.overall_score ?? 'N/A'}/100 (${u.innovation.innovation_level || 'Assessed'}).`,
+            `Evidence Coverage: ${u.innovation.evidence_coverage || 'High'}.`,
+          ],
+          table_headers: ['Dimension Factor', 'Weight', 'Score / 100', 'Evidence Summary'],
+          table_rows: Object.entries(factors).map(([k, v]) => [
+            v.name || k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            `${Math.round((v.weight || 0.2) * 100)}%`,
+            v.normalized_score != null ? Number(v.normalized_score).toFixed(1) : 'N/A',
+            v.evidence_summary || 'Verified data',
+          ]),
+        })
+      }
+
+      // Section 6: Commercialization
+      if (u.commercialization) {
+        const apps = (u.commercialization.applications || []).slice(0, 10)
+        sections.push({
+          title: 'Commercialization & Translational Pathways',
+          paragraphs: [
+            'Translational opportunities, startup pathways, and industry adoption targets.',
+          ],
+          table_headers: ['Application / Opportunity', 'Target Industry', 'Readiness Stage', 'Rationale'],
+          table_rows: apps.map((a) => [
+            a.name || a.application || 'Application Concept',
+            a.industry || 'Multi-Sector',
+            a.stage || 'Emerging',
+            a.why || a.reason || 'Strategic fit',
+          ]),
+        })
+      }
+
+      return {
+        report_type: 'unified_intelligence',
+        title: `${meta.report_title || `${idea} — Research & Innovation Intelligence Report`}`,
+        organization: meta.organization || user?.organization || undefined,
+        executive_summary: exec.research_activity_summary || 'Comprehensive Unified Cross-Module Intelligence Report.',
+        filters: {
+          idea: meta.idea || idea,
+          report_depth: meta.report_depth || reportDepth,
+          region: meta.region || region,
+          date_range: meta.date_range || dateRange,
+        },
+        sections,
+        recommendations,
+      }
+    }
+
+    const reportTypeObj = REPORT_TYPES.find((r) => r.key === selectedType)
+    const title = `${reportTypeObj?.label || 'Intelligence'} Report`
+
+    const filters = {}
+    if (researchDomain) filters.research_domain = researchDomain
+    if (fundingType) filters.funding_type = fundingType
+    if (technology) filters.technology = technology
+    if (organization) filters.organization = organization
+    if (startDate) filters.start_date = startDate
+    if (endDate) filters.end_date = endDate
+
+    const sections = []
+    const recommendations = []
+
+    if (selectedType === 'funding') {
+      const records = previewData?.records || []
+      sections.push({
+        title: 'Funding Opportunities Overview',
+        paragraphs: [
+          `Identified ${records.length} matching funding programs matching the specified criteria.`,
+        ],
+        table_headers: ['Program Title', 'Agency', 'Type', 'Amount', 'Deadline'],
+        table_rows: records.slice(0, 25).map((r) => [
+          r.title || 'N/A',
+          r.agency || 'N/A',
+          r.funding_type || 'N/A',
+          r.funding_amount ? `$${Number(r.funding_amount).toLocaleString()}` : 'Not specified',
+          r.close_date || 'Ongoing',
+        ]),
+      })
+      recommendations.push(
+        'Prioritize applications approaching their deadlines within the next 45 days.',
+        'Align proposal methodology with agency specific research scope.'
+      )
+    } else if (selectedType === 'patent') {
+      const records = previewData?.records || []
+      sections.push({
+        title: 'Patent Landscape Analysis',
+        paragraphs: [
+          `Analyzed ${records.length} patent publications with a total of ${previewData?.total_citations || 0} citations.`,
+        ],
+        table_headers: ['Patent Title', 'Assignee', 'Domain', 'Filing Date', 'Citations'],
+        table_rows: records.slice(0, 25).map((p) => [
+          p.title || 'Untitled',
+          p.assignee || 'Not specified',
+          p.technology_domain || 'General',
+          p.filing_date || 'N/A',
+          p.citation_count ?? 0,
+        ]),
+      })
+      recommendations.push(
+        'Monitor major assignee patent filings for white-space opportunities.',
+        'Leverage cited prior art when drafting novelty claims.'
+      )
+    } else if (selectedType === 'research_trend') {
+      const yearly = previewData?.yearly_growth || []
+      const topics = previewData?.top_trending_topics || []
+      sections.push({
+        title: 'Empirical Research Trajectory',
+        paragraphs: [
+          `Evaluated publication volume over time with domain filtering: ${previewData?.filtered_domain || 'All Domains'}.`,
+        ],
+        table_headers: ['Year', 'Publications Count'],
+        table_rows: yearly.map((y) => [String(y.year), String(y.paper_count || y.count || 0)]),
+      })
+      sections.push({
+        title: 'Top Emerging Research Topics',
+        paragraphs: ['High-frequency keywords across active publications.'],
+        table_headers: ['Research Topic', 'Occurrences'],
+        table_rows: topics.slice(0, 15).map((t) => [t.topic, String(t.count)]),
+      })
+      recommendations.push(
+        'Focus research investigations on accelerating domain clusters.',
+        'Establish cross-institutional collaboration in high-growth subtopics.'
+      )
+    } else if (selectedType === 'innovation_intelligence') {
+      const analysis = previewData?.innovation_analysis || {}
+      const factors = analysis.factors || {}
+      sections.push({
+        title: `Innovation Assessment: ${previewData?.technology || technology}`,
+        paragraphs: [
+          `Overall Innovation Score: ${analysis.overall_score != null
+            ? Number(analysis.overall_score).toFixed(1)
+            : 'N/A'
+          }/100 (${analysis.innovation_level || 'Evaluated'}).`,
+          `Evidence Coverage: ${analysis.evidence_coverage || 'Complete'}.`,
+        ],
+        table_headers: ['Dimension Factor', 'Weight', 'Score / 100', 'Assessment'],
+        table_rows: Object.entries(factors).map(([name, f]) => [
+          name,
+          `${f.weight_percentage || 20}%`,
+          f.normalized_score != null ? Number(f.normalized_score).toFixed(1) : 'N/A',
+          f.evidence_level || 'Verified',
+        ]),
+      })
+      recommendations.push(
+        'Enhance patent strength to protect high-novelty research components.',
+        'Address technology maturity gaps before pursuing venture funding.'
+      )
+    } else if (selectedType === 'commercialization') {
+      const comm = previewData?.commercialization_analysis || {}
+      const apps = comm.applications || []
+      const products = comm.products || []
+      sections.push({
+        title: `Commercial Applications: ${previewData?.technology || technology}`,
+        paragraphs: [
+          'Identified productization targets, licensing candidates, and potential spin-offs.',
+        ],
+        table_headers: ['Application / Product', 'Industry Sector', 'Readiness Stage'],
+        table_rows: apps.slice(0, 10).map((a) => [
+          a.application || a.name || a.title || 'Opportunity',
+          a.industry || 'Multi-Sector',
+          a.stage || 'Emerging',
+        ]),
+      })
+      if (products.length > 0) {
+        sections.push({
+          title: 'Productization Pathways',
+          paragraphs: ['Translational commercial product opportunities.'],
+          table_headers: ['Product Concept', 'Target Market', 'Feasibility'],
+          table_rows: products.slice(0, 10).map((p) => [
+            p.title || p.product || 'Product Concept',
+            p.target_market || p.industry || 'Enterprise',
+            p.feasibility || 'High',
+          ]),
+        })
+      }
+      recommendations.push(
+        'Engage industry partners early for validation trials.',
+        'Develop prototype demonstration to accelerate commercial licensing.'
+      )
+    }
+
+    return {
+      report_type: selectedType,
+      title,
+      organization: user?.organization || undefined,
+      executive_summary: `This ${title} aggregates empirical cross-module data from the platform intelligence database.`,
+      filters,
+      sections,
+      recommendations,
+    }
+  }
+
+  const handleDownload = async (format) => {
+    try {
+      setExportingFormat(format)
+      setFeedback('')
+      setError('')
+
+      const payload = buildExportPayload()
+      const blob = await reportService.exportReport(format, payload, token)
+
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${selectedType}-intelligence-report.${format === 'pdf' ? 'pdf' : 'xlsx'}`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+
+      setFeedback(`${format.toUpperCase()} report exported successfully.`)
+    } catch (err) {
+      console.error('Download error:', err)
+      setError(`Export failed: ${err.message}`)
+    } finally {
+      setExportingFormat(null)
+    }
+  }
+
+  const uMeta = previewData?.metadata || {}
+  const uExec = previewData?.executive_summary || {}
+
   return (
-    <div className="page-container" style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px' }}>
-      <ReportDownloadPanel />
+    <div className="reports-page">
+      <div className="reports-header">
+        <span className="eyebrow">INTELLIGENCE REPORTING &amp; EXPORT</span>
+        <h1>Reports Center</h1>
+        <p className="muted">
+          Generate structured, evidence-backed reports with dynamic filtering, live
+          document preview, and instant PDF &amp; Excel exports.
+        </p>
+      </div>
+
+      {/* Report Selection Grid */}
+      <div className="report-type-grid">
+        {REPORT_TYPES.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            className={`report-type-card ${selectedType === r.key ? 'active' : ''} ${r.highlight ? 'highlight-card' : ''}`}
+            onClick={() => setSelectedType(r.key)}
+          >
+            <div className="report-card-icon">{r.icon}</div>
+            <div className="report-card-title">
+              {r.label}
+              {r.highlight && <span className="highlight-tag">Primary</span>}
+            </div>
+            <p className="report-card-desc">{r.description}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* UNIFIED REPORT GENERATOR FORM */}
+      {selectedType === 'unified' && (
+        <div className="unified-generator-card">
+          <div className="unified-generator-header">
+            <div>
+              <h2>Create Your Intelligence Report</h2>
+              <p className="muted">
+                Turn any research idea, innovation topic, or technology into a comprehensive 6-module cross-intelligence report.
+              </p>
+            </div>
+            <button type="button" className="btn-filter-reset" onClick={handleResetFilters}>
+              Reset Form
+            </button>
+          </div>
+
+          <form onSubmit={handleApplyFilters} className="unified-form">
+            <div className="form-group-large">
+              <label>Research Idea / Technology / Topic <span className="required">*</span></label>
+              <input
+                type="text"
+                className="input-primary"
+                placeholder="Example: AI-based brain tumor segmentation using MRI"
+                value={idea}
+                onChange={(e) => setIdea(e.target.value)}
+                required
+              />
+              <div className="idea-chips-row">
+                <span className="chips-label">Try sample ideas:</span>
+                {SAMPLE_IDEAS.map((sample, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="chip-btn"
+                    onClick={() => setIdea(sample)}
+                  >
+                    {sample}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="unified-grid-options">
+              <div className="filter-group">
+                <label>Research Domain (Optional)</label>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="e.g. Computer Science, Medicine"
+                  value={unifiedDomain}
+                  onChange={(e) => setUnifiedDomain(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-group">
+                <label>Keywords (Comma separated)</label>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="e.g. brain tumor, MRI, deep learning"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-group">
+                <label>Technology Area</label>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="e.g. Artificial Intelligence"
+                  value={techArea}
+                  onChange={(e) => setTechArea(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-group">
+                <label>Date Range</label>
+                <select className="filter-select" value={dateRange} onChange={(e) => setDateRange(e.target.value)}>
+                  <option value="all">All Available Years</option>
+                  <option value="1y">Last 1 Year</option>
+                  <option value="3y">Last 3 Years</option>
+                  <option value="5y">Last 5 Years</option>
+                  <option value="10y">Last 10 Years</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label>Region Filter</label>
+                <select className="filter-select" value={region} onChange={(e) => setRegion(e.target.value)}>
+                  <option value="global">Global</option>
+                  <option value="india">India</option>
+                  <option value="us">United States</option>
+                  <option value="europe">Europe</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label>Report Depth</label>
+                <select className="filter-select" value={reportDepth} onChange={(e) => setReportDepth(e.target.value)}>
+                  <option value="quick">Quick Intelligence (Summary)</option>
+                  <option value="standard">Standard Intelligence (Recommended)</option>
+                  <option value="deep">Deep Intelligence (Full Evidence)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="module-checklist-box">
+              <label className="checklist-heading">Data Source Modules to Include:</label>
+              <div className="checkbox-grid">
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={modules.research}
+                    onChange={(e) => setModules({ ...modules, research: e.target.checked })}
+                  />
+                  <span>🔬 Research Intelligence (Module 3)</span>
+                </label>
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={modules.funding}
+                    onChange={(e) => setModules({ ...modules, funding: e.target.checked })}
+                  />
+                  <span>🎯 Funding Intelligence (Module 4)</span>
+                </label>
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={modules.patents}
+                    onChange={(e) => setModules({ ...modules, patents: e.target.checked })}
+                  />
+                  <span>📜 Patent Intelligence (Module 5)</span>
+                </label>
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={modules.technology}
+                    onChange={(e) => setModules({ ...modules, technology: e.target.checked })}
+                  />
+                  <span>⚙ Technology Intelligence (Module 6)</span>
+                </label>
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={modules.innovation}
+                    onChange={(e) => setModules({ ...modules, innovation: e.target.checked })}
+                  />
+                  <span>🚀 Innovation Scoring (Module 7)</span>
+                </label>
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={modules.commercialization}
+                    onChange={(e) => setModules({ ...modules, commercialization: e.target.checked })}
+                  />
+                  <span>💡 Commercialization (Module 8)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="generator-actions">
+              <button
+                type="submit"
+                className="btn-generate-unified"
+                disabled={loadingPreview}
+              >
+                {loadingPreview ? 'Synthesizing Cross-Module Intelligence...' : '⚡ Generate Intelligence Report'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Dynamic Filters Form for Individual Module Reports */}
+      {selectedType !== 'unified' && (
+        <div className="report-filters-card">
+          <div className="report-filters-header">
+            <h3>
+              Scope &amp; Filters:{' '}
+              <span style={{ color: '#079b91' }}>
+                {REPORT_TYPES.find((r) => r.key === selectedType)?.label}
+              </span>
+            </h3>
+            <button
+              type="button"
+              className="btn-filter-reset"
+              onClick={handleResetFilters}
+            >
+              Clear Filters
+            </button>
+          </div>
+
+          <form onSubmit={handleApplyFilters} className="filters-form-grid">
+            {(selectedType === 'funding' ||
+              selectedType === 'patent' ||
+              selectedType === 'research_trend') && (
+                <div className="filter-group">
+                  <label>Research / Tech Domain</label>
+                  <input
+                    type="text"
+                    className="filter-input"
+                    placeholder="e.g. Artificial Intelligence, Clean Energy"
+                    value={researchDomain}
+                    onChange={(e) => setResearchDomain(e.target.value)}
+                  />
+                </div>
+              )}
+
+            {selectedType === 'funding' && (
+              <div className="filter-group">
+                <label>Funding Program Type</label>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="e.g. Grant, Cooperative Agreement"
+                  value={fundingType}
+                  onChange={(e) => setFundingType(e.target.value)}
+                />
+              </div>
+            )}
+
+            {(selectedType === 'innovation_intelligence' ||
+              selectedType === 'commercialization') && (
+                <div className="filter-group">
+                  <label>Technology Focus</label>
+                  <input
+                    type="text"
+                    className="filter-input"
+                    placeholder="e.g. Generative AI, Robotics"
+                    value={technology}
+                    onChange={(e) => setTechnology(e.target.value)}
+                  />
+                </div>
+              )}
+
+            {selectedType === 'patent' && (
+              <div className="filter-group">
+                <label>Assignee / Organization</label>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="e.g. IBM, Google, MIT"
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="filter-actions-row">
+              <button
+                type="submit"
+                className="btn-apply-filters"
+                disabled={loadingPreview}
+              >
+                {loadingPreview ? 'Refreshing...' : 'Apply Filters'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Export & Actions Banner */}
+      <div className="report-action-bar">
+        <div className="action-bar-info">
+          <h3>Report Intelligence Actions</h3>
+          <p className="muted">
+            Export verified intelligence document formatted for review committees, executive stakeholders, and funding bodies.
+          </p>
+        </div>
+        <div className="action-bar-buttons">
+          <button
+            type="button"
+            className="btn-export-pdf"
+            disabled={loadingPreview || exportingFormat != null}
+            onClick={() => handleDownload('pdf')}
+          >
+            {exportingFormat === 'pdf' ? 'Generating PDF...' : '📄 Download PDF Report'}
+          </button>
+          <button
+            type="button"
+            className="btn-export-excel"
+            disabled={loadingPreview || exportingFormat != null}
+            onClick={() => handleDownload('excel')}
+          >
+            {exportingFormat === 'excel' ? 'Exporting Excel...' : '📊 Export Excel (.xlsx)'}
+          </button>
+        </div>
+      </div>
+
+      {feedback && <div className="alert alert-success">{feedback}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {/* LIVE REPORT PREVIEW */}
+      <div className="preview-container">
+        <div className="preview-header">
+          <div className="preview-title-box">
+            <span className="live-tag">LIVE PREVIEW</span>
+            <h2>
+              {selectedType === 'unified'
+                ? (uMeta.report_title || `${idea} Intelligence Report`)
+                : `${REPORT_TYPES.find((r) => r.key === selectedType)?.label} Preview`}
+            </h2>
+          </div>
+          <div className="preview-meta">
+            <span>Generated: {new Date().toLocaleDateString()}</span>
+            {user?.organization && <span>Organization: {user.organization}</span>}
+          </div>
+        </div>
+
+        {loadingPreview ? (
+          <div className="preview-loading">
+            <div className="spinner"></div>
+            <p>{generationStage || 'Loading intelligence data...'}</p>
+          </div>
+        ) : !previewData ? (
+          <div className="preview-empty">
+            <p>No preview data loaded. Click apply filters to query intelligence records.</p>
+          </div>
+        ) : selectedType === 'unified' ? (
+          /* UNIFIED REPORT RENDER */
+          <div className="unified-report-body">
+            {/* Executive Summary Cards */}
+            <div className="exec-summary-grid">
+              <div className="exec-card">
+                <span className="exec-label">Research Literature</span>
+                <strong className="exec-val">{previewData.research?.total_publications || 0}</strong>
+                <span className="exec-sub">Indexed papers ({previewData.research?.total_citations || 0} citations)</span>
+              </div>
+              <div className="exec-card">
+                <span className="exec-label">Funding Grants</span>
+                <strong className="exec-val">{previewData.funding?.total_matching_grants || previewData.funding?.matching_opportunities?.length || 0}</strong>
+                <span className="exec-sub">Matching grant calls</span>
+              </div>
+              <div className="exec-card">
+                <span className="exec-label">Patent Landscape</span>
+                <strong className="exec-val">{previewData.patents?.total_patents || previewData.patents?.prior_art_patents?.length || 0}</strong>
+                <span className="exec-sub">Prior-art records</span>
+              </div>
+              <div className="exec-card highlight">
+                <span className="exec-label">Innovation Score</span>
+                <strong className="exec-val">{previewData.innovation?.overall_score ?? 'N/A'}<small>/100</small></strong>
+                <span className="exec-sub">{previewData.innovation?.innovation_level || 'Evaluated'}</span>
+              </div>
+            </div>
+
+            {/* Executive Overview Box */}
+            <div className="preview-section-box">
+              <h3>1. Executive Intelligence Summary</h3>
+              <p className="exec-desc">{uExec.research_activity_summary}</p>
+              <div className="exec-bullet-grid">
+                <div className="bullet-item">
+                  <strong>Domain Scope:</strong> {uExec.research_domain || uMeta.idea}
+                </div>
+                <div className="bullet-item">
+                  <strong>Innovation Outlook:</strong> {uExec.innovation_score_summary}
+                </div>
+                <div className="bullet-item">
+                  <strong>Commercial Pathway:</strong> {uExec.commercialization_outlook}
+                </div>
+              </div>
+            </div>
+
+            {/* Research Module Section */}
+            {previewData.research && (
+              <div className="preview-section-box">
+                <h3>2. Research Intelligence (Module 3)</h3>
+                <p>{previewData.research.summary}</p>
+                <div className="table-responsive">
+                  <table className="preview-table">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Authors</th>
+                        <th>Year</th>
+                        <th>Citations</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(previewData.research.important_papers || []).slice(0, 8).map((p, i) => (
+                        <tr key={i}>
+                          <td><strong>{p.title}</strong></td>
+                          <td>{p.authors}</td>
+                          <td>{p.publication_year || 'N/A'}</td>
+                          <td>{p.citation_count ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Funding Module Section */}
+            {previewData.funding && (
+              <div className="preview-section-box">
+                <h3>3. Matching Funding Opportunities (Module 4)</h3>
+                <div className="table-responsive">
+                  <table className="preview-table">
+                    <thead>
+                      <tr>
+                        <th>Grant Call</th>
+                        <th>Agency</th>
+                        <th>Ceiling Amount</th>
+                        <th>Deadline</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(previewData.funding.matching_opportunities || []).slice(0, 8).map((g, i) => (
+                        <tr key={i}>
+                          <td><strong>{g.title}</strong></td>
+                          <td>{g.agency}</td>
+                          <td>{g.award_ceiling ? `$${Number(g.award_ceiling).toLocaleString()}` : 'Specified in call'}</td>
+                          <td>{g.close_date || 'Ongoing'}</td>
+                          <td><span className="badge badge-active">{g.deadline_status || 'Active'}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Patent Module Section */}
+            {previewData.patents && (
+              <div className="preview-section-box">
+                <h3>4. Patent Prior Art &amp; Landscape (Module 5)</h3>
+                <div className="table-responsive">
+                  <table className="preview-table">
+                    <thead>
+                      <tr>
+                        <th>Patent Title</th>
+                        <th>Assignee</th>
+                        <th>Filing Year</th>
+                        <th>Technology Area</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(previewData.patents.prior_art_patents || []).slice(0, 8).map((p, i) => (
+                        <tr key={i}>
+                          <td><strong>{p.title}</strong></td>
+                          <td>{p.assignee || 'Not Specified'}</td>
+                          <td>{p.filing_year || 'N/A'}</td>
+                          <td>{p.technology_domain || 'General'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Innovation Scoring Section */}
+            {previewData.innovation && (
+              <div className="preview-section-box">
+                <h3>5. Innovation Score Breakdown (Module 7)</h3>
+                <div className="factors-table-wrap">
+                  <table className="preview-table">
+                    <thead>
+                      <tr>
+                        <th>Factor Dimension</th>
+                        <th>Weight</th>
+                        <th>Score (0-100)</th>
+                        <th>Evidence Rationale</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(previewData.innovation.factors || {}).map(([k, v], i) => (
+                        <tr key={i}>
+                          <td><strong>{v.name || k.replace(/_/g, ' ').toUpperCase()}</strong></td>
+                          <td>{Math.round((v.weight || 0.2) * 100)}%</td>
+                          <td><strong style={{ color: '#079b91' }}>{v.normalized_score != null ? Number(v.normalized_score).toFixed(1) : 'N/A'}</strong></td>
+                          <td>{v.evidence_summary || 'Empirically computed'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Commercialization Section */}
+            {previewData.commercialization && (
+              <div className="preview-section-box">
+                <h3>6. Commercialization &amp; Translational Pathways (Module 8)</h3>
+                <div className="table-responsive">
+                  <table className="preview-table">
+                    <thead>
+                      <tr>
+                        <th>Opportunity / Application</th>
+                        <th>Target Industry</th>
+                        <th>Stage</th>
+                        <th>Rationale</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(previewData.commercialization.applications || []).slice(0, 8).map((a, i) => (
+                        <tr key={i}>
+                          <td><strong>{a.name || a.application}</strong></td>
+                          <td>{a.industry || 'Multi-Sector'}</td>
+                          <td><span className="badge badge-stage">{a.stage || 'Emerging'}</span></td>
+                          <td>{a.why || a.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Recommended Next Steps */}
+            {previewData.recommended_next_steps?.length > 0 && (
+              <div className="preview-section-box recommendations-box">
+                <h3>Recommended Strategic Actions</h3>
+                <ul className="rec-list">
+                  {previewData.recommended_next_steps.map((rec, i) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* INDIVIDUAL MODULE REPORT PREVIEW */
+          <div className="individual-report-body">
+            <div className="preview-meta-summary">
+              <strong>Records returned:</strong> {previewData.records?.length || previewData.yearly_growth?.length || 'Available'}
+            </div>
+            <pre className="preview-json-box">
+              {JSON.stringify(previewData, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

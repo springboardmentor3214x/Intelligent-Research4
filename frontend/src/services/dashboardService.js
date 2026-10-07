@@ -74,6 +74,13 @@ export function getInnovationManagerDashboard(token) {
   })
 }
 
+export function getStartupFounderDashboard(token, domain = null) {
+  const query = domain ? `?domain=${encodeURIComponent(domain)}` : ''
+  return apiFetch(`/dashboard/startup${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
 export function sendAdminBroadcast(token, payload) {
   return apiFetch('/dashboard/admin/broadcast', {
     method: 'POST',
@@ -81,4 +88,5 @@ export function sendAdminBroadcast(token, payload) {
     body: JSON.stringify(payload),
   })
 }
+
 

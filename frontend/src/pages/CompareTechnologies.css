@@ -1,0 +1,247 @@
+/* Compare Technologies Stylesheet */
+
+.compare-page-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+  color: #1e293b;
+}
+
+.compare-header {
+  margin-bottom: 24px;
+}
+
+.compare-header .eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #079b91;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.compare-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 8px;
+}
+
+.compare-header .subtitle {
+  font-size: 0.95rem;
+  color: #64748b;
+  max-width: 720px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.tech-picker-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.tech-picker-card h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.tech-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.compare-chip {
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.compare-chip:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.compare-chip.active {
+  background: #f0fdfa;
+  border-color: #079b91;
+  color: #079b91;
+  font-weight: 700;
+}
+
+.btn-run-compare {
+  background: linear-gradient(135deg, #079b91 0%, #056a63 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-run-compare:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.compare-alert-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  margin-bottom: 24px;
+}
+
+.compare-loading,
+.compare-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+/* Comparison Grid */
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.compare-column-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.card-top-head {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.card-top-head h2 {
+  margin: 0 0 6px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.domain-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.score-badge-box {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.score-lbl {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.score-num {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #079b91;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.score-num small {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.score-lvl {
+  font-size: 0.8rem;
+  color: #0d9488;
+  font-weight: 600;
+}
+
+.factor-breakdown-list {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.factor-breakdown-list h4 {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+}
+
+.factor-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.82rem;
+}
+
+.factor-row:last-child {
+  border-bottom: none;
+}
+
+.factor-name {
+  color: #475569;
+}
+
+.factor-val {
+  color: #0f172a;
+}
+
+.summary-section h4 {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.summary-section p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.5;
+}

@@ -3,7 +3,6 @@ import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
-import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import OAuthCallback from './pages/OAuthCallback'
@@ -19,6 +18,8 @@ import InnovationScoring from './pages/InnovationScoring'
 import Commercialization from './pages/Commercialization'
 import Reports from './pages/Reports'
 import RoleBasedDashboard from './pages/RoleBasedDashboard'
+import NotificationsPage from './pages/NotificationsPage'
+import CompareTechnologies from './pages/CompareTechnologies'
 import PlatformAIAssistant from './components/PlatformAIAssistant'
 import TechIntelligenceFloatingNav from './components/TechIntelligenceFloatingNav'
 import PlatformGlobalFloatingNav from './components/PlatformGlobalFloatingNav'
@@ -30,7 +31,8 @@ function AppContent() {
   const isTechIntelligenceSection = 
     location.pathname.startsWith('/technologies') || 
     location.pathname.startsWith('/innovation') ||
-    location.pathname.startsWith('/commercialization')
+    location.pathname.startsWith('/commercialization') ||
+    location.pathname.startsWith('/compare')
 
   return (
     <div className="application">
@@ -49,12 +51,14 @@ function AppContent() {
           <Route path="/innovation" element={<InnovationScoring />} />
           <Route path="/innovation-scoring" element={<InnovationScoring />} />
           <Route path="/commercialization" element={<Commercialization />} />
+          <Route path="/compare" element={<CompareTechnologies />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<RoleBasedDashboard />} />
             <Route path="/admin" element={<RoleBasedDashboard />} />
             <Route path="/research-papers" element={<ResearchPapers />} />
             <Route path="/funding" element={<FundingIntelligence />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -76,4 +80,3 @@ export default function App() {
     </BrowserRouter>
   )
 }
-

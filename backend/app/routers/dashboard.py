@@ -6,6 +6,7 @@ from backend.app.database.connection import get_db
 from backend.app.models.user import User
 from backend.app.services.dashboard_service import (
     get_innovation_manager_dashboard,
+    get_startup_founder_dashboard,
     get_admin_dashboard_metrics,
     get_admin_users,
     get_admin_recommendations_monitoring,
@@ -36,6 +37,23 @@ def researcher_dashboard(
         domain=domain,
         year_from=year_from,
         year_to=year_to,
+    )
+
+
+@router.get("/startup")
+def startup_founder_dashboard(
+    domain: str | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Module 9: Startup Founder Dashboard.
+    Returns targeted commercialization intelligence, products, venture grants, and IP signals.
+    """
+    return get_startup_founder_dashboard(
+        db=db,
+        current_user=current_user,
+        domain=domain,
     )
 
 

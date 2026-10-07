@@ -380,6 +380,13 @@ export default function Navbar() {
             >
               Reports
             </Link>
+
+            <Link
+              to="/compare"
+              className={`nav-link-btn ${isCurrent('/compare') ? 'active' : ''}`}
+            >
+              Compare
+            </Link>
           </nav>
         )}
 
