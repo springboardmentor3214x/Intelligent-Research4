@@ -1,9 +1,15 @@
-from uuid import UUID
+import re
+import uuid
+from typing import Any
 
-from backend.app.models.notification import Notification
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from backend.app.models.notification import Notification, NotificationPreference
+from backend.app.models.user import User
 
 
-NOTIFICATION_TYPES = {
+VALID_NOTIFICATION_TYPES = {
     "FUNDING",
     "PATENT",
     "TECHNOLOGY",
@@ -12,7 +18,7 @@ NOTIFICATION_TYPES = {
     "PLATFORM",
 }
 
-PRIORITIES = {
+VALID_PRIORITIES = {
     "LOW",
     "NORMAL",
     "HIGH",
@@ -20,46 +26,218 @@ PRIORITIES = {
 }
 
 
+def _normalize(value: str | None) -> str:
+    if not value:
+        return ""
+
+    value = value.lower().strip()
+    value = re.sub(r"[^a-z0-9\s]+", " ", value)
+    value = re.sub(r"\s+", " ", value)
+
+    return value
+
+
+def _tokens(value: str | None) -> set[str]:
+    normalized = _normalize(value)
+
+    if not normalized:
+        return set()
+
+    return {
+        token
+        for token in normalized.split()
+        if len(token) >= 3
+    }
+
+
+def is_event_relevant_to_user(
+    user: User,
+    *,
+    domain: str | None = None,
+    technology: str | None = None,
+    keywords: list[str] | None = None,
+    title: str | None = None,
+    description: str | None = None,
+) -> bool:
+    """
+    Basic relevance matching using the information currently available
+    in the User model and research profile.
+    """
+    searchable_values = [
+        domain,
+        technology,
+        title,
+        description,
+    ]
+
+    if keywords:
+        searchable_values.extend(keywords)
+
+    combined_event_text = " ".join([v for v in searchable_values if v])
+    if not combined_event_text:
+        return False
+
+    normalized_event_text = _normalize(combined_event_text)
+    event_tokens = _tokens(normalized_event_text)
+
+    # 1. Match against user.research_domain if set
+    if user.research_domain:
+        user_domain = _normalize(user.research_domain)
+        if user_domain in normalized_event_text:
+            return True
+        user_tokens = _tokens(user_domain)
+        if user_tokens and event_tokens and user_tokens.intersection(event_tokens):
+            return True
+
+    # 2. Match against user's attached ResearchProfile if available
+    research_profile = getattr(user, "research_profile", None)
+    if research_profile:
+        if research_profile.research_domain:
+            prof_domain = _normalize(research_profile.research_domain)
+            if prof_domain and (prof_domain in normalized_event_text or _tokens(prof_domain).intersection(event_tokens)):
+                return True
+
+        if research_profile.research_interests:
+            interests = _normalize(research_profile.research_interests)
+            if interests and (interests in normalized_event_text or _tokens(interests).intersection(event_tokens)):
+                return True
+
+        for kw in (research_profile.keywords or []):
+            if kw.name and _normalize(kw.name) in normalized_event_text:
+                return True
+
+        for ta in (research_profile.technology_areas or []):
+            if ta.name and _normalize(ta.name) in normalized_event_text:
+                return True
+
+    # Fallback: if user has no specified domain/profile, default to allowing notification
+    if not user.research_domain and not research_profile:
+        return True
+
+    return False
+
+
+def get_user_preferences(db: Session, user_id: uuid.UUID) -> NotificationPreference:
+    """Get or create user notification preferences."""
+    pref = (
+        db.query(NotificationPreference)
+        .filter(NotificationPreference.user_id == user_id)
+        .first()
+    )
+    if not pref:
+        pref = NotificationPreference(user_id=user_id)
+        db.add(pref)
+        try:
+            db.commit()
+            db.refresh(pref)
+        except IntegrityError:
+            db.rollback()
+            pref = (
+                db.query(NotificationPreference)
+                .filter(NotificationPreference.user_id == user_id)
+                .first()
+            )
+    return pref
+
+
+def is_notification_type_enabled_for_user(
+    db: Session,
+    user_id: uuid.UUID,
+    notification_type: str,
+) -> bool:
+    """Check if the user has opted in to this category of notification."""
+    pref = get_user_preferences(db, user_id)
+    n_type = notification_type.upper()
+    if n_type == "FUNDING":
+        return pref.funding_enabled
+    if n_type == "PATENT":
+        return pref.patent_enabled
+    if n_type == "TECHNOLOGY":
+        return pref.technology_enabled
+    if n_type in ("RESEARCH_TREND", "RESEARCH"):
+        return pref.research_enabled
+    if n_type == "COMMERCIALIZATION":
+        return pref.commercialization_enabled
+    if n_type == "PLATFORM":
+        return pref.platform_enabled
+    return True
+
+
+def build_deduplication_key(
+    user_id: uuid.UUID,
+    notification_type: str,
+    related_module: str | None,
+    related_record_id: str | None,
+) -> str:
+    return ":".join(
+        [
+            str(user_id),
+            notification_type.upper(),
+            related_module or "NONE",
+            related_record_id or "NONE",
+        ]
+    )
+
+
 def create_notification(
-    session,
-    user_id: UUID,
+    db: Session,
+    user: User,
+    *,
     notification_type: str,
     title: str,
     message: str,
     related_module: str | None = None,
     related_record_id: str | None = None,
     priority: str = "NORMAL",
-) -> Notification:
+    target_url: str | None = None,
+    check_relevance: bool = True,
+    domain: str | None = None,
+    technology: str | None = None,
+    keywords: list[str] | None = None,
+    event_title: str | None = None,
+    description: str | None = None,
+) -> Notification | None:
     """
-    Create a notification for a user.
-
-    Duplicate notifications for the same user,
-    type, module and related record are avoided.
+    Create a notification for a user, respecting preferences and deduplication.
     """
-
     notification_type = notification_type.upper()
     priority = priority.upper()
 
-    if notification_type not in NOTIFICATION_TYPES:
-        raise ValueError(
-            f"Invalid notification type: {notification_type}"
-        )
+    if notification_type not in VALID_NOTIFICATION_TYPES:
+        raise ValueError(f"Unsupported notification type: {notification_type}")
 
-    if priority not in PRIORITIES:
-        raise ValueError(
-            f"Invalid notification priority: {priority}"
+    if priority not in VALID_PRIORITIES:
+        raise ValueError(f"Unsupported notification priority: {priority}")
+
+    # Check user preferences first
+    if not is_notification_type_enabled_for_user(db, user.id, notification_type):
+        return None
+
+    # Relevance check
+    if check_relevance and notification_type != "PLATFORM":
+        relevant = is_event_relevant_to_user(
+            user,
+            domain=domain,
+            technology=technology,
+            keywords=keywords,
+            title=event_title or title,
+            description=description,
         )
+        if not relevant:
+            return None
+
+    deduplication_key = build_deduplication_key(
+        user.id,
+        notification_type,
+        related_module,
+        related_record_id,
+    )
 
     existing = (
-        session.query(Notification)
+        db.query(Notification)
         .filter(
-            Notification.user_id == user_id,
-            Notification.notification_type
-            == notification_type,
-            Notification.related_module
-            == related_module,
-            Notification.related_record_id
-            == related_record_id,
+            Notification.user_id == user.id,
+            Notification.deduplication_key == deduplication_key,
         )
         .first()
     )
@@ -68,290 +246,6 @@ def create_notification(
         return existing
 
     notification = Notification(
-        user_id=user_id,
-        notification_type=notification_type,
-        title=title,
-        message=message,
-        related_module=related_module,
-        related_record_id=related_record_id,
-        priority=priority,
-    )
-
-    session.add(notification)
-    session.commit()
-    session.refresh(notification)
-
-    return notification
-
-
-def get_user_notifications(
-    session,
-    user_id: UUID,
-    unread_only: bool = False,
-    notification_type: str | None = None,
-) -> list[Notification]:
-    """
-    Return notifications belonging only to the requested user.
-    """
-
-    query = (
-        session.query(Notification)
-        .filter(Notification.user_id == user_id)
-    )
-
-    if unread_only:
-        query = query.filter(
-            Notification.is_read.is_(False)
-        )
-
-    if notification_type:
-        query = query.filter(
-            Notification.notification_type
-            == notification_type.upper()
-        )
-
-    return (
-        query
-        .order_by(Notification.created_at.desc())
-        .all()
-    )
-
-
-def get_unread_count(
-    session,
-    user_id: UUID,
-) -> int:
-    """
-    Return the number of unread notifications
-    belonging to the requested user.
-    """
-
-    return (
-        session.query(Notification)
-        .filter(
-            Notification.user_id == user_id,
-            Notification.is_read.is_(False),
-        )
-        .count()
-    )
-
-
-def mark_notification_read(
-    session,
-    user_id: UUID,
-    notification_id: UUID,
-) -> Notification | None:
-    """
-    Mark one notification as read.
-
-    The user_id check ensures users cannot
-    modify another user's notification.
-    """
-
-    notification = (
-        session.query(Notification)
-        .filter(
-            Notification.id == notification_id,
-            Notification.user_id == user_id,
-        )
-        .first()
-    )
-
-    if not notification:
-        return None
-
-    notification.is_read = True
-
-    session.commit()
-    session.refresh(notification)
-
-    return notification
-
-
-def mark_all_notifications_read(
-    session,
-    user_id: UUID,
-) -> int:
-    """
-    Mark all notifications belonging to a user as read.
-
-    Returns the number of notifications updated.
-    """
-
-    notifications = (
-        session.query(Notification)
-        .filter(
-            Notification.user_id == user_id,
-            Notification.is_read.is_(False),
-        )
-        .all()
-    )
-
-    for notification in notifications:
-        notification.is_read = True
-
-    session.commit()
-
-    return len(notifications)
-
-def _normalize_text(value: str | None) -> str:
-    """Normalize text for simple case-insensitive matching."""
-
-    if not value:
-        return ""
-
-    return " ".join(value.lower().split())
-
-
-def _contains_match(
-    profile_terms: list[str],
-    content: str,
-) -> bool:
-    """
-    Return True when at least one profile term
-    appears in the notification content.
-    """
-
-    normalized_content = _normalize_text(content)
-
-    for term in profile_terms:
-        normalized_term = _normalize_text(term)
-
-        if normalized_term and normalized_term in normalized_content:
-            return True
-
-    return False
-
-
-def is_notification_relevant(
-    research_profile,
-    content: str,
-) -> bool:
-    """
-    Check whether notification content is relevant
-    to a researcher's profile.
-
-    Matching considers:
-    - research domain
-    - research interests
-    - profile keywords
-    - technology areas
-    """
-
-    if not research_profile:
-        return False
-
-    content = _normalize_text(content)
-
-    if not content:
-        return False
-
-    # Research domain is a strong relevance signal.
-    domain = _normalize_text(
-        research_profile.research_domain
-    )
-
-    if domain and domain in content:
-        return True
-
-    # Research interests can contain multiple concepts.
-    interests = _normalize_text(
-        research_profile.research_interests
-    )
-
-    if interests:
-        interest_terms = [
-            term.strip()
-            for term in interests.replace(
-                ";", ","
-            ).split(",")
-            if term.strip()
-        ]
-
-        if _contains_match(
-            interest_terms,
-            content,
-        ):
-            return True
-
-    # Explicit profile keywords.
-    keyword_terms = [
-        keyword.name
-        for keyword in (
-            research_profile.keywords or []
-        )
-        if keyword.name
-    ]
-
-    if _contains_match(
-        keyword_terms,
-        content,
-    ):
-        return True
-
-    # Technology areas.
-    technology_terms = [
-        technology.name
-        for technology in (
-            research_profile.technology_areas or []
-        )
-        if technology.name
-    ]
-
-    if _contains_match(
-        technology_terms,
-        content,
-    ):
-        return True
-
-    return False
-
-def create_relevant_notification(
-    session,
-    user,
-    notification_type: str,
-    title: str,
-    message: str,
-    related_module: str | None = None,
-    related_record_id: str | None = None,
-    priority: str = "NORMAL",
-) -> Notification | None:
-    """
-    Create a notification only when the content is relevant
-    to the user's research profile.
-
-    PLATFORM notifications are always allowed because they
-    are system-level notifications.
-    """
-
-    if notification_type.upper() == "PLATFORM":
-        return create_notification(
-            session=session,
-            user_id=user.id,
-            notification_type=notification_type,
-            title=title,
-            message=message,
-            related_module=related_module,
-            related_record_id=related_record_id,
-            priority=priority,
-        )
-
-    research_profile = getattr(
-        user,
-        "research_profile",
-        None,
-    )
-
-    content = f"{title} {message}"
-
-    if not is_notification_relevant(
-        research_profile,
-        content,
-    ):
-        return None
-
-    return create_notification(
-        session=session,
         user_id=user.id,
         notification_type=notification_type,
         title=title,
@@ -359,297 +253,347 @@ def create_relevant_notification(
         related_module=related_module,
         related_record_id=related_record_id,
         priority=priority,
+        target_url=target_url,
+        deduplication_key=deduplication_key,
     )
 
-def notify_user_about_funding(
-    session,
-    user,
-    funding_opportunity,
-) -> Notification | None:
-    """
-    Create a funding notification when the opportunity
-    is relevant to the user's research profile.
-    """
+    db.add(notification)
+    try:
+        db.commit()
+        db.refresh(notification)
+    except IntegrityError:
+        db.rollback()
+        return (
+            db.query(Notification)
+            .filter(
+                Notification.user_id == user.id,
+                Notification.deduplication_key == deduplication_key,
+            )
+            .first()
+        )
 
+    return notification
+
+
+def create_funding_notification(
+    db: Session,
+    user: User,
+    *,
+    opportunity_id: str,
+    opportunity_name: str,
+    organization: str | None = None,
+    domain: str | None = None,
+    deadline: str | None = None,
+    description: str | None = None,
+    link: str | None = None,
+    keywords: list[str] | None = None,
+    priority: str = "HIGH",
+) -> Notification | None:
+    message_parts = [f"Funding opportunity: {opportunity_name}."]
+    if organization:
+        message_parts.append(f"Organization: {organization}.")
+    if domain:
+        message_parts.append(f"Domain: {domain}.")
+    if deadline:
+        message_parts.append(f"Deadline: {deadline}.")
+    if description:
+        message_parts.append(description)
+
+    return create_notification(
+        db,
+        user,
+        notification_type="FUNDING",
+        title=f"New Funding Opportunity: {opportunity_name}",
+        message=" ".join(message_parts),
+        related_module="funding",
+        related_record_id=str(opportunity_id),
+        priority=priority,
+        target_url=link,
+        domain=domain,
+        keywords=keywords,
+        event_title=opportunity_name,
+        description=description,
+    )
+
+
+def create_patent_notification(
+    db: Session,
+    user: User,
+    *,
+    patent_id: str,
+    title: str,
+    assignee: str | None = None,
+    filing_date: str | None = None,
+    domain: str | None = None,
+    classification: str | None = None,
+    citation_count: int | None = None,
+    link: str | None = None,
+    keywords: list[str] | None = None,
+) -> Notification | None:
+    message_parts = [f"Patent monitoring alert: {title}."]
+    if assignee:
+        message_parts.append(f"Assignee: {assignee}.")
+    if filing_date:
+        message_parts.append(f"Filing date: {filing_date}.")
+    if domain:
+        message_parts.append(f"Domain: {domain}.")
+    if classification:
+        message_parts.append(f"Classification: {classification}.")
+    if citation_count is not None:
+        message_parts.append(f"Citations: {citation_count}.")
+
+    return create_notification(
+        db,
+        user,
+        notification_type="PATENT",
+        title=f"Patent Alert: {title}",
+        message=" ".join(message_parts),
+        related_module="patent",
+        related_record_id=str(patent_id),
+        priority="NORMAL",
+        target_url=link,
+        domain=domain,
+        keywords=keywords,
+        event_title=title,
+    )
+
+
+def create_technology_notification(
+    db: Session,
+    user: User,
+    *,
+    technology_id: str,
+    technology_name: str,
+    technology_domain: str | None = None,
+    emerging_score: float | None = None,
+    emerging_status: str | None = None,
+    research_growth_rate: float | None = None,
+    patent_growth_rate: float | None = None,
+    link: str | None = None,
+) -> Notification | None:
+    message_parts = [f"Technology intelligence alert for {technology_name}."]
+    if technology_domain:
+        message_parts.append(f"Domain: {technology_domain}.")
+    if emerging_status:
+        message_parts.append(f"Status: {emerging_status}.")
+    if emerging_score is not None:
+        message_parts.append(f"Emerging score: {emerging_score:.2f}.")
+    if research_growth_rate is not None:
+        message_parts.append(f"Research growth: {research_growth_rate:.2f}%.")
+    if patent_growth_rate is not None:
+        message_parts.append(f"Patent growth: {patent_growth_rate:.2f}%.")
+
+    return create_notification(
+        db,
+        user,
+        notification_type="TECHNOLOGY",
+        title=f"Emerging Technology: {technology_name}",
+        message=" ".join(message_parts),
+        related_module="technology",
+        related_record_id=str(technology_id),
+        priority="HIGH",
+        target_url=link,
+        domain=technology_domain,
+        technology=technology_name,
+        event_title=technology_name,
+    )
+
+
+def create_research_trend_notification(
+    db: Session,
+    user: User,
+    *,
+    trend_id: str,
+    topic: str,
+    trend_direction: str = "Growing",
+    publication_activity: str | None = None,
+    period: str | None = None,
+    explanation: str | None = None,
+    domain: str | None = None,
+    link: str | None = None,
+) -> Notification | None:
+    message_parts = [
+        f"Research trend detected for {topic}.",
+        f"Trend direction: {trend_direction}.",
+    ]
+    if publication_activity:
+        message_parts.append(f"Publication activity: {publication_activity}.")
+    if period:
+        message_parts.append(f"Period: {period}.")
+    if explanation:
+        message_parts.append(explanation)
+
+    return create_notification(
+        db,
+        user,
+        notification_type="RESEARCH_TREND",
+        title=f"Research Trend Update: {topic}",
+        message=" ".join(message_parts),
+        related_module="research",
+        related_record_id=str(trend_id),
+        priority="NORMAL",
+        target_url=link,
+        domain=domain,
+        technology=topic,
+        event_title=topic,
+        description=explanation,
+    )
+
+
+def create_commercialization_notification(
+    db: Session,
+    user: User,
+    *,
+    opportunity_id: str,
+    technology: str,
+    opportunity_type: str = "Commercialization",
+    explanation: str | None = None,
+    domain: str | None = None,
+    link: str | None = None,
+) -> Notification | None:
+    message_parts = [
+        f"Potential commercialization opportunity for {technology}.",
+        f"Opportunity type: {opportunity_type}.",
+    ]
+    if explanation:
+        message_parts.append(explanation)
+    message_parts.append(
+        "This is a potential opportunity identified by the platform "
+        "and is not a guaranteed commercial outcome."
+    )
+
+    return create_notification(
+        db,
+        user,
+        notification_type="COMMERCIALIZATION",
+        title=f"Potential Commercialization Opportunity: {technology}",
+        message=" ".join(message_parts),
+        related_module="commercialization",
+        related_record_id=str(opportunity_id),
+        priority="HIGH",
+        target_url=link,
+        domain=domain,
+        technology=technology,
+        event_title=technology,
+        description=explanation,
+    )
+
+
+def create_platform_notification(
+    db: Session,
+    user: User,
+    *,
+    title: str,
+    message: str,
+    related_record_id: str | None = None,
+    priority: str = "NORMAL",
+    target_url: str | None = None,
+) -> Notification | None:
+    return create_notification(
+        db,
+        user,
+        notification_type="PLATFORM",
+        title=title,
+        message=message,
+        related_module="platform",
+        related_record_id=related_record_id,
+        priority=priority,
+        target_url=target_url,
+        check_relevance=False,
+    )
+
+
+# Helper aliases for backwards compatibility with earlier module code
+def notify_user_about_funding(session, user, funding_opportunity):
     deadline = (
         funding_opportunity.close_date.strftime("%d %b %Y")
         if funding_opportunity.close_date
         else "Deadline not specified"
     )
-
-    research_area = (
-        funding_opportunity.research_area
-        or funding_opportunity.funding_category
-        or "Research funding"
+    return create_funding_notification(
+        session,
+        user,
+        opportunity_id=str(funding_opportunity.id),
+        opportunity_name=funding_opportunity.title,
+        organization=funding_opportunity.agency,
+        domain=funding_opportunity.research_area,
+        deadline=deadline,
+        description=funding_opportunity.description,
+        link=funding_opportunity.official_link,
     )
 
-    description = (
-        funding_opportunity.description
-        or "A new funding opportunity matches your research profile."
-    )
 
-    message = (
-        f"{funding_opportunity.title} is available from "
-        f"{funding_opportunity.agency or 'the funding organization'}. "
-        f"Research area: {research_area}. "
-        f"Deadline: {deadline}. "
-        f"{description}"
-    )
-
-    if funding_opportunity.official_link:
-        message += (
-            f" Apply/View details: "
-            f"{funding_opportunity.official_link}"
-        )
-
-    return create_relevant_notification(
-        session=session,
-        user=user,
-        notification_type="FUNDING",
-        title=f"New Funding Opportunity: {funding_opportunity.title}",
-        message=message,
-        related_module="funding",
-        related_record_id=str(funding_opportunity.id),
-        priority="HIGH" if funding_opportunity.close_date else "NORMAL",
-    )
-
-def notify_user_about_patent(
-    session,
-    user,
-    patent,
-) -> Notification | None:
-    """
-    Create a patent notification when the patent
-    is relevant to the user's research profile.
-    """
-
+def notify_user_about_patent(session, user, patent):
     filing_date = (
         patent.filing_date.strftime("%d %b %Y")
         if patent.filing_date
         else "Filing date not specified"
     )
-
-    technology_domain = (
-        patent.technology_domain
-        or "Technology domain not specified"
+    return create_patent_notification(
+        session,
+        user,
+        patent_id=str(patent.id),
+        title=patent.title,
+        assignee=patent.assignee,
+        filing_date=filing_date,
+        domain=patent.technology_domain,
+        classification=patent.classification,
+        citation_count=patent.citation_count,
+        link=patent.official_link,
     )
 
-    classification = (
-        patent.classification
-        or "Classification not specified"
+
+def notify_user_about_technology(session, user, technology):
+    return create_technology_notification(
+        session,
+        user,
+        technology_id=str(technology.id),
+        technology_name=technology.technology_name,
+        technology_domain=technology.technology_domain,
+        emerging_score=technology.emerging_score,
+        emerging_status=technology.emerging_status,
+        research_growth_rate=technology.research_growth_rate,
+        patent_growth_rate=technology.patent_growth_rate,
+        link=None,
     )
 
-    message = (
-        f"A relevant patent has been identified: "
-        f"{patent.title}. "
-        f"Assignee: {patent.assignee or 'Not specified'}. "
-        f"Filing date: {filing_date}. "
-        f"Technology domain: {technology_domain}. "
-        f"Classification: {classification}. "
-        f"Citations: {patent.citation_count or 0}. "
-        f"Status: {patent.status or 'Not specified'}."
-    )
 
-    if patent.official_link:
-        message += (
-            f" View patent: {patent.official_link}"
-        )
-
-    return create_relevant_notification(
-        session=session,
-        user=user,
-        notification_type="PATENT",
-        title=f"Relevant Patent: {patent.title}",
-        message=message,
-        related_module="patent",
-        related_record_id=str(patent.id),
-        priority="HIGH",
-    )
-
-def notify_user_about_technology(
-    session,
-    user,
-    technology,
-) -> Notification | None:
-    """
-    Create an emerging/developing technology notification
-    when the technology is relevant to the user's profile.
-    """
-
-    status = (
-        technology.emerging_status
-        or "Developing"
-    )
-
-    score = (
-        f"{technology.emerging_score:.1f}"
-        if technology.emerging_score is not None
-        else "Not available"
-    )
-
-    message = (
-        f"{technology.technology_name} has been identified "
-        f"as a {status} technology. "
-        f"Technology domain: "
-        f"{technology.technology_domain or 'Not specified'}. "
-        f"Emerging score: {score}. "
-        f"Research papers: "
-        f"{technology.research_paper_count}. "
-        f"Patents: {technology.patent_count}. "
-        f"Citations: {technology.citation_count}. "
-        f"Research growth: "
-        f"{technology.research_growth_rate:.2f}%. "
-        f"Patent growth: "
-        f"{technology.patent_growth_rate:.2f}%."
-    )
-
-    if technology.description:
-        message += (
-            f" Description: {technology.description}"
-        )
-
-    return create_relevant_notification(
-        session=session,
-        user=user,
-        notification_type="TECHNOLOGY",
-        title=f"Emerging Technology: {technology.technology_name}",
-        message=message,
-        related_module="technology",
-        related_record_id=str(technology.id),
-        priority="HIGH",
-    )
-
-def notify_user_about_research_trend(
-    session,
-    user,
-    trend: dict,
-) -> Notification | None:
-    """
-    Create a research trend notification when a topic
-    is relevant to the user's research profile.
-    """
-
+def notify_user_about_research_trend(session, user, trend: dict):
     topic = trend.get("topic")
     if not topic:
         return None
-
-    status = trend.get("status", "Steady Growth")
-    recent_papers = trend.get("recent_papers_2024_plus", 0)
-    total_frequency = trend.get("total_frequency", 0)
-
-    message = (
-        f"The research topic '{topic}' is showing "
-        f"{status.lower()}. "
-        f"It appears in {total_frequency} research records, "
-        f"with {recent_papers} papers from 2024 onward."
+    return create_research_trend_notification(
+        session,
+        user,
+        trend_id=topic,
+        topic=topic,
+        trend_direction=trend.get("status", "Steady Growth"),
+        explanation=f"Appears in {trend.get('total_frequency', 0)} records",
     )
 
-    return create_relevant_notification(
-        session=session,
-        user=user,
-        notification_type="RESEARCH_TREND",
-        title=f"Research Trend Update: {topic}",
-        message=message,
-        related_module="research",
-        related_record_id=topic,
-        priority="HIGH" if status == "Accelerating" else "NORMAL",
-    )
 
-def notify_user_about_commercialization(
-    session,
-    user,
-    opportunity: dict,
-) -> Notification | None:
-    """
-    Create a commercialization notification when the
-    opportunity is relevant to the user's research profile.
-    """
-
+def notify_user_about_commercialization(session, user, opportunity: dict):
     title = (
         opportunity.get("title")
         or opportunity.get("opportunity")
         or "Potential Commercialization Opportunity"
     )
-
-    opportunity_type = (
-        opportunity.get("type")
-        or opportunity.get("opportunity_type")
-        or "Commercialization"
+    return create_commercialization_notification(
+        session,
+        user,
+        opportunity_id=str(opportunity.get("id") or opportunity.get("technology_id") or title),
+        technology=title,
+        opportunity_type=opportunity.get("type", "Commercialization"),
+        explanation=opportunity.get("evidence") or opportunity.get("description"),
     )
 
-    evidence = (
-        opportunity.get("evidence")
-        or opportunity.get("description")
-        or opportunity.get("reason")
-        or "Supporting research and technology evidence identified."
-    )
 
-    message = (
-        f"Potential {opportunity_type} opportunity identified: "
-        f"{title}. "
-        f"Supporting evidence: {evidence}. "
-        f"This represents a potential opportunity and is not a guarantee."
-    )
-
-    return create_relevant_notification(
-        session=session,
-        user=user,
-        notification_type="COMMERCIALIZATION",
-        title=f"Potential Commercialization Opportunity: {title}",
-        message=message,
-        related_module="commercialization",
-        related_record_id=str(
-            opportunity.get("id")
-            or opportunity.get("technology_id")
-            or title
-        ),
-        priority="NORMAL",
-    )
-
-def notify_user_about_platform_event(
-    session,
-    user,
-    title: str,
-    message: str,
-    related_module: str | None = None,
-    related_record_id: str | None = None,
-    priority: str = "NORMAL",
-) -> Notification:
-    """
-    Create a system/platform notification for a user.
-    """
-
-    return create_notification(
-        session=session,
-        user_id=user.id,
-        notification_type="PLATFORM",
+def notify_user_about_platform_event(session, user, title: str, message: str, related_module: str | None = None, related_record_id: str | None = None, priority: str = "NORMAL"):
+    return create_platform_notification(
+        session,
+        user,
         title=title,
         message=message,
-        related_module=related_module,
-        related_record_id=related_record_id,
-        priority=priority,
-    )
-
-def notify_user_about_platform_event(
-    session,
-    user,
-    title: str,
-    message: str,
-    related_module: str | None = None,
-    related_record_id: str | None = None,
-    priority: str = "NORMAL",
-) -> Notification:
-    """
-    Create a system/platform notification for a user.
-    """
-
-    return create_notification(
-        session=session,
-        user_id=user.id,
-        notification_type="PLATFORM",
-        title=title,
-        message=message,
-        related_module=related_module,
         related_record_id=related_record_id,
         priority=priority,
     )

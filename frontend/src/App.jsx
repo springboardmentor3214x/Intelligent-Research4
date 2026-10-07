@@ -17,6 +17,9 @@ import TechnologyAdoption from './pages/TechnologyAdoption'
 import TechnologyTrends from './pages/TechnologyTrends'
 import InnovationScoring from './pages/InnovationScoring'
 import Commercialization from './pages/Commercialization'
+import Reports from './pages/Reports'
+import RoleBasedDashboard from './pages/RoleBasedDashboard'
+import PlatformAIAssistant from './components/PlatformAIAssistant'
 import TechIntelligenceFloatingNav from './components/TechIntelligenceFloatingNav'
 import PlatformGlobalFloatingNav from './components/PlatformGlobalFloatingNav'
 import './App.css'
@@ -47,14 +50,17 @@ function AppContent() {
           <Route path="/innovation-scoring" element={<InnovationScoring />} />
           <Route path="/commercialization" element={<Commercialization />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<RoleBasedDashboard />} />
+            <Route path="/admin" element={<RoleBasedDashboard />} />
             <Route path="/research-papers" element={<ResearchPapers />} />
             <Route path="/funding" element={<FundingIntelligence />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <PlatformAIAssistant />
       {isLandingPage && <PlatformGlobalFloatingNav />}
       {isTechIntelligenceSection && <TechIntelligenceFloatingNav />}
     </div>

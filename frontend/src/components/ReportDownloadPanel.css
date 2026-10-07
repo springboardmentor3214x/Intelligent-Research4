@@ -1,0 +1,129 @@
+.report-download-panel {
+  background: #ffffff;
+  border: 1px solid #dce5ed;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 25px rgba(15, 35, 55, 0.06);
+}
+
+.report-panel-header {
+  margin-bottom: 22px;
+}
+
+.report-eyebrow {
+  color: #087f8c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+
+.report-panel-header h2 {
+  margin: 6px 0;
+  color: #173b5c;
+  font-size: 24px;
+}
+
+.report-panel-header p {
+  margin: 0;
+  color: #718394;
+  font-size: 13px;
+}
+
+.report-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.report-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.report-field label {
+  color: #304b62;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-field select,
+.report-field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d5e0e8;
+  border-radius: 9px;
+  padding: 11px 12px;
+  background: #ffffff;
+  color: #243b53;
+  font-size: 13px;
+  outline: none;
+}
+
+.report-field select:focus,
+.report-field input:focus {
+  border-color: #087f8c;
+}
+
+.report-field small {
+  color: #8a99a7;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.report-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.download-button {
+  border: none;
+  border-radius: 9px;
+  padding: 11px 18px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.download-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.download-button.pdf {
+  background: #334155;
+}
+
+.download-button.excel {
+  background: #087f8c;
+}
+
+.report-success {
+  margin-top: 15px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 12px;
+}
+
+.report-error {
+  margin-top: 15px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .report-form {
+    grid-template-columns: 1fr;
+  }
+
+  .report-actions {
+    flex-direction: column;
+  }
+}

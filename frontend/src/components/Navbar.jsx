@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context/auth-context'
+import NotificationCenter from './NotificationCenter'
 import './Navbar.css'
 
 export default function Navbar() {
@@ -146,20 +147,6 @@ export default function Navbar() {
         ) : (
           /* Authenticated Navigation with Dropdowns */
           <nav className="nav-links" aria-label="Platform Navigation">
-            <Link
-              to="/dashboard"
-              className={`nav-link-btn ${isCurrent('/dashboard') ? 'active' : ''}`}
-            >
-              Dashboard
-            </Link>
-
-            <Link
-              to="/patents"
-              className={`nav-link-btn ${isCurrent('/patents') ? 'active' : ''}`}
-            >
-              Patent Landscape
-            </Link>
-
             {/* Research Dropdown */}
             <div className="nav-dropdown" ref={researchRef}>
               <button
@@ -265,6 +252,13 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+
+            <Link
+              to="/patents"
+              className={`nav-link-btn ${isCurrent('/patents') ? 'active' : ''}`}
+            >
+              Patent Landscape
+            </Link>
 
             {/* Technology Intelligence Dropdown */}
             <div className="nav-dropdown" ref={techRef}>
@@ -372,6 +366,20 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+
+            <Link
+              to="/dashboard"
+              className={`nav-link-btn ${isCurrent('/dashboard') ? 'active' : ''}`}
+            >
+              Dashboard
+            </Link>
+
+            <Link
+              to="/reports"
+              className={`nav-link-btn ${isCurrent('/reports') ? 'active' : ''}`}
+            >
+              Reports
+            </Link>
           </nav>
         )}
 
@@ -379,6 +387,7 @@ export default function Navbar() {
         <div className="navbar-actions">
           {user ? (
             <div className="authenticated-actions">
+              <NotificationCenter />
               <Link
                 to="/profile"
                 className="user-chip-link"

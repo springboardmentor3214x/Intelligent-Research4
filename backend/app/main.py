@@ -23,6 +23,10 @@ from backend.app.routers.publications import router as publications_router
 from backend.app.routers.research_details import router as research_details_router
 from backend.app.routers.technology import router as technology_router
 from backend.app.routers.commercialization import router as commercialization_router
+from backend.app.routers.dashboard import router as dashboard_router
+from backend.app.routers.assistant import router as assistant_router
+from backend.app.routers.reports import router as reports_router
+from backend.app.routers.notifications import router as notifications_router
 from backend.app.routers import tech_intelligence, innovation_assessment
 
 app = FastAPI(
@@ -81,6 +85,10 @@ app.include_router(platform_router)
 app.include_router(tech_intelligence.router)
 app.include_router(innovation_assessment.router)
 app.include_router(commercialization_router)
+app.include_router(dashboard_router)
+app.include_router(assistant_router)
+app.include_router(reports_router)
+app.include_router(notifications_router)
 
 
 @app.get("/")

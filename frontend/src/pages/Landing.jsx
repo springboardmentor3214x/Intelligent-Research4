@@ -420,42 +420,42 @@ export default function Landing() {
 
   // AI Paper Analysis Dimensions
   const analysisDimensions = [
-    { 
-      id: 'problem', 
-      label: 'Research Problem', 
-      icon: '❓', 
+    {
+      id: 'problem',
+      label: 'Research Problem',
+      icon: '❓',
       desc: 'Identifies the core scientific bottleneck, theoretical hurdle, or clinical challenge addressed by the authors.',
       sourceType: 'Extracted from publication abstract, introduction & problem formulations',
       aiOutput: 'Identifies non-trivial domain bottlenecks such as label scarcity in 3D medical MRI segmentation or high computational latency on edge neuromorphic processors.'
     },
-    { 
-      id: 'methodology', 
-      label: 'Methodology & Architecture', 
-      icon: '⚙️', 
+    {
+      id: 'methodology',
+      label: 'Methodology & Architecture',
+      icon: '⚙️',
       desc: 'Decomposes proposed algorithmic designs, experimental setups, neural architectures, and validation baselines.',
       sourceType: 'Extracted from technical design, architecture specifications & experimental framework',
       aiOutput: 'Synthesizes neural network structures (e.g. self-attention mechanisms, multi-scale residual graphs) alongside loss functions and training parameters.'
     },
-    { 
-      id: 'results', 
-      label: 'Findings & Contributions', 
-      icon: '📈', 
+    {
+      id: 'results',
+      label: 'Findings & Contributions',
+      icon: '📈',
       desc: 'Synthesizes quantitative metrics, benchmark gains, and verified empirical outcomes.',
       sourceType: 'Extracted from empirical evaluations, benchmark tables & comparative results',
       aiOutput: 'Summarizes key accuracy improvements (e.g. +4.8% Dice similarity score), inference speedups, and verified domain contributions compared to state-of-the-art.'
     },
-    { 
-      id: 'limitations', 
-      label: 'Limitations & Gaps', 
-      icon: '⚠️', 
+    {
+      id: 'limitations',
+      label: 'Limitations & Gaps',
+      icon: '⚠️',
       desc: 'Surfaces acknowledged constraints, dataset boundaries, compute assumptions, and edge-case limitations.',
       sourceType: 'Extracted from author disclosures, error analyses & scope boundaries',
       aiOutput: 'Highlights operational boundaries: sensitivity to out-of-distribution motion artifacts, high pretraining energy cost, and demographic dataset skew.'
     },
-    { 
-      id: 'future', 
-      label: 'Future Directions', 
-      icon: '🚀', 
+    {
+      id: 'future',
+      label: 'Future Directions',
+      icon: '🚀',
       desc: 'Maps open questions, next-phase experiments, and translational research vectors.',
       sourceType: 'Extracted from conclusion roadmap, unaddressed extensions & open questions',
       aiOutput: 'Surfaces recommended next-phase pathways: multi-modal clinical validation, zero-shot cross-sensor adaptation, and lightweight quantized deployment.'
@@ -764,14 +764,14 @@ export default function Landing() {
       {/* =========================================================
           1. HERO SECTION – RESEARCH INTELLIGENCE ECOSYSTEM
           ========================================================= */}
-      <section 
-        className="landing-hero reveal-on-scroll is-visible" 
+      <section
+        className="landing-hero reveal-on-scroll is-visible"
         id="home"
         ref={heroRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        <div 
+        <div
           className="hero-content hero-staggered-load"
           style={{
             transform: `translate3d(${mouseParallax.x * 0.2}px, ${mouseParallax.y * 0.2}px, 0)`
@@ -831,14 +831,14 @@ export default function Landing() {
         </div>
 
         {/* CONNECTED RESEARCH INTELLIGENCE ECOSYSTEM (HERO VISUAL - AI BRAIN ARCHITECTURE) */}
-        <div 
+        <div
           className="hero-visual"
           style={{
             transform: `translate3d(${-mouseParallax.x * 0.4}px, ${-mouseParallax.y * 0.4}px, 0)`
           }}
         >
           <div className={`network-card visual-arch-card ${isEngineExpanded ? 'is-expanded' : ''} ${constellationActive ? 'constellation-active' : ''}`}>
-            
+
             {/* CARD TOP HEADER */}
             <div className="network-header">
               <div className="network-status-indicator">
@@ -846,8 +846,8 @@ export default function Landing() {
                 <span className="network-status-text">AI INTELLIGENCE ENGINE &bull; ACTIVE</span>
               </div>
               <div className="network-header-actions">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className={`constellation-toggle-btn ${constellationActive ? 'active' : ''}`}
                   onClick={() => setConstellationActive(!constellationActive)}
                   title="Toggle Intelligence Constellation"
@@ -855,8 +855,8 @@ export default function Landing() {
                 >
                   {constellationActive ? 'Constellation ✦' : 'Constellation ✧'}
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="engine-toggle-btn"
                   onClick={() => setIsEngineExpanded(!isEngineExpanded)}
                   title="Explore or condense graph nodes"
@@ -869,7 +869,7 @@ export default function Landing() {
 
             {/* AI BRAIN MAIN VISUAL CANVAS */}
             <div className={`ai-engine-stage-layout active-thought-${currentThoughtId}`}>
-              
+
               {/* Dynamic SVG Flow & Energy Particle Beams */}
               <svg className="ai-stage-svg" viewBox="0 0 760 760" preserveAspectRatio="none">
                 <defs>
@@ -880,39 +880,39 @@ export default function Landing() {
                 </defs>
 
                 {/* Vertical Stream: Cloud Research -> Robot AI Brain */}
-                <path 
-                  d="M 380 92 L 380 170" 
-                  className={`arch-flow-line primary-vertical ${currentThoughtId === 'research' ? 'line-active-glow' : ''}`} 
+                <path
+                  d="M 380 92 L 380 170"
+                  className={`arch-flow-line primary-vertical ${currentThoughtId === 'research' ? 'line-active-glow' : ''}`}
                 />
 
                 {/* Curved Energy Rays from Cloud to Top Lateral Nodes */}
-                <path 
-                  d="M 310 50 C 220 70, 150 110, 110 165" 
-                  className={`arch-flow-line ray-dashed-amber ${currentThoughtId === 'innovation' ? 'line-active-glow' : ''}`} 
+                <path
+                  d="M 310 50 C 220 70, 150 110, 110 165"
+                  className={`arch-flow-line ray-dashed-amber ${currentThoughtId === 'innovation' ? 'line-active-glow' : ''}`}
                 />
-                <path 
-                  d="M 450 50 C 540 70, 610 110, 650 165" 
-                  className={`arch-flow-line ray-dashed-rose ${currentThoughtId === 'funding' ? 'line-active-glow' : ''}`} 
+                <path
+                  d="M 450 50 C 540 70, 610 110, 650 165"
+                  className={`arch-flow-line ray-dashed-rose ${currentThoughtId === 'funding' ? 'line-active-glow' : ''}`}
                 />
 
                 {/* Mid Nodes Connecting into Central Engine */}
-                <path 
-                  d="M 120 380 C 200 380, 245 380, 280 380" 
-                  className={`arch-flow-line ray-dashed-emerald ${currentThoughtId === 'technology' ? 'line-active-glow' : ''}`} 
+                <path
+                  d="M 120 380 C 200 380, 245 380, 280 380"
+                  className={`arch-flow-line ray-dashed-emerald ${currentThoughtId === 'technology' ? 'line-active-glow' : ''}`}
                 />
-                <path 
-                  d="M 640 380 C 560 380, 515 380, 480 380" 
-                  className={`arch-flow-line ray-dashed-purple ${currentThoughtId === 'patents' ? 'line-active-glow' : ''}`} 
+                <path
+                  d="M 640 380 C 560 380, 515 380, 480 380"
+                  className={`arch-flow-line ray-dashed-purple ${currentThoughtId === 'patents' ? 'line-active-glow' : ''}`}
                 />
 
                 {/* Lower diagonal beams connecting to bottom lateral nodes */}
-                <path 
-                  d="M 320 450 C 260 490, 190 535, 140 575" 
-                  className={`arch-flow-line beam-curve-left ${currentThoughtId === 'commercialization' ? 'line-active-glow' : ''}`} 
+                <path
+                  d="M 320 450 C 260 490, 190 535, 140 575"
+                  className={`arch-flow-line beam-curve-left ${currentThoughtId === 'commercialization' ? 'line-active-glow' : ''}`}
                 />
-                <path 
-                  d="M 440 450 C 500 490, 570 535, 620 575" 
-                  className={`arch-flow-line beam-curve-right ${currentThoughtId === 'innovation' ? 'line-active-glow' : ''}`} 
+                <path
+                  d="M 440 450 C 500 490, 570 535, 620 575"
+                  className={`arch-flow-line beam-curve-right ${currentThoughtId === 'innovation' ? 'line-active-glow' : ''}`}
                 />
 
                 {/* Animated flowing particles along streams */}
@@ -926,7 +926,7 @@ export default function Landing() {
               </svg>
 
               {/* 1. TOP CLOUD (Node 1): RESEARCH / LITERATURE INTELLIGENCE */}
-              <div 
+              <div
                 className={`arch-cloud-thought ${currentThoughtId === 'research' ? 'thought-active-glow' : ''}`}
                 onClick={() => scrollToSection('research')}
                 onMouseEnter={() => setActiveHoverNode('research')}
@@ -967,15 +967,15 @@ export default function Landing() {
                   <span className="arch-spark s-2">✦</span>
                   <span className="arch-spark s-3">✦</span>
                 </div>
-                <img 
-                  src="/images/Image.png" 
-                  alt="AI Intelligence Engine Robot AI Brain" 
+                <img
+                  src="/image.png"
+                  alt="AI Intelligence Engine Robot AI Brain"
                   className="arch-robot-image"
                   loading="eager"
                 />
 
                 {/* Integrated Research Intelligence Badge on the Robot */}
-                <div 
+                <div
                   className={`robot-embedded-engine-badge ${currentThoughtId === 'research' ? 'badge-active-glow' : ''}`}
                   onClick={() => scrollToSection('home')}
                   onMouseEnter={() => setActiveHoverNode('research')}
@@ -1009,9 +1009,9 @@ export default function Landing() {
               </div>
 
               {/* 3. SURROUNDING 6 INTELLIGENCE NODES */}
-              
+
               {/* TOP-LEFT NODE: Innovation */}
-              <div 
+              <div
                 className={`arch-lateral-card card-pos-top-left ${currentThoughtId === 'innovation' ? 'thought-active-glow' : ''}`}
                 onClick={() => scrollToSection('innovation-intelligence')}
                 onMouseEnter={() => setActiveHoverNode('innovation')}
@@ -1029,7 +1029,7 @@ export default function Landing() {
               </div>
 
               {/* TOP-RIGHT NODE: Funding */}
-              <div 
+              <div
                 className={`arch-lateral-card card-pos-top-right ${currentThoughtId === 'funding' ? 'thought-active-glow' : ''}`}
                 onClick={() => scrollToSection('funding')}
                 onMouseEnter={() => setActiveHoverNode('funding')}
@@ -1047,7 +1047,7 @@ export default function Landing() {
               </div>
 
               {/* MID-LEFT NODE: Technology */}
-              <div 
+              <div
                 className={`arch-lateral-card card-pos-mid-left ${currentThoughtId === 'technology' ? 'thought-active-glow' : ''}`}
                 onClick={() => scrollToSection('technology-intelligence')}
                 onMouseEnter={() => setActiveHoverNode('technology')}
@@ -1065,7 +1065,7 @@ export default function Landing() {
               </div>
 
               {/* MID-RIGHT NODE: Patents */}
-              <div 
+              <div
                 className={`arch-lateral-card card-pos-mid-right ${currentThoughtId === 'patents' ? 'thought-active-glow' : ''}`}
                 onClick={() => scrollToSection('patents')}
                 onMouseEnter={() => setActiveHoverNode('patents')}
@@ -1089,7 +1089,7 @@ export default function Landing() {
               </div>
 
               {/* BOTTOM-LEFT NODE: Commercialization (below Technology on left) */}
-              <div 
+              <div
                 className={`arch-lateral-card card-pos-bot-left ${currentThoughtId === 'commercialization' ? 'thought-active-glow' : ''}`}
                 onClick={() => scrollToSection('commercialization-hub')}
                 onMouseEnter={() => setActiveHoverNode('commercialization')}
@@ -1114,7 +1114,7 @@ export default function Landing() {
               </div>
 
               {/* BOTTOM-RIGHT NODE: Innovation Output (below Patents on right) */}
-              <div 
+              <div
                 className={`arch-lateral-card card-pos-bot-right ${currentThoughtId === 'innovation' ? 'thought-active-glow' : ''}`}
                 onClick={() => scrollToSection('innovation-intelligence')}
                 onMouseEnter={() => setActiveHoverNode('innovation')}
@@ -1172,7 +1172,7 @@ export default function Landing() {
         <div className="how-progress-tracker" aria-label="Methodology 7-Step Progress Flow">
           {howItWorksSteps.map((step, idx) => (
             <div key={step.num} className="tracker-step-item">
-              <button 
+              <button
                 type="button"
                 className={`tracker-pill ${expandedStep === step.num ? 'active' : ''}`}
                 onClick={() => setExpandedStep(expandedStep === step.num ? null : step.num)}
@@ -1190,8 +1190,8 @@ export default function Landing() {
           {howItWorksSteps.map((step) => {
             const isExpanded = expandedStep === step.num
             return (
-              <div 
-                key={step.num} 
+              <div
+                key={step.num}
                 className={`how-card interactive-hover-card ${isExpanded ? 'is-step-expanded' : ''}`}
                 onClick={() => setExpandedStep(isExpanded ? null : step.num)}
                 role="button"
@@ -1210,8 +1210,8 @@ export default function Landing() {
                     <span className="deep-details-tag">Workflow Detail</span>
                     <p>{step.details}</p>
                     {step.route && (
-                      <Link 
-                        to={step.route} 
+                      <Link
+                        to={step.route}
                         className="how-card-route-link"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -1517,7 +1517,7 @@ export default function Landing() {
             </div>
             <h4 className="opp-title">Artificial Intelligence in Biomedical Imaging &amp; Early Diagnostics</h4>
             <p className="opp-desc">Call for translational research proposals deploying deep learning algorithms for radiological diagnostics and imaging biomarkers in Indian clinical settings.</p>
-            
+
             <div className="opp-reasons">
               <strong>Verified Match Factors:</strong>
               <ul>
@@ -2821,7 +2821,7 @@ export default function Landing() {
           </svg>
 
           <div className="triad-innovation-layout">
-            <div 
+            <div
               className={`triad-card ${activeInnovationNode === 'research' ? 'active-triad' : ''}`}
               onClick={() => setActiveInnovationNode('research')}
               role="button"
@@ -2837,7 +2837,7 @@ export default function Landing() {
             </div>
 
             <div className="triad-central-synthesis">
-              <div 
+              <div
                 className={`triad-nexus-circle breathing-glow ${activeInnovationNode === 'innovation' ? 'active-nexus' : ''}`}
                 onClick={() => setActiveInnovationNode('innovation')}
                 role="button"
@@ -2851,7 +2851,7 @@ export default function Landing() {
               </div>
             </div>
 
-            <div 
+            <div
               className={`triad-card ${activeInnovationNode === 'funding' ? 'active-triad' : ''}`}
               onClick={() => setActiveInnovationNode('funding')}
               role="button"
@@ -2866,7 +2866,7 @@ export default function Landing() {
               <span className="triad-question">"Where is support available?"</span>
             </div>
 
-            <div 
+            <div
               className={`triad-card ${activeInnovationNode === 'patents' ? 'active-triad' : ''}`}
               onClick={() => setActiveInnovationNode('patents')}
               role="button"
@@ -3201,7 +3201,7 @@ export default function Landing() {
 
           <div className="interactive-workflow-flow">
             {/* Step 1 */}
-            <div 
+            <div
               className={`wf-node-box ${activeWorkflowStep === 0 ? 'active-wf' : ''}`}
               onClick={() => setActiveWorkflowStep(0)}
               role="button"
@@ -3221,7 +3221,7 @@ export default function Landing() {
             </div>
 
             {/* Step 2 */}
-            <div 
+            <div
               className={`wf-node-box ${activeWorkflowStep === 1 ? 'active-wf' : ''}`}
               onClick={() => setActiveWorkflowStep(1)}
               role="button"
@@ -3241,7 +3241,7 @@ export default function Landing() {
             </div>
 
             {/* Step 3 */}
-            <div 
+            <div
               className={`wf-node-box ${activeWorkflowStep === 2 ? 'active-wf' : ''}`}
               onClick={() => setActiveWorkflowStep(2)}
               role="button"
@@ -3261,7 +3261,7 @@ export default function Landing() {
             </div>
 
             {/* Step 4: Branching Step */}
-            <div 
+            <div
               className={`wf-node-box wf-central-branch ${activeWorkflowStep === 3 ? 'active-wf' : ''}`}
               onClick={() => setActiveWorkflowStep(3)}
               role="button"
@@ -3305,7 +3305,7 @@ export default function Landing() {
             </div>
 
             {/* Step 5 */}
-            <div 
+            <div
               className={`wf-node-box ${activeWorkflowStep === 4 ? 'active-wf' : ''}`}
               onClick={() => setActiveWorkflowStep(4)}
               role="button"
