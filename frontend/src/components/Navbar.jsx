@@ -394,6 +394,25 @@ export default function Navbar() {
         <div className="navbar-actions">
           {user ? (
             <div className="authenticated-actions">
+              {(user.role === 'administrator' || user.role === 'admin') && (
+                <Link
+                  to="/admin"
+                  className={`nav-pill-btn ${isCurrent('/admin') ? 'active-pill' : ''}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    borderColor: '#bae6fd',
+                    fontWeight: 700,
+                  }}
+                  title="Admin Control Room"
+                >
+                  <span style={{ fontSize: '14px' }}>🛡️</span>
+                  Admin
+                </Link>
+              )}
               <NotificationCenter />
               <Link
                 to="/profile"
