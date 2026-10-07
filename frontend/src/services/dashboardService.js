@@ -3,6 +3,10 @@ import { apiFetch } from './api'
 export function getResearcherIntelligence(token, filters = {}) {
   const query = new URLSearchParams()
   if (filters.domain && filters.domain !== 'all') query.append('domain', filters.domain)
+  if (filters.technology && filters.technology !== 'all') query.append('technology', filters.technology)
+  if (filters.funding_type && filters.funding_type !== 'all') query.append('funding_type', filters.funding_type)
+  if (filters.patent_tech && filters.patent_tech !== 'all') query.append('patent_tech', filters.patent_tech)
+  if (filters.organization && filters.organization !== 'all') query.append('organization', filters.organization)
   if (filters.year_from) query.append('year_from', filters.year_from)
   if (filters.year_to) query.append('year_to', filters.year_to)
   const qs = query.toString()

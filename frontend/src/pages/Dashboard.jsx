@@ -210,7 +210,7 @@ export default function Dashboard() {
         <div>
           <div className="hero-eyebrow">
             <span className="pulse-dot"></span>
-            RESEARCH INTELLIGENCE COMMAND CENTER &bull; FULL 6-MODULE AGGREGATION
+            RESEARCH INTELLIGENCE COMMAND CENTER &bull; FULL PLATFORM INTELLIGENCE AGGREGATION
           </div>
           <h1 className="hero-title">Research Intelligence Command Center</h1>
           <p className="hero-subtitle">
@@ -437,7 +437,7 @@ export default function Dashboard() {
           </div>
           <div className="kpi-footer">
             <span>Prior-art records</span>
-            <span className="trend-pill neutral">Module 5</span>
+            <span className="trend-pill neutral">Patent IP</span>
           </div>
         </div>
 
@@ -485,7 +485,7 @@ export default function Dashboard() {
           </div>
           <div className="kpi-footer">
             <span>{summary.innovation_level || innovation.innovation_level || 'High Potential'}</span>
-            <span className="trend-pill up">Module 7</span>
+            <span className="trend-pill up">Index</span>
           </div>
         </div>
       </div>
@@ -499,7 +499,7 @@ export default function Dashboard() {
             </svg>
             Research Activity Over Time (Publications &amp; Citations)
           </h3>
-          <span className="card-source-tag">Data Source: Research Intelligence (Module 3)</span>
+          <span className="card-source-tag">Data Source: Research Intelligence</span>
         </div>
 
         <div className="chart-legend-row">
@@ -778,7 +778,7 @@ export default function Dashboard() {
               </svg>
               Patent Activity Over Time
             </h3>
-            <span className="card-source-tag">Data Source: Patent Intelligence (Module 5)</span>
+            <span className="card-source-tag">Data Source: Patent Intelligence</span>
           </div>
 
           {patentTrends.length === 0 ? (
@@ -1075,7 +1075,7 @@ export default function Dashboard() {
                 <circle cx="12" cy="12" r="10" />
                 <path d="m4.93 4.93 4.24 4.24M14.83 14.83l4.24 4.24" />
               </svg>
-              Innovation Score (Module 7 Authoritative Gauge)
+              Innovation Score (Multi-Factor Assessment)
             </h3>
             <span className="card-source-tag">{innovation.innovation_level || 'Evaluated'}</span>
           </div>
@@ -1150,7 +1150,7 @@ export default function Dashboard() {
             </svg>
             Commercialization Opportunity Pipeline
           </h3>
-          <span className="card-source-tag">Module 8 Translation</span>
+          <span className="card-source-tag">Commercialization Framework</span>
         </div>
 
         <div className="funnel-pipeline-container">

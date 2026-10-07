@@ -431,23 +431,60 @@ def get_researcher_dashboard_intelligence(
     db: Session,
     current_user: User,
     domain: str | None = None,
+    technology: str | None = None,
     year_from: int | None = None,
     year_to: int | None = None,
+    funding_type: str | None = None,
+    patent_tech: str | None = None,
+    organization: str | None = None,
 ) -> dict[str, Any]:
     """
     Module 9: Researcher Intelligence Command Center Aggregator.
     Returns complete, accurate database metrics (no artificial LIMIT 100 / LIMIT 50 truncation).
-    Integrates Modules 3, 4, 5, 6, 7, and 8.
+    Integrates all platform intelligence datasets with dynamic multi-dimensional filtering.
     """
-    # 1. Base Paper Query with Domain & Year Filters
+    # 1. Base Queries with Dynamic Filters
     paper_query = db.query(ResearchPaper)
     patent_query = db.query(Patent)
+    funding_query = db.query(FundingOpportunity)
 
     effective_domain = domain or current_user.research_domain or getattr(getattr(current_user, "research_profile", None), "research_domain", None)
     
     if domain and domain.strip() and domain.strip().lower() != "all":
-        paper_query = paper_query.filter(ResearchPaper.research_domain.ilike(f"%{domain.strip()}%"))
-        patent_query = patent_query.filter(Patent.technology_domain.ilike(f"%{domain.strip()}%"))
+        clean_d = domain.strip()
+        paper_query = paper_query.filter(ResearchPaper.research_domain.ilike(f"%{clean_d}%"))
+        patent_query = patent_query.filter(Patent.technology_domain.ilike(f"%{clean_d}%"))
+        funding_query = funding_query.filter(FundingOpportunity.research_area.ilike(f"%{clean_d}%"))
+
+    if technology and technology.strip() and technology.strip().lower() != "all":
+        clean_tech = technology.strip()
+        paper_query = paper_query.filter(
+            or_(
+                ResearchPaper.title.ilike(f"%{clean_tech}%"),
+                ResearchPaper.abstract.ilike(f"%{clean_tech}%"),
+                ResearchPaper.keywords.ilike(f"%{clean_tech}%"),
+                ResearchPaper.research_domain.ilike(f"%{clean_tech}%"),
+            )
+        )
+        patent_query = patent_query.filter(
+            or_(
+                Patent.title.ilike(f"%{clean_tech}%"),
+                Patent.abstract.ilike(f"%{clean_tech}%"),
+                Patent.technology_domain.ilike(f"%{clean_tech}%"),
+            )
+        )
+
+    if patent_tech and patent_tech.strip() and patent_tech.strip().lower() != "all":
+        patent_query = patent_query.filter(Patent.technology_domain.ilike(f"%{patent_tech.strip()}%"))
+
+    if organization and organization.strip() and organization.strip().lower() != "all":
+        clean_org = organization.strip()
+        patent_query = patent_query.filter(Patent.assignee.ilike(f"%{clean_org}%"))
+        funding_query = funding_query.filter(FundingOpportunity.agency.ilike(f"%{clean_org}%"))
+
+    if funding_type and funding_type.strip() and funding_type.strip().lower() != "all":
+        clean_ft = funding_type.strip()
+        funding_query = funding_query.filter(FundingOpportunity.funding_type.ilike(f"%{clean_ft}%"))
 
     if year_from:
         paper_query = paper_query.filter(ResearchPaper.publication_year >= year_from)
@@ -649,9 +686,10 @@ def get_researcher_dashboard_intelligence(
             for f in raw_fundings
         ]
 
-    # Funding by Domain / Agency & Funding by Type
+    # Funding by Domain / Agency & Funding by Type (Respecting Active Filters)
     funding_domain_raw = (
-        db.query(FundingOpportunity.agency, func.count(FundingOpportunity.id))
+        funding_query
+        .with_entities(FundingOpportunity.agency, func.count(FundingOpportunity.id))
         .filter(FundingOpportunity.agency.isnot(None))
         .group_by(FundingOpportunity.agency)
         .order_by(func.count(FundingOpportunity.id).desc())
@@ -662,9 +700,10 @@ def get_researcher_dashboard_intelligence(
         {"domain": a, "count": c} for a, c in funding_domain_raw if a
     ]
 
-    total_funding_opps = db.query(FundingOpportunity).count()
+    total_funding_opps = funding_query.count()
     funding_type_raw = (
-        db.query(FundingOpportunity.funding_type, func.count(FundingOpportunity.id))
+        funding_query
+        .with_entities(FundingOpportunity.funding_type, func.count(FundingOpportunity.id))
         .group_by(FundingOpportunity.funding_type)
         .order_by(func.count(FundingOpportunity.id).desc())
         .limit(6)
@@ -682,7 +721,7 @@ def get_researcher_dashboard_intelligence(
         funding_by_type = [{"type": "Grant", "count": total_funding_opps, "percentage": 100.0}]
 
     raw_timeline_fundings = (
-        db.query(FundingOpportunity)
+        funding_query
         .order_by(FundingOpportunity.close_date.asc().nullslast(), FundingOpportunity.created_at.desc())
         .limit(6)
         .all()

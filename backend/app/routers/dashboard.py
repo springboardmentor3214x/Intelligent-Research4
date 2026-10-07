@@ -22,8 +22,12 @@ router = APIRouter(
 @router.get("/researcher")
 def researcher_dashboard(
     domain: str | None = Query(default=None),
+    technology: str | None = Query(default=None),
     year_from: int | None = Query(default=None),
     year_to: int | None = Query(default=None),
+    funding_type: str | None = Query(default=None),
+    patent_tech: str | None = Query(default=None),
+    organization: str | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -35,8 +39,12 @@ def researcher_dashboard(
         db=db,
         current_user=current_user,
         domain=domain,
+        technology=technology,
         year_from=year_from,
         year_to=year_to,
+        funding_type=funding_type,
+        patent_tech=patent_tech,
+        organization=organization,
     )
 
 
