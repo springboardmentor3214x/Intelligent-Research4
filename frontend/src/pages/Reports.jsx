@@ -60,7 +60,7 @@ export default function Reports() {
 
   // Unified report form states
   const [idea, setIdea] = useState('AI-based brain tumor segmentation using MRI')
-  const [unifiedDomain, setUnifiedDomain] = useState('')
+  const [unifiedDomain, setUnifiedDomain] = useState('Artificial Intelligence')
   const [keywords, setKeywords] = useState('brain tumor, MRI, deep learning, segmentation')
   const [techArea, setTechArea] = useState('Artificial Intelligence')
   const [region, setRegion] = useState('global')
@@ -119,7 +119,7 @@ export default function Reports() {
         setGenerationStage('Synthesizing cross-module intelligence...')
         const payload = {
           idea: idea.trim(),
-          research_domain: unifiedDomain || undefined,
+          research_domain: unifiedDomain || techArea || undefined,
           keywords: keywords ? keywords.split(',').map((k) => k.trim()).filter(Boolean) : [],
           technology_area: techArea || undefined,
           region: region || 'global',
@@ -200,7 +200,7 @@ export default function Reports() {
   const handleResetFilters = () => {
     if (selectedType === 'unified') {
       setIdea('AI-based brain tumor segmentation using MRI')
-      setUnifiedDomain('')
+      setUnifiedDomain('Artificial Intelligence')
       setKeywords('brain tumor, MRI, deep learning, segmentation')
       setTechArea('Artificial Intelligence')
       setRegion('global')
@@ -862,20 +862,31 @@ export default function Reports() {
       {feedback && <div className="alert alert-success">{feedback}</div>}
       {error && <div className="alert alert-error">{error}</div>}
 
-      {/* LIVE REPORT PREVIEW */}
-      <div className="preview-container">
-        <div className="preview-header">
-          <div className="preview-title-box">
-            <span className="live-tag">LIVE PREVIEW</span>
+      {/* LIVE PDF-STYLE REPORT DOCUMENT PREVIEW */}
+      <div className="preview-container pdf-document-canvas">
+        <div className="pdf-doc-header">
+          <div className="pdf-doc-brand">
+            <div className="doc-badge">OFFICIAL INTELLIGENCE DOCUMENT</div>
             <h2>
               {selectedType === 'unified'
-                ? (uMeta.report_title || `${idea} Intelligence Report`)
+                ? (uMeta.report_title || `${idea} — Full Intelligence Report`)
                 : `${REPORT_TYPES.find((r) => r.key === selectedType)?.label} Preview`}
             </h2>
+            <p className="pdf-doc-sub">Research Funding &amp; Innovation Intelligence Platform</p>
           </div>
-          <div className="preview-meta">
-            <span>Generated: {new Date().toLocaleDateString()}</span>
-            {user?.organization && <span>Organization: {user.organization}</span>}
+          <div className="pdf-doc-meta-table">
+            <div className="doc-meta-row">
+              <span className="doc-meta-lbl">Generated:</span>
+              <span className="doc-meta-val">{new Date().toLocaleDateString()}</span>
+            </div>
+            <div className="doc-meta-row">
+              <span className="doc-meta-lbl">Organization:</span>
+              <span className="doc-meta-val">{user?.organization || 'SVKM Institute Of Technology'}</span>
+            </div>
+            <div className="doc-meta-row">
+              <span className="doc-meta-lbl">Scope:</span>
+              <span className="doc-meta-val">{selectedType.replace(/_/g, ' ').toUpperCase()}</span>
+            </div>
           </div>
         </div>
 
@@ -1093,14 +1104,106 @@ export default function Reports() {
             )}
           </div>
         ) : (
-          /* INDIVIDUAL MODULE REPORT PREVIEW */
+          /* INDIVIDUAL MODULE REPORT PREVIEW (STRUCTURED PDF TABLES) */
           <div className="individual-report-body">
-            <div className="preview-meta-summary">
-              <strong>Records returned:</strong> {previewData.records?.length || previewData.yearly_growth?.length || 'Available'}
-            </div>
-            <pre className="preview-json-box">
-              {JSON.stringify(previewData, null, 2)}
-            </pre>
+            {selectedType === 'funding' && (
+              <div className="preview-section-box">
+                <h3>Funding Intelligence Opportunities</h3>
+                <p className="exec-desc">
+                  Identified <strong>{previewData.records?.length || 0}</strong> matching grant programs aligned with active domain filters.
+                </p>
+                <div className="table-responsive">
+                  <table className="preview-table">
+                    <thead>
+                      <tr>
+                        <th>Program Title</th>
+                        <th>Agency</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Close Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(previewData.records || []).slice(0, 20).map((r, i) => (
+                        <tr key={i}>
+                          <td><strong>{r.title}</strong></td>
+                          <td>{r.agency}</td>
+                          <td><span className="badge badge-stage">{r.funding_type || 'Grant'}</span></td>
+                          <td><strong style={{ color: '#16a34a' }}>{r.funding_amount ? `$${Number(r.funding_amount).toLocaleString()}` : 'Specified in Call'}</strong></td>
+                          <td>{r.close_date || 'Ongoing'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {selectedType === 'patent' && (
+              <div className="preview-section-box">
+                <h3>Patent Landscape &amp; Assignees</h3>
+                <p className="exec-desc">
+                  Analyzed <strong>{previewData.records?.length || 0}</strong> patent records ({previewData.total_citations || 0} total citations).
+                </p>
+                <div className="table-responsive">
+                  <table className="preview-table">
+                    <thead>
+                      <tr>
+                        <th>Patent Title</th>
+                        <th>Assignee</th>
+                        <th>Domain</th>
+                        <th>Filing Date</th>
+                        <th>Citations</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(previewData.records || []).slice(0, 20).map((p, i) => (
+                        <tr key={i}>
+                          <td><strong>{p.title}</strong></td>
+                          <td>{p.assignee || 'Not Specified'}</td>
+                          <td>{p.technology_domain || 'General'}</td>
+                          <td>{p.filing_date || 'N/A'}</td>
+                          <td>{p.citation_count ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {selectedType === 'research_trend' && (
+              <div className="preview-section-box">
+                <h3>Empirical Research Trends &amp; Hotspots</h3>
+                <div className="table-responsive">
+                  <table className="preview-table">
+                    <thead>
+                      <tr>
+                        <th>Year</th>
+                        <th>Publications Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(previewData.yearly_growth || []).map((y, i) => (
+                        <tr key={i}>
+                          <td><strong>{y.year}</strong></td>
+                          <td>{y.paper_count || y.count || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {(selectedType === 'innovation_intelligence' || selectedType === 'commercialization') && (
+              <div className="preview-section-box">
+                <h3>{REPORT_TYPES.find((r) => r.key === selectedType)?.label} Summary</h3>
+                <pre className="preview-json-box">
+                  {JSON.stringify(previewData, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         )}
       </div>
