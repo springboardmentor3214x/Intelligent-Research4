@@ -81,6 +81,11 @@ export default function FundingIntelligence() {
   const [recommendations, setRecommendations] = useState([])
   const [profileUsed, setProfileUsed] = useState(null)
   const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [totalPages, setTotalPages] = useState(1)
+  const [sort, setSort] = useState('match_score_desc')
+  const [sourceCoverage, setSourceCoverage] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -116,7 +121,7 @@ export default function FundingIntelligence() {
       fetchRecommendations()
     }, 250)
     return () => clearTimeout(timer)
-  }, [topicSearch, minScore, fundingTypeFilter, selectedChips, token])
+  }, [topicSearch, minScore, fundingTypeFilter, selectedChips, token, page, pageSize, sort])
 
   useEffect(() => {
     if (token) {
@@ -130,16 +135,23 @@ export default function FundingIntelligence() {
     try {
       const data = await getPersonalizedFundingRecommendations({
         token,
-        limit: 30,
+        limit: 1200,
+        page,
+        pageSize,
+        sort,
         minScore: Number(minScore),
         topic: topicSearch.trim(),
         fundingType: fundingTypeFilter,
         focusTerms: selectedChips,
       })
-      const recs = data.recommendations || []
+      const recs = data.recommendations || data.items || []
       setRecommendations(recs)
       setProfileUsed(data.profile_used || null)
-      setTotalCount(data.total || recs.length)
+      setTotalCount(data.total !== undefined ? data.total : recs.length)
+      setTotalPages(data.total_pages || Math.max(1, Math.ceil((data.total || recs.length) / pageSize)))
+      if (data.source_coverage) {
+        setSourceCoverage(data.source_coverage)
+      }
     } catch (err) {
       setError(err.message || 'Failed to load personalized recommendations.')
     } finally {
@@ -160,6 +172,7 @@ export default function FundingIntelligence() {
 
   function handleSearchSubmit(e) {
     if (e) e.preventDefault()
+    setPage(1)
     setTopicSearch(searchInput)
   }
 
@@ -169,6 +182,7 @@ export default function FundingIntelligence() {
     setMinScore(0)
     setFundingTypeFilter('')
     setSelectedChips([])
+    setPage(1)
   }
 
   async function handleToggleSave(oppId) {
@@ -345,7 +359,7 @@ export default function FundingIntelligence() {
           className={`funding-tab-btn ${activeTab === 'recommendations' ? 'active' : ''}`}
           onClick={() => setActiveTab('recommendations')}
         >
-          🎯 AI Recommendations ({recommendations.length})
+          🎯 AI Recommendations ({totalCount.toLocaleString()})
         </button>
         <button
           type="button"
@@ -368,6 +382,40 @@ export default function FundingIntelligence() {
       {/* ======================================================== */}
       {activeTab === 'recommendations' && (
         <>
+          {/* Source Coverage Card */}
+          {sourceCoverage && (
+            <div className="source-coverage-card">
+              <div className="coverage-header">
+                <span className="coverage-badge">📊 Live Intelligence Coverage</span>
+                <span className="coverage-sync-time">
+                  Last Synchronized: {new Date(sourceCoverage.last_synchronized).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+              <div className="coverage-stats-row">
+                <div className="coverage-stat-item">
+                  <span className="stat-label">Total Corpus</span>
+                  <span className="stat-val">{sourceCoverage.total_opportunities.toLocaleString()}</span>
+                </div>
+                <div className="coverage-stat-item">
+                  <span className="stat-label">Active / Open</span>
+                  <span className="stat-val active">{sourceCoverage.active_opportunities.toLocaleString()}</span>
+                </div>
+                <div className="coverage-stat-item">
+                  <span className="stat-label">Verified Sources</span>
+                  <span className="stat-val">{sourceCoverage.sources_count}</span>
+                </div>
+                <div className="coverage-stat-item sources-list-item">
+                  <span className="stat-label">Active Portals</span>
+                  <div className="source-pills-list">
+                    {(sourceCoverage.sources || []).map((s, idx) => (
+                      <span key={idx} className="coverage-source-pill">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Profile Context Banner */}
           {profileUsed && (
             <div className="profile-context-banner">
@@ -377,7 +425,7 @@ export default function FundingIntelligence() {
                     Active Researcher Profile: {profileUsed.user_name || user?.name}
                   </span>
                   {selectedChips.length > 0 && (
-                    <button type="button" onClick={clearChips} className="clear-focus-btn">
+                    <button type="button" onClick={() => { setSelectedChips([]); setPage(1); }} className="clear-focus-btn">
                       ✕ Clear Selected Focus ({selectedChips.length})
                     </button>
                   )}
@@ -392,7 +440,7 @@ export default function FundingIntelligence() {
                     <button
                       type="button"
                       className={`profile-chip domain ${selectedChips.includes(profileUsed.research_domain) ? 'active' : ''}`}
-                      onClick={() => toggleChip(profileUsed.research_domain)}
+                      onClick={() => { toggleChip(profileUsed.research_domain); setPage(1); }}
                     >
                       {selectedChips.includes(profileUsed.research_domain) ? '✓ ' : ''}🎯 {profileUsed.research_domain}
                     </button>
@@ -402,7 +450,7 @@ export default function FundingIntelligence() {
                       type="button"
                       key={`area-${idx}`}
                       className={`profile-chip area-chip ${selectedChips.includes(a) ? 'active' : ''}`}
-                      onClick={() => toggleChip(a)}
+                      onClick={() => { toggleChip(a); setPage(1); }}
                     >
                       {selectedChips.includes(a) ? '✓ ' : ''}🔬 {a}
                     </button>
@@ -412,7 +460,7 @@ export default function FundingIntelligence() {
                       type="button"
                       key={`kw-${idx}`}
                       className={`profile-chip kw-chip ${selectedChips.includes(k) ? 'active' : ''}`}
-                      onClick={() => toggleChip(k)}
+                      onClick={() => { toggleChip(k); setPage(1); }}
                     >
                       {selectedChips.includes(k) ? '✓ ' : ''}🏷️ {k}
                     </button>
@@ -422,7 +470,7 @@ export default function FundingIntelligence() {
                       type="button"
                       key={`tech-${idx}`}
                       className={`profile-chip tech-chip ${selectedChips.includes(t) ? 'active' : ''}`}
-                      onClick={() => toggleChip(t)}
+                      onClick={() => { toggleChip(t); setPage(1); }}
                     >
                       {selectedChips.includes(t) ? '✓ ' : ''}⚙️ {t}
                     </button>
@@ -456,7 +504,7 @@ export default function FundingIntelligence() {
               <label>Funding Type</label>
               <select
                 value={fundingTypeFilter}
-                onChange={(e) => setFundingTypeFilter(e.target.value)}
+                onChange={(e) => { setFundingTypeFilter(e.target.value); setPage(1); }}
               >
                 <option value="">All Funding Types</option>
                 <option value="Grant">Grant</option>
@@ -477,8 +525,20 @@ export default function FundingIntelligence() {
                 max="85"
                 step="5"
                 value={minScore}
-                onChange={(e) => setMinScore(e.target.value)}
+                onChange={(e) => { setMinScore(e.target.value); setPage(1); }}
               />
+            </div>
+            <div className="filter-input-group" style={{ minWidth: '160px' }}>
+              <label>Sort By</label>
+              <select
+                value={sort}
+                onChange={(e) => { setSort(e.target.value); setPage(1); }}
+              >
+                <option value="match_score_desc">Best Match</option>
+                <option value="newest">Newest</option>
+                <option value="deadline_soon">Deadline Soon</option>
+                <option value="highest_funding">Highest Funding</option>
+              </select>
             </div>
             {(topicSearch || fundingTypeFilter || minScore > 0 || selectedChips.length > 0) && (
               <div style={{ alignSelf: 'flex-end', paddingBottom: '0.2rem' }}>
@@ -511,29 +571,29 @@ export default function FundingIntelligence() {
               <h3 className="state-title">No opportunities match these filters</h3>
               <p className="state-desc">
                 {minScore > 0
-                  ? `No funding opportunities met the ${minScore}% minimum relevance threshold.`
-                  : 'No funding records matched your specific search criteria.'}
+                  ? `Only 0 opportunities currently meet your ${minScore}% relevance threshold.`
+                  : 'No funding records matched your specific search criteria from currently available sources.'}
               </p>
               <div className="empty-suggestions">
                 <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#102d48' }}>Try the following:</div>
                 <ul>
                   {minScore > 0 && (
                     <li>
-                      <button type="button" className="link-btn" onClick={() => setMinScore(0)}>
+                      <button type="button" className="link-btn" onClick={() => { setMinScore(0); setPage(1); }}>
                         Reduce relevance threshold to 0%
                       </button>
                     </li>
                   )}
                   {topicSearch && (
                     <li>
-                      <button type="button" className="link-btn" onClick={() => { setSearchInput(''); setTopicSearch(''); }}>
+                      <button type="button" className="link-btn" onClick={() => { setSearchInput(''); setTopicSearch(''); setPage(1); }}>
                         Remove the topic filter "{topicSearch}"
                       </button>
                     </li>
                   )}
                   {fundingTypeFilter && (
                     <li>
-                      <button type="button" className="link-btn" onClick={() => setFundingTypeFilter('')}>
+                      <button type="button" className="link-btn" onClick={() => { setFundingTypeFilter(''); setPage(1); }}>
                         Show all funding types
                       </button>
                     </li>
@@ -545,14 +605,17 @@ export default function FundingIntelligence() {
           ) : (
             <>
               <div className="results-summary-bar">
-                <span>
-                  Showing <strong>{recommendations.length}</strong> {topicSearch ? 'topic-matched' : 'personalized'} funding opportunities (Ranked by Semantic Relevance)
-                </span>
-                {compareList.length > 0 && (
-                  <button type="button" className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }} onClick={() => setShowCompareModal(true)}>
-                    Compare Selected ({compareList.length}) ↗
-                  </button>
-                )}
+                <div>
+                  Showing <strong>{((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, totalCount)}</strong> of <strong>{totalCount.toLocaleString()}</strong> {topicSearch ? 'topic-matched' : 'personalized'} opportunities
+                  {minScore > 0 && <span style={{ color: '#0b726e', marginLeft: '0.5rem', fontSize: '0.85rem' }}>({minScore}%+ match threshold applied)</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                  {compareList.length > 0 && (
+                    <button type="button" className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }} onClick={() => setShowCompareModal(true)}>
+                      Compare Selected ({compareList.length}) ↗
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="recommendations-grid">
@@ -653,6 +716,71 @@ export default function FundingIntelligence() {
                     </div>
                   )
                 })}
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="pagination-bar">
+                <div className="pagination-info">
+                  Showing <strong>{((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, totalCount)}</strong> of <strong>{totalCount.toLocaleString()}</strong>
+                </div>
+
+                <div className="pagination-controls">
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    ◀ Previous
+                  </button>
+
+                  {Array.from({ length: Math.min(7, totalPages) }, (_, idx) => {
+                    let pageNum = idx + 1
+                    if (totalPages > 7) {
+                      if (page <= 4) {
+                        pageNum = idx + 1
+                      } else if (page >= totalPages - 3) {
+                        pageNum = totalPages - 6 + idx
+                      } else {
+                        pageNum = page - 3 + idx
+                      }
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        className={`pagination-num-btn ${page === pageNum ? 'active' : ''}`}
+                        onClick={() => setPage(pageNum)}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Next ▶
+                  </button>
+                </div>
+
+                <div className="pagination-page-size">
+                  <label>Rows per page:</label>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value))
+                      setPage(1)
+                    }}
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
               </div>
             </>
           )}

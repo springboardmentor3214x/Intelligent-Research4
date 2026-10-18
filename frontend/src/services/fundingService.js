@@ -2,21 +2,27 @@ import { apiFetch } from './api'
 
 export async function getPersonalizedFundingRecommendations({
   token,
-  limit = 20,
+  limit = 500,
+  page = 1,
+  pageSize = 50,
   minScore = 0,
   topic = '',
   researchArea = '',
   fundingType = '',
   agency = '',
+  sort = 'match_score_desc',
   focusTerms = [],
 } = {}) {
   const queryParams = new URLSearchParams()
   if (limit) queryParams.set('limit', limit)
+  if (page) queryParams.set('page', page)
+  if (pageSize) queryParams.set('page_size', pageSize)
   if (minScore !== undefined && minScore !== null) queryParams.set('min_score', minScore)
   if (topic) queryParams.set('topic', topic)
   if (researchArea) queryParams.set('research_area', researchArea)
   if (fundingType) queryParams.set('funding_type', fundingType)
   if (agency) queryParams.set('agency', agency)
+  if (sort) queryParams.set('sort', sort)
   if (focusTerms && focusTerms.length > 0) {
     focusTerms.forEach((t) => queryParams.append('focus_terms', t))
   }

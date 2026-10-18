@@ -94,10 +94,8 @@ export default function Navbar() {
     <header className={`navbar ${scrolled ? 'scrolled-glass' : ''}`}>
       <div className="navbar-inner">
         {/* Brand / Logo */}
-        <Link to="/" className="brand" onClick={() => setMobileMenuOpen(false)}>
-          <div className="brand-mark">
-            <span>RI</span>
-          </div>
+        <Link to="/" className="brand" onClick={() => setMobileMenuOpen(false)} aria-label="ResearchIntel Home">
+          <img src="/logo.png" alt="ResearchIntel Logo" className="brand-logo-img" />
           <span className="brand-title">ResearchIntel</span>
         </Link>
 
@@ -126,26 +124,43 @@ export default function Navbar() {
               How It Works
             </button>
             <Link
-              to="/technologies"
-              className={`nav-link-btn ${isCurrent('/technologies') || isCurrent('/technologies/maturity') || isCurrent('/technologies/adoption') || isCurrent('/technologies/trends') ? 'active' : ''}`}
+              to="/about"
+              className={`nav-link-btn ${isCurrent('/about') ? 'active' : ''}`}
             >
-              Technology Intelligence
+              About Us
             </Link>
             <Link
-              to="/innovation"
-              className={`nav-link-btn ${isCurrent('/innovation') || isCurrent('/innovation-scoring') ? 'active' : ''}`}
+              to="/contact"
+              className={`nav-link-btn ${isCurrent('/contact') ? 'active' : ''}`}
             >
-              Innovation Intelligence
+              Contact Us
+            </Link>
+          </nav>
+        ) : (user.role === 'administrator' || user.role === 'admin') ? (
+          /* Dedicated Admin Control Center Navigation (Strictly Separated) */
+          <nav className="nav-links admin-nav-links" aria-label="Admin Control Center Navigation">
+            <Link
+              to="/admin"
+              className={`nav-link-btn ${isCurrent('/admin') || isCurrent('/dashboard') ? 'active' : ''}`}
+              style={{ fontWeight: 800, color: '#0369a1' }}
+            >
+              🛡️ Master Control Center
             </Link>
             <Link
-              to="/commercialization"
-              className={`nav-link-btn ${isCurrent('/commercialization') ? 'active' : ''}`}
+              to="/reports"
+              className={`nav-link-btn ${isCurrent('/reports') ? 'active' : ''}`}
             >
-              Commercialization
+              Platform Reports
+            </Link>
+            <Link
+              to="/notifications"
+              className={`nav-link-btn ${isCurrent('/notifications') ? 'active' : ''}`}
+            >
+              System Broadcasts
             </Link>
           </nav>
         ) : (
-          /* Authenticated Navigation with Dropdowns */
+          /* Authenticated Navigation with Dropdowns for Researchers / Founders / Managers */
           <nav className="nav-links" aria-label="Platform Navigation">
             {/* Research Dropdown */}
             <div className="nav-dropdown" ref={researchRef}>
@@ -478,6 +493,12 @@ export default function Navbar() {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="mobile-drawer" role="dialog" aria-label="Mobile Navigation Menu">
+          <div className="mobile-drawer-brand">
+            <Link to="/" className="brand" onClick={() => setMobileMenuOpen(false)} aria-label="ResearchIntel Home">
+              <img src="/logo.png" alt="ResearchIntel Logo" className="brand-logo-img" />
+              <span className="brand-title">ResearchIntel</span>
+            </Link>
+          </div>
           <div className="mobile-drawer-links">
             {!user ? (
               <>
@@ -493,11 +514,11 @@ export default function Navbar() {
                 <button type="button" className="mobile-link" onClick={() => handleNavClick('how-it-works')}>
                   How It Works
                 </button>
-                <Link to="/technologies" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
-                  ⚡ Technology Intelligence
+                <Link to="/about" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  📖 About Us
                 </Link>
-                <Link to="/innovation" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
-                  🚀 Innovation Intelligence
+                <Link to="/contact" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  ✉️ Contact Us
                 </Link>
                 <hr className="mobile-divider" />
                 <Link to="/login" className="mobile-btn secondary" onClick={() => setMobileMenuOpen(false)}>
@@ -542,6 +563,15 @@ export default function Navbar() {
                 </Link>
                 <Link to="/technologies/trends" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
                   📈 Growth Trends
+                </Link>
+                <Link to="/innovation" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  🚀 Innovation Scoring
+                </Link>
+                <Link to="/commercialization" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  💡 Commercialization
+                </Link>
+                <Link to="/reports" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  📑 Reports &amp; Dossiers
                 </Link>
                 <Link to="/profile" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
                   👤 Research Profile

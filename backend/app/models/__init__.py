@@ -12,3 +12,4 @@ from backend.app.models.technology import Technology
 from backend.app.models.technology_activity import TechnologyActivity
 from backend.app.models.saved_funding import SavedFunding
 from backend.app.models.notification import Notification
+from backend.app.models.contact_message import ContactMessage

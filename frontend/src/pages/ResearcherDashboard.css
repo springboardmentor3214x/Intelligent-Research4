@@ -668,14 +668,22 @@
   position: relative;
 }
 
+.tech-bubble-group {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tech-bubble-group:hover {
+  transform: scale(1.08);
+}
+
 .tech-bubble-node {
   cursor: pointer;
-  transition: r 0.2s, stroke-width 0.2s, filter 0.2s;
+  transition: all 0.25s ease;
 }
 
 .tech-bubble-node:hover {
-  r: 14;
-  filter: drop-shadow(0 0 8px rgba(39, 214, 199, 0.6));
+  fill-opacity: 1;
+  stroke-width: 3px;
 }
 
 /* --- Commercialization Funnel --- */

@@ -20,6 +20,8 @@ import Reports from './pages/Reports'
 import RoleBasedDashboard from './pages/RoleBasedDashboard'
 import NotificationsPage from './pages/NotificationsPage'
 import CompareTechnologies from './pages/CompareTechnologies'
+import AboutUs from './pages/AboutUs'
+import ContactUs from './pages/ContactUs'
 import PlatformAIAssistant from './components/PlatformAIAssistant'
 import TechIntelligenceFloatingNav from './components/TechIntelligenceFloatingNav'
 import PlatformGlobalFloatingNav from './components/PlatformGlobalFloatingNav'
@@ -27,7 +29,7 @@ import './App.css'
 
 function AppContent() {
   const location = useLocation()
-  const isLandingPage = location.pathname === '/'
+  const isLandingPage = location.pathname === '/' || location.pathname === '/about' || location.pathname === '/contact'
   const isTechIntelligenceSection = 
     location.pathname.startsWith('/technologies') || 
     location.pathname.startsWith('/innovation') ||
@@ -40,6 +42,8 @@ function AppContent() {
       <main className={isLandingPage ? 'landing-app-shell' : 'app-shell'}>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/contact" element={<ContactUs />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
@@ -65,7 +69,7 @@ function AppContent() {
         </Routes>
       </main>
       <PlatformAIAssistant />
-      {isLandingPage && <PlatformGlobalFloatingNav />}
+      {location.pathname === '/' && <PlatformGlobalFloatingNav />}
       {isTechIntelligenceSection && <TechIntelligenceFloatingNav />}
     </div>
   )

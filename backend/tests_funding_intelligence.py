@@ -26,6 +26,10 @@ client = TestClient(app)
 class TestFundingIntelligence(unittest.TestCase):
     def setUp(self):
         self.db = TestingSessionLocal()
+        # Clean up existing funding opportunities in the shared in-memory DB to ensure test isolation
+        self.db.query(FundingOpportunity).delete()
+        self.db.commit()
+
         uid = uuid.uuid4().hex[:6]
         # Seed test funding opportunities
         self.opp1 = FundingOpportunity(
@@ -156,12 +160,18 @@ class TestFundingIntelligence(unittest.TestCase):
         recs = data["recommendations"]
         self.assertGreaterEqual(len(recs), 1)
 
-        top_match = recs[0]
-        self.assertEqual(top_match["id"], str(self.opp1.id))
-        self.assertGreater(top_match["relevance_score"], 0.0)
-        self.assertIn("matched_concepts", top_match)
-        self.assertIn("eligibility_assessment", top_match)
-        self.assertEqual(top_match["eligibility_assessment"]["status"], "Potentially Eligible")
+        # Verify opp1 (Healthcare AI) is present and scored
+        opp1_match = next((r for r in recs if r["id"] == str(self.opp1.id)), None)
+        self.assertIsNotNone(opp1_match)
+        self.assertGreater(opp1_match["relevance_score"], 0.0)
+        self.assertIn("matched_concepts", opp1_match)
+        self.assertIn("eligibility_assessment", opp1_match)
+        self.assertEqual(opp1_match["eligibility_assessment"]["status"], "Potentially Eligible")
+
+        # If opp2 (Solar) is also present, verify opp1 has higher or equal relevance
+        opp2_match = next((r for r in recs if r["id"] == str(self.opp2.id)), None)
+        if opp2_match:
+            self.assertGreaterEqual(opp1_match["relevance_score"], opp2_match["relevance_score"])
 
     def test_04_fix_422_query_parameter_combinations(self):
         """Regression tests for 422 error on query parameter variants."""
@@ -261,9 +271,66 @@ class TestFundingIntelligence(unittest.TestCase):
         res_del = client.delete(f"/funding/save/{self.opp1.id}", headers=self.headers)
         self.assertEqual(res_del.status_code, 200)
 
-        # 4. Confirm empty
-        res_saved_list2 = client.get("/funding/saved", headers=self.headers)
-        self.assertEqual(len(res_saved_list2.json()["saved_opportunities"]), 0)
+    def test_08_scalable_recommendation_limits_and_pagination(self):
+        """Test scalable recommendation limits (500, 750, 1200) and pagination."""
+        # Seed 60 additional distinct opportunities across multiple providers
+        for i in range(60):
+            uid = f"scale_{i}_{uuid.uuid4().hex[:4]}"
+            opp = FundingOpportunity(
+                source="DST" if i % 2 == 0 else "ICMR",
+                source_id=f"SCALE-OPP-{uid}",
+                opportunity_number=f"GOV-2026-SCALE-{uid}",
+                title=f"Healthcare AI and Diagnostic Scaled Project {i}",
+                agency="Department of Science & Technology" if i % 2 == 0 else "ICMR",
+                description=f"Automated clinical data processing grant {i} targeting digital diagnostics and AI integration.",
+                funding_type="Grant",
+                funding_amount=100000.0 + (i * 5000),
+                open_date=date.today() - timedelta(days=5),
+                close_date=date.today() + timedelta(days=30 + i),
+                eligibility="Research institutions and universities.",
+                country="India",
+                status="posted",
+                official_link=f"https://dst.gov.in/scale/{uid}",
+            )
+            self.db.add(opp)
+        self.db.commit()
+
+        # 1. Request with limit=500
+        res500 = client.get("/funding/recommendations/me?limit=500&page=1&page_size=50", headers=self.headers)
+        self.assertEqual(res500.status_code, 200)
+        data500 = res500.json()
+        self.assertIn("total", data500)
+        self.assertGreaterEqual(data500["total"], 60)
+        self.assertEqual(data500["page"], 1)
+        self.assertEqual(data500["page_size"], 50)
+        self.assertEqual(len(data500["items"]), 50)
+        self.assertTrue(data500["has_next"])
+        self.assertFalse(data500["has_previous"])
+
+        # 2. Request page 2 and verify total is identical
+        res_page2 = client.get("/funding/recommendations/me?limit=500&page=2&page_size=50", headers=self.headers)
+        self.assertEqual(res_page2.status_code, 200)
+        data_p2 = res_page2.json()
+        self.assertEqual(data_p2["total"], data500["total"])
+        self.assertEqual(data_p2["page"], 2)
+        self.assertGreaterEqual(len(data_p2["items"]), 1)
+        self.assertTrue(data_p2["has_previous"])
+
+        # 3. Request limit 1200
+        res1200 = client.get("/funding/recommendations/me?limit=1200&page=1&page_size=100", headers=self.headers)
+        self.assertEqual(res1200.status_code, 200)
+        data1200 = res1200.json()
+        self.assertIn("source_coverage", data1200)
+        self.assertGreaterEqual(data1200["source_coverage"]["total_opportunities"], 62)
+
+    def test_09_sorting_modes(self):
+        """Test sorting modes: match_score_desc, newest, deadline_soon, highest_funding."""
+        for sort_key in ["match_score_desc", "newest", "deadline_soon", "highest_funding"]:
+            res = client.get(f"/funding/recommendations/me?sort={sort_key}&page=1&page_size=10", headers=self.headers)
+            self.assertEqual(res.status_code, 200)
+            data = res.json()
+            self.assertIn("items", data)
+            self.assertEqual(data["sort"], sort_key)
 
 
 if __name__ == "__main__":

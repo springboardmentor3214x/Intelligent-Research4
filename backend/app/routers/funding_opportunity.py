@@ -69,15 +69,19 @@ def import_funding(
 )
 def sync_funding(
     request: SyncFundingRequest | None = None,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Sync latest opportunities from active sources."""
-    inserted, skipped = import_grants_opportunities("science technology research", 15)
+    """Sync latest opportunities from Indian & Global active sources."""
+    from backend.app.services.funding_service import sync_multi_source_funding
+    res = sync_multi_source_funding(db, search="research science technology healthcare", target_count=700)
     return {
         "status": "synchronized",
-        "message": "Successfully synchronized live funding opportunities.",
-        "inserted": inserted,
-        "skipped": skipped,
+        "message": f"Successfully synchronized live funding opportunities. Database now contains {res.get('total_in_database', 0)} opportunities.",
+        "inserted": res.get("inserted", 0),
+        "skipped": res.get("skipped", 0),
+        "total_in_database": res.get("total_in_database", 0),
+        "sources": res.get("sources", {}),
     }
 
 
@@ -87,29 +91,35 @@ def sync_funding(
     summary="Get personalized funding recommendations for current user",
 )
 def get_user_funding_recommendations(
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=500, ge=1, le=1200),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
     min_score: float = Query(default=0.0, ge=0.0, le=100.0),
     topic: str = Query(default=""),
     research_area: str = Query(default=""),
     funding_type: str = Query(default=""),
     agency: str = Query(default=""),
+    sort: str = Query(default="match_score_desc"),
     focus_terms: list[str] = Query(default=[]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     AI/ML Semantic Matching pairing Researcher Profile with real Funding Opportunities.
-    Returns cosine relevance scores, explainable matched concepts, and automated eligibility assessments.
+    Scales to 500-1200 real opportunities with full backend pagination, multi-source coverage, and sorting.
     """
     return funding_matching_service.get_recommendations_for_user(
         db=db,
         current_user=current_user,
         limit=limit,
+        page=page,
+        page_size=page_size,
         min_score=min_score,
         topic=topic,
         research_area=research_area,
         funding_type=funding_type,
         agency=agency,
+        sort=sort,
         focus_terms=focus_terms,
     )
 

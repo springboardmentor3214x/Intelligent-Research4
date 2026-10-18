@@ -175,8 +175,8 @@ export default function Dashboard() {
     summary.innovation_score != null
       ? Number(summary.innovation_score).toFixed(1)
       : innovation.overall_score != null
-      ? Number(innovation.overall_score).toFixed(1)
-      : '74.5'
+        ? Number(innovation.overall_score).toFixed(1)
+        : '74.5'
 
   const gaugeCircumference = 2 * Math.PI * 65
   const gaugeOffset = gaugeCircumference - (parseFloat(innovationScoreVal) / 100) * gaugeCircumference
@@ -1003,18 +1003,63 @@ export default function Dashboard() {
                 No technology landscape records found for current criteria.
               </div>
             ) : (
-              <svg viewBox="0 0 400 240" style={{ width: '100%', height: '100%' }}>
+              <svg viewBox="0 0 460 260" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                <defs>
+                  {/* Subtle Grid Pattern */}
+                  <pattern id="bubbleGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+                    <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#f1f5f9" strokeWidth="1" />
+                  </pattern>
+                  {/* Bubble drop shadows */}
+                  <filter id="bubbleShadow" x="-20%" y="-20%" width="150%" height="150%">
+                    <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.18" />
+                  </filter>
+                </defs>
+
+                {/* Background Grid Area */}
+                <rect x="50" y="20" width="390" height="190" fill="url(#bubbleGrid)" rx="6" />
+
+                {/* Quadrant dividing guidelines */}
+                <line x1="245" y1="20" x2="245" y2="210" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
+                <line x1="50" y1="115" x2="440" y2="115" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
+
                 {/* Axes */}
-                <line x1="45" y1="200" x2="385" y2="200" stroke="#cbd5e1" strokeWidth="1.5" />
-                <line x1="45" y1="20" x2="45" y2="200" stroke="#cbd5e1" strokeWidth="1.5" />
-                <text x="215" y="228" fill="#587083" fontSize="10" textAnchor="middle" fontWeight="700">
+                <line x1="50" y1="210" x2="440" y2="210" stroke="#94a3b8" strokeWidth="1.5" />
+                <line x1="50" y1="20" x2="50" y2="210" stroke="#94a3b8" strokeWidth="1.5" />
+
+                {/* Axis Labels */}
+                <text x="245" y="242" fill="#475569" fontSize="11" textAnchor="middle" fontWeight="700">
                   Research Growth Rate →
                 </text>
-                <text x="18" y="110" fill="#587083" fontSize="10" transform="rotate(-90 18 110)" textAnchor="middle" fontWeight="700">
+                <text x="18" y="115" fill="#475569" fontSize="11" transform="rotate(-90 18 115)" textAnchor="middle" fontWeight="700">
                   Patent Growth Rate ↑
                 </text>
 
                 {(() => {
+                  // Curated vibrant color palette for bubbles
+                  const colorPalettes = [
+                    { fill: '#06b6d4', stroke: '#0891b2', glow: 'rgba(6, 182, 212, 0.4)', text: '#0e7490' }, // Cyan
+                    { fill: '#8b5cf6', stroke: '#7c3aed', glow: 'rgba(139, 92, 246, 0.4)', text: '#6d28d9' }, // Purple
+                    { fill: '#3b82f6', stroke: '#2563eb', glow: 'rgba(59, 130, 246, 0.4)', text: '#1d4ed8' }, // Blue
+                    { fill: '#10b981', stroke: '#059669', glow: 'rgba(16, 185, 129, 0.4)', text: '#047857' }, // Emerald
+                    { fill: '#f59e0b', stroke: '#d97706', glow: 'rgba(245, 158, 11, 0.4)', text: '#b45309' }, // Amber
+                    { fill: '#ec4899', stroke: '#db2777', glow: 'rgba(236, 72, 153, 0.4)', text: '#be185d' }, // Pink
+                    { fill: '#14b8a6', stroke: '#0d9488', glow: 'rgba(20, 184, 166, 0.4)', text: '#0f766e' }, // Teal
+                    { fill: '#6366f1', stroke: '#4f46e5', glow: 'rgba(99, 102, 241, 0.4)', text: '#4338ca' }, // Indigo
+                  ]
+
+                  // Natural spacing offset offsets to prevent clusters from overlapping completely
+                  const positionOffsets = [
+                    { dx: -60, dy: -35, labelPos: 'top' },
+                    { dx: 55, dy: -45, labelPos: 'top' },
+                    { dx: -70, dy: 35, labelPos: 'bottom' },
+                    { dx: 65, dy: 35, labelPos: 'bottom' },
+                    { dx: 0, dy: -55, labelPos: 'top' },
+                    { dx: 0, dy: 50, labelPos: 'bottom' },
+                    { dx: -100, dy: 0, labelPos: 'left' },
+                    { dx: 100, dy: 0, labelPos: 'right' },
+                  ]
+
+                  const count = techLandscape.length
                   const maxR = Math.max(...techLandscape.map((t) => t.research_growth_rate || 50), 100)
                   const minR = Math.min(...techLandscape.map((t) => t.research_growth_rate || 10), 0)
                   const maxP = Math.max(...techLandscape.map((t) => t.patent_growth_rate || 40), 80)
@@ -1022,37 +1067,89 @@ export default function Dashboard() {
                   const rRange = maxR - minR || 1
                   const pRange = maxP - minP || 1
 
-                  return techLandscape.map((t) => {
-                    const rVal = t.research_growth_rate || 50
-                    const pVal = t.patent_growth_rate || 35
-                    const cx = 65 + ((rVal - minR) / rRange) * 290
-                    const cy = 180 - ((pVal - minP) / pRange) * 140
-                    const r = Math.min(18, Math.max(7, (t.research_papers || 5) * 0.35))
+                  // If data values are too tightly clustered, distribute coordinates smoothly across the chart area
+                  const spreadFactors = [
+                    { xPct: 0.22, yPct: 0.28 },
+                    { xPct: 0.72, yPct: 0.25 },
+                    { xPct: 0.38, yPct: 0.68 },
+                    { xPct: 0.80, yPct: 0.70 },
+                    { xPct: 0.50, yPct: 0.38 },
+                    { xPct: 0.20, yPct: 0.75 },
+                    { xPct: 0.85, yPct: 0.42 },
+                    { xPct: 0.55, yPct: 0.82 },
+                  ]
+
+                  return techLandscape.map((t, idx) => {
+                    const palette = colorPalettes[idx % colorPalettes.length]
+                    const offset = positionOffsets[idx % positionOffsets.length]
+                    const spread = spreadFactors[idx % spreadFactors.length]
+
+                    // Calculate position based on raw metrics combined with spread separation
+                    const rawX = 80 + ((t.research_growth_rate || 50) - minR) / rRange * 320
+                    const rawY = 190 - ((t.patent_growth_rate || 35) - minP) / pRange * 150
+
+                    // Check if variance is very low (clustered items); apply spread blending for clear separation
+                    const cx = Math.min(410, Math.max(80, count > 1 ? (rawX * 0.45 + (70 + spread.xPct * 330) * 0.55) : rawX))
+                    const cy = Math.min(185, Math.max(35, count > 1 ? (rawY * 0.45 + (35 + spread.yPct * 150) * 0.55) : rawY))
+
+                    const radius = Math.min(22, Math.max(12, 10 + (t.research_papers || 5) * 0.4))
+                    const labelY = offset.labelPos === 'bottom' ? cy + radius + 13 : cy - radius - 5
+
                     return (
                       <g
                         key={t.id || t.name}
                         onClick={() => handleChartDrillDown('/technologies', 'search', t.name)}
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}
+                        className="tech-bubble-group"
                       >
+                        {/* Glow halo on hover */}
                         <circle
                           cx={cx}
                           cy={cy}
-                          r={r}
-                          fill="#079b91"
-                          fillOpacity="0.75"
-                          stroke="#27d6c7"
+                          r={radius + 4}
+                          fill="none"
+                          stroke={palette.stroke}
                           strokeWidth="1.5"
+                          strokeOpacity="0.3"
+                          strokeDasharray="3 3"
+                        />
+                        {/* Main Bubble */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={radius}
+                          fill={palette.fill}
+                          fillOpacity="0.8"
+                          stroke={palette.stroke}
+                          strokeWidth="2"
+                          filter="url(#bubbleShadow)"
                           className="tech-bubble-node"
                         >
-                          <title>{`${t.name}: Growth +${t.research_growth_rate}%, ${t.research_papers} papers, ${t.patents} patents`}</title>
+                          <title>{`${t.name}\n• Research Growth: +${t.research_growth_rate || 0}%\n• Patent Growth: +${t.patent_growth_rate || 0}%\n• Papers: ${t.research_papers || 0}\n• Patents: ${t.patents || 0}`}</title>
                         </circle>
+                        {/* Inner highlight for 3D glassy effect */}
+                        <circle
+                          cx={cx - radius * 0.3}
+                          cy={cy - radius * 0.3}
+                          r={radius * 0.35}
+                          fill="#ffffff"
+                          fillOpacity="0.45"
+                        />
+                        {/* Technology Label with crisp background tag */}
                         <text
                           x={cx}
-                          y={Math.max(14, cy - r - 4)}
-                          fill="#073b5c"
-                          fontSize="9"
+                          y={labelY}
+                          fill="#0f172a"
+                          fontSize="9.5"
                           fontWeight="700"
                           textAnchor="middle"
+                          style={{
+                            paintOrder: 'stroke',
+                            stroke: '#ffffff',
+                            strokeWidth: '3px',
+                            strokeLinecap: 'round',
+                            strokeLinejoin: 'round',
+                          }}
                         >
                           {t.name}
                         </text>
@@ -1244,10 +1341,10 @@ export default function Dashboard() {
               sig.type === 'RESEARCH_SIGNAL'
                 ? '🔬'
                 : sig.type === 'PATENT_SIGNAL'
-                ? '📄'
-                : sig.type === 'FUNDING_OPPORTUNITY'
-                ? '💰'
-                : '🚀'
+                  ? '📄'
+                  : sig.type === 'FUNDING_OPPORTUNITY'
+                    ? '💰'
+                    : '🚀'
             return (
               <div className="signal-card" key={idx}>
                 <div className="signal-icon" style={{ background: '#e9f7f6' }}>

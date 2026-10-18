@@ -27,6 +27,7 @@ from backend.app.routers.dashboard import router as dashboard_router
 from backend.app.routers.assistant import router as assistant_router
 from backend.app.routers.reports import router as reports_router
 from backend.app.routers.notifications import router as notifications_router
+from backend.app.routers.contact import router as contact_router
 from backend.app.routers import tech_intelligence, innovation_assessment
 
 app = FastAPI(
@@ -89,6 +90,7 @@ app.include_router(dashboard_router)
 app.include_router(assistant_router)
 app.include_router(reports_router)
 app.include_router(notifications_router)
+app.include_router(contact_router)
 
 
 @app.get("/")

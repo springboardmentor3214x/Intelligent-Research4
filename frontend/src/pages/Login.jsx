@@ -30,7 +30,16 @@ export default function Login() {
 
   return <div className="login-layout">
     <section className="auth-card login-card">
-      <div className="auth-header"><p className="eyebrow">WELCOME BACK</p><h2>Sign in to your workspace</h2><p>Use your email and password to continue.</p></div>
+      <div className="auth-header">
+        <div className="auth-brand-wrap">
+          <Link to="/" className="auth-brand-link" title="ResearchIntel Home" aria-label="ResearchIntel Home">
+            <img src="/logo.png" alt="ResearchIntel Logo" className="auth-brand-logo" />
+          </Link>
+        </div>
+        <span className="eyebrow">WELCOME BACK</span>
+        <h2>Sign in to your workspace</h2>
+        <p>Use your email and password to continue.</p>
+      </div>
       <form onSubmit={submit} noValidate>
         <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="name@organization.com" /></label>
         <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" placeholder="Enter your password" /></label>

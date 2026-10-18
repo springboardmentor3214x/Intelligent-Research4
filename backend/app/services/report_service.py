@@ -216,7 +216,7 @@ def generate_pdf_report(report: ReportRequest) -> bytes:
                     ("RIGHTPADDING", (0, 0), (-1, -1), 4),
                 ])
             )
-            story.append(KeepTogether(rep_table))
+            story.append(rep_table)
             story.append(Spacer(1, 5 * mm))
 
     # Recommendations

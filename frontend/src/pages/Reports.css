@@ -650,6 +650,112 @@
   margin-bottom: 6px;
 }
 
+/* Trend Bar in Table */
+.trend-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.trend-bar-fill {
+  height: 8px;
+  background: linear-gradient(90deg, #079b91, #0ea5e9);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.trend-bar-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* Opportunity & Signal Cards */
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.signal-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.signal-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  align-self: flex-start;
+  margin-bottom: 8px;
+}
+
+.signal-badge.positive {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.signal-card h4 {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.signal-card p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* Readiness Dimensions Grid */
+.readiness-dim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.dim-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.dim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dim-header strong {
+  font-size: 0.88rem;
+  color: #073b5c;
+}
+
+.dim-evidence {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
 .preview-json-box {
   background: #0f172a;
   color: #38bdf8;

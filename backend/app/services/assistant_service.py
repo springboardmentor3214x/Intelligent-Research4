@@ -32,8 +32,10 @@ SYSTEM_ROUTES = {
     "trends": {"label": "View Technology Growth Trends", "route": "/technologies/trends", "description": "Multi-year patent and publication trajectory forecasts."},
     "innovation": {"label": "View Innovation Scoring", "route": "/innovation", "description": "Multi-factor 0–100 innovation scoring across novelty, IP, market, and funding."},
     "commercialization": {"label": "Explore Commercialization Pathways", "route": "/commercialization", "description": "Productization roadmaps, spin-out frameworks, licensing targets, and industry partners."},
-    "reports": {"label": "Open Reports & Export Center", "route": "/reports", "description": "Unified 6-module intelligence reports, customizable briefs, and PDF/Excel generation."},
+    "reports": {"label": "Open Reports & Export Center", "route": "/reports", "description": "Unified intelligence reports, customizable briefs, and PDF/Excel generation."},
     "profile": {"label": "Manage User Profile & Focus Areas", "route": "/profile", "description": "User account settings, research keywords, organization affiliations, and preferences."},
+    "about": {"label": "About ResearchIntel", "route": "/about", "description": "Platform mission, vision, interconnected intelligence ecosystem, and team."},
+    "contact": {"label": "Contact Our Team", "route": "/contact", "description": "Direct communication channel for research collaborations, support, and partnerships."},
 }
 
 # Domain keyword aliases for topic extraction
@@ -114,6 +116,14 @@ class AssistantService:
         # 4. Handle Platform Help / Overview ("What can I do here?", "Explain this platform", "How does website work?")
         if intent == "platform_help" or (intent == "page_explanation" and page_context in ["", "global", "/"]):
             return self._handle_platform_help()
+
+        # Handle About Us / Team inquiries
+        if intent == "about_us":
+            return self._handle_about_us(msg_lower)
+
+        # Handle Contact Us inquiries
+        if intent == "contact_us":
+            return self._handle_contact_us(msg_lower)
 
         # 5. Handle Specific Page Explanation Requests ("What am I looking at?", "Explain this page")
         if intent == "page_explanation":
@@ -225,6 +235,14 @@ class AssistantService:
             return "innovation_analysis"
         if any(w in msg_lower for w in ["commercialize", "commercialization", "spinout", "spin-off", "licensing", "licensing opportunity", "industry partner", "productization"]):
             return "commercialization_analysis"
+
+        # About Us / Team
+        if any(w in msg_lower for w in ["about us", "who made", "who created", "who built", "team member", "tarun", "yug", "priyanka", "shruthi", "our mission", "our vision"]):
+            return "about_us"
+
+        # Contact Us / Support
+        if any(w in msg_lower for w in ["contact", "reach out", "email team", "how to contact", "phone number", "support form", "get in touch", "partnership inquiry"]):
+            return "contact_us"
 
         # Page Explanation
         if any(w in msg_lower for w in ["what is this", "explain this page", "what am i looking at", "help on this page"]):
@@ -434,6 +452,95 @@ class AssistantService:
                 "Show patents related to quantum computing",
                 "How is the innovation score calculated?",
                 "Generate a unified intelligence report",
+            ],
+            provider=grok_service.get_provider_name(),
+            confidence="100%",
+            evidence_coverage="100%",
+        )
+
+    def _handle_about_us(self, msg_lower: str) -> AssistantChatResponse:
+        if "tarun" in msg_lower:
+            member_detail = (
+                "👨‍💻 **Tarun Chaudhari** — *AI & Platform Development*\n\n"
+                "- **Focus:** AI-powered platform development, backend integration, intelligent systems, and building connected research and innovation workflows.\n"
+                "- **Email:** `traunchaudhari1313@gmail.com`\n"
+                "- **Phone:** `+91 9518391245`"
+            )
+        elif "yug" in msg_lower:
+            member_detail = (
+                "👨‍💻 **Yug Thakkar** — *Research & Platform Development*\n\n"
+                "- **Focus:** Contributes to research intelligence, platform development, data-driven workflows, and the integration of intelligence capabilities.\n"
+                "- **Email:** `yug.rt@somaiya.edu`\n"
+                "- **Phone:** `+91 9653111370`"
+            )
+        elif "priyanka" in msg_lower:
+            member_detail = (
+                "👩‍🔬 **Priyanka Pradhan** — *Research & Innovation Team Member*\n\n"
+                "- **Focus:** Academic research evaluation, innovation domain mapping, and intelligence methodology.\n"
+                "- **Contact:** Details available upon request through the Contact Us form."
+            )
+        elif "shruthi" in msg_lower:
+            member_detail = (
+                "👩‍🔬 **Shruthi Thammi** — *Research & Innovation Team Member*\n\n"
+                "- **Focus:** Technology analysis, research literature synthesis, and innovation assessment frameworks.\n"
+                "- **Contact:** Details available upon request through the Contact Us form."
+            )
+        else:
+            member_detail = (
+                "👥 **ResearchIntel Platform Team:**\n"
+                "- **Tarun Chaudhari** — AI & Platform Development (`traunchaudhari1313@gmail.com`, `9518391245`)\n"
+                "- **Yug Thakkar** — Research & Platform Development (`yug.rt@somaiya.edu`, `9653111370`)\n"
+                "- **Priyanka Pradhan** — Research & Innovation\n"
+                "- **Shruthi Thammi** — Research & Innovation"
+            )
+
+        return AssistantChatResponse(
+            message=(
+                f"🌟 **About ResearchIntel**\n\n"
+                f"ResearchIntel is an AI-powered research, funding and innovation intelligence platform designed to connect research, funding, patents, technologies, and commercialization opportunities.\n\n"
+                f"### 🎯 Our Mission\n"
+                f"To make research and innovation intelligence easier to discover, understand, and act upon by bringing literature, grants, patents, technology maturity, and commercialization insights into one connected ecosystem.\n\n"
+                f"### 💡 Our Vision\n"
+                f"To build an intelligent ecosystem where researchers, innovators, startups, and organizations can discover opportunities, understand emerging technologies, and make better evidence-based decisions.\n\n"
+                f"{member_detail}"
+            ),
+            intent="about_us",
+            actions=[
+                AssistantAction(type="navigate", label="📖 View About Us Page", route="/about"),
+                AssistantAction(type="navigate", label="✉️ Contact Team", route="/contact"),
+            ],
+            sources=[],
+            suggestions=[
+                "How can I contact the team?",
+                "What is the platform ecosystem?",
+                "Explore technology intelligence",
+            ],
+            provider=grok_service.get_provider_name(),
+            confidence="100%",
+            evidence_coverage="100%",
+        )
+
+    def _handle_contact_us(self, msg_lower: str) -> AssistantChatResponse:
+        return AssistantChatResponse(
+            message=(
+                "✉️ **Get in Touch with the ResearchIntel Team**\n\n"
+                "We welcome inquiries regarding research collaboration, academic partnerships, technology evaluation, licensing discussions, and platform support.\n\n"
+                "### 📞 Direct Contact Information:\n"
+                "- **Tarun Chaudhari** (AI & Platform Development): `traunchaudhari1313@gmail.com` | `9518391245`\n"
+                "- **Yug Thakkar** (Research & Platform Development): `yug.rt@somaiya.edu` | `9653111370`\n"
+                "- **Priyanka Pradhan & Shruthi Thammi**: Contact details available upon request.\n\n"
+                "You can also send a message directly through our online **Contact Form** with category-specific routing (Research, Grants, Patents, Technology, Innovation, Partnerships, Support)."
+            ),
+            intent="contact_us",
+            actions=[
+                AssistantAction(type="navigate", label="✉️ Open Contact Form", route="/contact"),
+                AssistantAction(type="navigate", label="📖 Learn About Our Team", route="/about"),
+            ],
+            sources=[],
+            suggestions=[
+                "How to collaborate on research?",
+                "What technologies does the platform use?",
+                "Explore public patent intelligence",
             ],
             provider=grok_service.get_provider_name(),
             confidence="100%",

@@ -1256,3 +1256,184 @@
   border-radius: 20px;
 }
 
+/* Source Coverage Card */
+.source-coverage-card {
+  background: #ffffff;
+  border: 1px solid #dce6ed;
+  border-left: 5px solid #155094;
+  border-radius: 12px;
+  padding: 1.1rem 1.4rem;
+  margin-bottom: 1.3rem;
+  box-shadow: 0 4px 16px rgba(16, 45, 72, 0.04);
+}
+
+.coverage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.coverage-badge {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #102d48;
+}
+
+.coverage-sync-time {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.coverage-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.coverage-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.coverage-stat-item .stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.coverage-stat-item .stat-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #102d48;
+}
+
+.coverage-stat-item .stat-val.active {
+  color: #0b726e;
+}
+
+.sources-list-item {
+  flex: 1;
+  min-width: 240px;
+}
+
+.source-pills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+}
+
+.coverage-source-pill {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 6px;
+}
+
+/* Pagination Bar */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: #ffffff;
+  border: 1px solid #dce6ed;
+  border-radius: 12px;
+  padding: 0.9rem 1.4rem;
+  margin-top: 2rem;
+  box-shadow: 0 4px 16px rgba(16, 45, 72, 0.04);
+}
+
+.pagination-info {
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-num-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  font-size: 0.84rem;
+  font-weight: 600;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 0.4rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.pagination-num-btn:hover:not(.active) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.pagination-num-btn.active {
+  background: linear-gradient(135deg, #0b726e, #155094);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(11, 114, 110, 0.3);
+}
+
+.pagination-page-size {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  color: #475569;
+}
+
+.pagination-page-size select {
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.85rem;
+  background: #ffffff;
+  color: #1e293b;
+  font-weight: 600;
+  cursor: pointer;
+}
+

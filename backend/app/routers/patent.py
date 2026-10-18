@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from sqlalchemy.orm import Session
 
 from backend.app.database.connection import get_db
@@ -15,6 +15,7 @@ from backend.app.schemas.patent import (
     PatentResponse,
     PatentSearchItem,
     PatentSearchResponse,
+    PatentStatsResponse,
     PatentSuggestionItem,
     PatentSuggestionsResponse,
     SimilarPatentsResponse,
@@ -284,16 +285,41 @@ def run_patent_clustering(
     )
 
 
+@router.get("/stats", response_model=PatentStatsResponse)
+def get_patent_stats(
+    db: Session = Depends(get_db),
+):
+    """Return real aggregate dataset metrics for the Patent Landscape dashboard."""
+    total_count = db.scalar(select(func.count(Patent.id))) or 0
+    sources_stmt = select(Patent.source, func.count(Patent.id)).group_by(Patent.source)
+    sources_res = db.execute(sources_stmt).all()
+    sources_dict = {str(s or "Unknown"): int(c) for s, c in sources_res}
+
+    # Dynamic clusters count
+    if total_count >= 2:
+        k = min(8, total_count) if total_count > 60 else (4 if total_count > 10 else 2)
+    else:
+        k = 0
+
+    return PatentStatsResponse(
+        total_patents=total_count,
+        total_clusters=k,
+        embedding_model=patent_embedding_service.model_name,
+        spatial_projection="3D / 2D PCA",
+        sources_breakdown=sources_dict,
+    )
+
+
 @router.post("/import")
 def import_patent_data(
     request: PatentImportRequest,
     db: Session = Depends(get_db),
 ):
-    """Import patents from EPO Linked Data API into PostgreSQL."""
-    if request.limit < 1 or request.limit > 50:
+    """Import genuine patents from EPO Linked Data API into PostgreSQL/SQLite."""
+    if request.limit < 1 or request.limit > 1000:
         raise HTTPException(
             status_code=400,
-            detail="limit must be between 1 and 50",
+            detail="limit must be between 1 and 1000",
         )
 
     return import_patents(
@@ -301,6 +327,7 @@ def import_patent_data(
         request.keyword,
         request.limit,
     )
+
 
 
 @router.get("/{patent_id}/similar", response_model=SimilarPatentsResponse)

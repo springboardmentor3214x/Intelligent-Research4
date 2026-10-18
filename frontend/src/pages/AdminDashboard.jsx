@@ -7,6 +7,10 @@ import {
   getAdminRecommendations,
   sendAdminBroadcast,
 } from '../services/dashboardService'
+import {
+  batchCorpusIngest,
+  getCorpusStats,
+} from '../services/researchPaperService'
 import './AdminDashboard.css'
 
 const ROLES = [
@@ -59,6 +63,12 @@ export default function AdminDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState('')
 
+  // Research Corpus Management State
+  const [corpusStats, setCorpusStats] = useState(null)
+  const [ingestingCorpus, setIngestingCorpus] = useState(false)
+  const [ingestStatusMsg, setIngestStatusMsg] = useState('')
+  const [batchTarget, setBatchTarget] = useState(100)
+
   // Role Protection
   useEffect(() => {
     if (!user) return
@@ -76,12 +86,14 @@ export default function AdminDashboard() {
     setError('')
 
     try {
-      const [metricsRes, recRes] = await Promise.all([
+      const [metricsRes, recRes, corpusRes] = await Promise.all([
         getAdminMetrics(token),
         getAdminRecommendations(token),
+        getCorpusStats(token).catch(() => null),
       ])
       setMetrics(metricsRes)
       setRecommendationsData(recRes)
+      if (corpusRes) setCorpusStats(corpusRes)
       setLastRefreshedAt(new Date().toLocaleTimeString())
     } catch (err) {
       console.error('Failed to load admin telemetry:', err)
@@ -89,6 +101,38 @@ export default function AdminDashboard() {
     } finally {
       setLoadingMetrics(false)
       setIsRefreshing(false)
+    }
+  }
+
+  const handleBatchIngest = async () => {
+    if (!token || ingestingCorpus) return
+    setIngestingCorpus(true)
+    setIngestStatusMsg('Initiating multi-source batch ingestion across 18 core academic topics (OpenAlex, Crossref, Semantic Scholar, CORE, arXiv, Europe PMC, PubMed, DOAJ, OpenAIRE, Zenodo, bioRxiv, medRxiv, BASE)...')
+    try {
+      const res = await batchCorpusIngest(token, {
+        target_per_topic: batchTarget,
+        sources: [
+          'OpenAlex',
+          'Crossref',
+          'Semantic Scholar',
+          'CORE',
+          'arXiv',
+          'Europe PMC',
+          'PubMed',
+          'DOAJ',
+          'OpenAIRE',
+          'Zenodo',
+          'bioRxiv',
+          'medRxiv',
+          'BASE',
+        ],
+      })
+      setIngestStatusMsg(`Batch Ingestion Complete: Successfully ingested ${res.total_inserted_in_batch} new verified papers across ${res.topics_processed} topics! Current Corpus Total: ${res.total_in_collection}.`)
+      loadPlatformData(true)
+    } catch (err) {
+      setIngestStatusMsg(`Ingestion encountered an issue: ${err.message || 'Check server connection'}`)
+    } finally {
+      setIngestingCorpus(false)
     }
   }
 
@@ -152,6 +196,9 @@ export default function AdminDashboard() {
   const topFundingAgencies = metrics?.top_funding_agencies || []
   const pubTimeline = metrics?.publication_timeline || []
   const patentTimeline = metrics?.patent_timeline || []
+  const userRegTrend = metrics?.user_registration_trend || []
+  const fundingTypeDist = metrics?.funding_type_distribution || []
+  const techMaturityDist = metrics?.technology_maturity_distribution || []
   const capUtilization = metrics?.capability_utilization || []
   const systemHealth = metrics?.system_health || { services: [] }
   const securityAlerts = metrics?.security_alerts || []
@@ -215,7 +262,7 @@ export default function AdminDashboard() {
           subtitle: `${p.count} prior-art records`,
           actionLabel: 'Open Patents',
           action: () => {
-            navigate('/patent-landscape')
+            navigate('/patents')
             setIsCommandOpen(false)
           },
         })
@@ -240,16 +287,16 @@ export default function AdminDashboard() {
     })
 
     // 5. System Health Services
-    systemHealth.services.forEach((s) => {
+    ;(systemHealth?.services || []).forEach((s) => {
       if (s.name?.toLowerCase().includes(q)) {
         results.push({
           type: 'Service Health',
           icon: '🛡️',
           title: s.name,
-          subtitle: `Status: ${s.status.toUpperCase()} (${s.latency_ms}ms, ${s.records} records)`,
+          subtitle: `Status: ${(s.status || 'OPERATIONAL').toUpperCase()} (${s.latency_ms || 5}ms, ${s.records || 0} records)`,
           actionLabel: 'View Node',
           action: () => {
-            setSelectedMetricDetail({ title: s.name, value: `${s.latency_ms}ms`, meta: `${s.records} connected records` })
+            setSelectedMetricDetail({ title: s.name, value: `${s.latency_ms || 5}ms`, meta: `${s.records || 0} connected records` })
             setIsCommandOpen(false)
           },
         })
@@ -426,7 +473,7 @@ export default function AdminDashboard() {
           <Link to="/funding" className="cr-action-chip">
             🎯 Grant Intelligence
           </Link>
-          <Link to="/patent-landscape" className="cr-action-chip">
+          <Link to="/patents" className="cr-action-chip">
             💡 Prior-Art DB
           </Link>
         </div>
@@ -530,52 +577,79 @@ export default function AdminDashboard() {
         </div>
 
         {analyticsTab === 'overview' && (
-          <div className="cr-analytics-dual">
-            {/* A. Platform Activity Trend Area Chart */}
+          <div className="cr-analytics-grid-multi">
+            {/* 1. User Registration Trend Line Chart */}
             <div className="cr-chart-container">
               <div className="cr-chart-title">
-                <span>📈 Scientific Publication Volume Progression</span>
-                <span className="cr-chart-sub">Publication Years Registry</span>
+                <span>📊 User Registration Trend</span>
+                <span className="cr-chart-sub">Monthly Growth</span>
               </div>
-              {pubTimeline.length > 0 ? (
-                <div style={{ position: 'relative', width: '100%', height: '160px', marginTop: '14px' }}>
-                  <svg viewBox="0 0 500 160" className="cr-svg-chart" preserveAspectRatio="none">
+              <div style={{ position: 'relative', width: '100%', marginTop: '10px' }}>
+                <div style={{ height: '130px', width: '100%', position: 'relative' }}>
+                  <svg viewBox="0 0 500 130" className="cr-svg-chart" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
                     <defs>
-                      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#079b91" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="#079b91" stopOpacity="0.0" />
+                      <linearGradient id="areaGradUserReg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
                       </linearGradient>
                     </defs>
+                    <polygon
+                      fill="url(#areaGradUserReg)"
+                      points={
+                        userRegTrend.length > 1
+                          ? `0,130 ${userRegTrend
+                              .map((pt, i) => {
+                                const maxVal = Math.max(...userRegTrend.map((p) => p.count), 1)
+                                const step = 500 / (userRegTrend.length - 1)
+                                const x = i * step
+                                const y = 130 - (pt.count / maxVal) * 95 - 15
+                                return `${x},${y}`
+                              })
+                              .join(' ')} 500,130`
+                          : '0,130 500,130'
+                      }
+                    />
                     <polyline
                       fill="none"
-                      stroke="#079b91"
+                      stroke="#2563eb"
                       strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      points={svgLinePoints}
+                      points={
+                        userRegTrend.length > 1
+                          ? userRegTrend
+                              .map((pt, i) => {
+                                const maxVal = Math.max(...userRegTrend.map((p) => p.count), 1)
+                                const step = 500 / (userRegTrend.length - 1)
+                                const x = i * step
+                                const y = 130 - (pt.count / maxVal) * 95 - 15
+                                return `${x},${y}`
+                              })
+                              .join(' ')
+                          : '0,65 500,65'
+                      }
                     />
                   </svg>
-                  <div className="cr-timeline-labels">
-                    {pubTimeline.map((pt) => (
-                      <span key={pt.year}>
-                        {pt.year} <small>({pt.count})</small>
-                      </span>
-                    ))}
-                  </div>
                 </div>
-              ) : (
-                <div className="cr-empty-state">Historical activity data is not available.</div>
-              )}
+                <div className="cr-timeline-badges-grid">
+                  {userRegTrend.map((pt, idx) => (
+                    <div key={idx} className="cr-year-badge">
+                      <span className="cr-year-label">{pt.month}</span>
+                      <strong className="cr-year-count">{pt.count}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* B. User Growth & Demographics Bar Chart */}
+            {/* 2. User Role Distribution Donut & Progress */}
             <div className="cr-chart-container">
               <div className="cr-chart-title">
                 <span>👥 User Role Distribution</span>
                 <span className="cr-chart-sub">Total: {overview.total_users ?? 0} Accounts</span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
                 {Object.entries(roleDist).map(([roleKey, count]) => {
                   const label = roleKey.replace(/_/g, ' ').toUpperCase()
                   const pct = overview.total_users > 0 ? ((count / overview.total_users) * 100).toFixed(0) : 0
@@ -589,17 +663,17 @@ export default function AdminDashboard() {
                       style={{ cursor: 'pointer' }}
                       title="Click to filter user table below"
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 700, color: '#073b5c', marginBottom: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#073b5c', marginBottom: '4px' }}>
                         <span>{label}</span>
                         <span>{count} ({pct}%)</span>
                       </div>
-                      <div style={{ width: '100%', height: '10px', background: '#f1f5f9', borderRadius: '5px', overflow: 'hidden' }}>
+                      <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
                         <div
                           style={{
                             height: '100%',
                             width: `${Math.max(10, (count / maxRoleCount) * 100)}%`,
-                            background: roleKey === 'administrator' ? '#ef4444' : roleKey === 'researcher' ? '#079b91' : '#3b82f6',
-                            borderRadius: '5px',
+                            background: roleKey === 'administrator' ? '#ef4444' : roleKey === 'researcher' ? '#079b91' : roleKey === 'startup_founder' ? '#3b82f6' : '#8b5cf6',
+                            borderRadius: '4px',
                             transition: 'width 0.4s ease',
                           }}
                         />
@@ -609,42 +683,300 @@ export default function AdminDashboard() {
                 })}
               </div>
             </div>
+
+            {/* 3. Scientific Publication Output Progression */}
+            <div className="cr-chart-container">
+              <div className="cr-chart-title">
+                <span>📄 Scientific Publication Progression</span>
+                <span className="cr-chart-sub">Annual Output (2015–2026)</span>
+              </div>
+              {pubTimeline.length > 0 ? (
+                <div style={{ position: 'relative', width: '100%', marginTop: '10px' }}>
+                  <div style={{ height: '130px', width: '100%', position: 'relative' }}>
+                    <svg viewBox="0 0 500 130" className="cr-svg-chart" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
+                      <defs>
+                        <linearGradient id="areaGradPub" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#079b91" stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="#079b91" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      <polygon
+                        fill="url(#areaGradPub)"
+                        points={`0,130 ${svgLinePoints} 500,130`}
+                      />
+                      <polyline
+                        fill="none"
+                        stroke="#079b91"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={svgLinePoints}
+                      />
+                    </svg>
+                  </div>
+                  <div className="cr-timeline-badges-grid">
+                    {pubTimeline.map((pt) => (
+                      <div key={pt.year} className="cr-year-badge">
+                        <span className="cr-year-label">{pt.year}</span>
+                        <strong className="cr-year-count">{pt.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="cr-empty-state">Historical activity data is not available.</div>
+              )}
+            </div>
+
+            {/* 4. Global Patent Prior-Art Filing Trajectory */}
+            <div className="cr-chart-container">
+              <div className="cr-chart-title">
+                <span>💡 Patent Prior-Art Filing Trajectory</span>
+                <span className="cr-chart-sub">Annual Filings (2015–2026)</span>
+              </div>
+              {patentTimeline.length > 0 ? (
+                <div style={{ position: 'relative', width: '100%', marginTop: '10px' }}>
+                  <div style={{ height: '130px', width: '100%', position: 'relative' }}>
+                    <svg viewBox="0 0 500 130" className="cr-svg-chart" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
+                      <defs>
+                        <linearGradient id="areaGradPat" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      <polyline
+                        fill="none"
+                        stroke="#8b5cf6"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={
+                          patentTimeline.length > 1
+                            ? patentTimeline
+                                .map((pt, i) => {
+                                  const maxVal = Math.max(...patentTimeline.map((p) => p.count), 1)
+                                  const step = 500 / (patentTimeline.length - 1)
+                                  const x = i * step
+                                  const y = 130 - (pt.count / maxVal) * 95 - 15
+                                  return `${x},${y}`
+                                })
+                                .join(' ')
+                            : ''
+                        }
+                      />
+                    </svg>
+                  </div>
+                  <div className="cr-timeline-badges-grid">
+                    {patentTimeline.map((pt) => (
+                      <div key={pt.year} className="cr-year-badge patent">
+                        <span className="cr-year-label">{pt.year}</span>
+                        <strong className="cr-year-count" style={{ color: '#7c3aed', background: '#f5f3ff' }}>{pt.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="cr-empty-state">Patent timeline data is not available.</div>
+              )}
+            </div>
+
+            {/* 5. Funding Opportunities Breakdown by Type */}
+            <div className="cr-chart-container">
+              <div className="cr-chart-title">
+                <span>🎯 Funding Opportunities by Category</span>
+                <span className="cr-chart-sub">Top Grant Mechanisms</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
+                {fundingTypeDist.map((f, idx) => {
+                  const totalFunding = overview.total_funding_opportunities || 1
+                  const pct = ((f.count / totalFunding) * 100).toFixed(1)
+                  return (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 700, color: '#073b5c' }}>
+                        <span>{f.type}</span>
+                        <span style={{ color: '#059669', fontWeight: 800 }}>{f.count} grants <span style={{ color: '#64748b', fontWeight: 500, fontSize: '11.5px' }}>({pct}%)</span></span>
+                      </div>
+                      <div style={{ width: '100%', height: '7px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            height: '100%',
+                            width: `${Math.max(6, (f.count / (fundingTypeDist[0]?.count || 1)) * 100)}%`,
+                            background: idx === 0 ? '#10b981' : idx === 1 ? '#059669' : idx === 2 ? '#0d9488' : '#3b82f6',
+                            borderRadius: '4px',
+                            transition: 'width 0.4s ease',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 6. Technology Maturity & Status Distribution */}
+            <div className="cr-chart-container">
+              <div className="cr-chart-title">
+                <span>🛡️ Technology Maturity Progression</span>
+                <span className="cr-chart-sub">Lifecycle Stages &amp; Readiness</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
+                {techMaturityDist.map((m, idx) => {
+                  const totalTech = overview.total_technologies || 1
+                  const pct = ((m.count / totalTech) * 100).toFixed(1)
+                  const isMature = m.status.toLowerCase().includes('mature')
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '12px 14px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            style={{
+                              width: '10px',
+                              height: '10px',
+                              borderRadius: '50%',
+                              background: isMature ? '#10b981' : '#3b82f6',
+                            }}
+                          />
+                          <span style={{ fontWeight: 800, color: '#073b5c', fontSize: '13px' }}>{m.status} Stage</span>
+                        </div>
+                        <span
+                          className="cr-data-badge"
+                          style={{
+                            background: isMature ? '#ecfdf5' : '#eff6ff',
+                            color: isMature ? '#065f46' : '#1e40af',
+                            borderColor: isMature ? '#a7f3d0' : '#bfdbfe',
+                            fontWeight: 800,
+                          }}
+                        >
+                          {m.count} Domains ({pct}%)
+                        </span>
+                      </div>
+
+                      <div style={{ width: '100%', height: '6px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
+                        <div
+                          style={{
+                            height: '100%',
+                            width: `${(m.count / totalTech) * 100}%`,
+                            background: isMature ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #3b82f6, #2563eb)',
+                            borderRadius: '4px',
+                          }}
+                        />
+                      </div>
+
+                      {m.technologies && m.technologies.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                          {m.technologies.map((tName, tIdx) => (
+                            <span
+                              key={tIdx}
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                color: '#475569',
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                              }}
+                            >
+                              {tName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         )}
 
         {analyticsTab === 'intelligence' && (
-          <div className="cr-analytics-dual">
-            {/* Top Technology Domains Bar Chart */}
+          <div className="cr-analytics-grid-multi">
+            {/* 5. Top Technology Domains Bar Chart */}
             <div className="cr-chart-container">
               <div className="cr-chart-title">
-                <span>⚡ Technology Domains</span>
-                <span className="cr-chart-sub">{topTech.length} Active Tracks</span>
+                <span>⚡ Key Technology Intelligence Tracks</span>
+                <span className="cr-chart-sub">Top Rated by Readiness</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
                 {topTech.map((t, idx) => (
-                  <div key={idx} className="cr-data-bar-row">
-                    <span style={{ fontWeight: 700, color: '#073b5c', fontSize: '13px' }}>{t.domain}</span>
-                    <span className="cr-data-badge">{t.count} technologies</span>
+                  <div key={idx} className="cr-data-bar-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 800, color: '#073b5c', fontSize: '13px' }}>{t.domain}</span>
+                        <span
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            background: t.status === 'Mature' ? '#ecfdf5' : '#eff6ff',
+                            color: t.status === 'Mature' ? '#065f46' : '#1e40af',
+                          }}
+                        >
+                          {t.status}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        Readiness Score: <strong style={{ color: '#073b5c' }}>{t.score ?? 'N/A'}</strong> / 100
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="cr-data-badge" style={{ background: '#f0fdf4', color: '#166534', borderColor: '#bbf7d0' }} title="Indexed Research Papers">
+                        {t.count} papers
+                      </span>
+                      {t.patents > 0 && (
+                        <span className="cr-data-badge" style={{ background: '#fdf4ff', color: '#86198f', borderColor: '#f5d0fe' }} title="Registered Patents">
+                          {t.patents} patents
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Patent Technology Domains */}
+            {/* 6. Patent Technology Domains */}
             <div className="cr-chart-container">
               <div className="cr-chart-title">
-                <span>💡 Patent Prior-Art Breakdown</span>
-                <span className="cr-chart-sub">{topPatents.length} Classifications</span>
+                <span>💡 Patent Prior-Art Classification Breakdown</span>
+                <span className="cr-chart-sub">Filing Concentrations</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                {topPatents.map((p, idx) => (
-                  <div key={idx} className="cr-data-bar-row">
-                    <span style={{ fontWeight: 700, color: '#073b5c', fontSize: '13px' }}>{p.domain}</span>
-                    <span className="cr-data-badge" style={{ background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}>
-                      {p.count} patents
-                    </span>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
+                {topPatents.map((p, idx) => {
+                  const totalPat = overview.total_patents || 1
+                  const pct = ((p.count / totalPat) * 100).toFixed(1)
+                  return (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 700, color: '#073b5c' }}>
+                        <span>{p.domain}</span>
+                        <span style={{ color: '#8b5cf6', fontWeight: 800 }}>
+                          {p.count} filings <span style={{ color: '#64748b', fontWeight: 500, fontSize: '11.5px' }}>({pct}%)</span>
+                        </span>
+                      </div>
+                      <div style={{ width: '100%', height: '7px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            height: '100%',
+                            width: `${Math.max(6, (p.count / (topPatents[0]?.count || 1)) * 100)}%`,
+                            background: idx === 0 ? '#8b5cf6' : idx === 1 ? '#7c3aed' : idx === 2 ? '#6d28d9' : '#a855f7',
+                            borderRadius: '4px',
+                            transition: 'width 0.4s ease',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -731,19 +1063,156 @@ export default function AdminDashboard() {
           </div>
 
           <div className="health-services-grid">
-            {systemHealth.services.map((svc) => (
+            {(systemHealth?.services || []).map((svc) => (
               <div className="service-health-node" key={svc.name}>
                 <div>
                   <div className="node-name">{svc.name}</div>
                   <div className="node-meta">{svc.records} connected records &bull; {svc.latency_ms}ms</div>
                 </div>
                 <span className={`node-status-badge ${svc.status}`}>
-                  ● {svc.status.toUpperCase()}
+                  ● {(svc.status || 'OPERATIONAL').toUpperCase()}
                 </span>
               </div>
             ))}
           </div>
         </div>
+      </div>
+
+      {/* 6.5 Research Data Management & Multi-Source Corpus Scaling */}
+      <div className="cr-section-card" style={{ border: '1px solid #c2e0f2', background: 'linear-gradient(180deg, #f8fbfe 0%, #ffffff 100%)' }}>
+        <div className="cr-section-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '22px' }}>📚</span>
+            <div>
+              <h3 className="cr-section-title" style={{ margin: 0 }}>
+                Academic Research Corpus &amp; Ingestion Control
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#587083' }}>
+                Multi-source scholarly paper ingestion across OpenAlex, Crossref &amp; Semantic Scholar
+              </p>
+            </div>
+          </div>
+          <span className="cr-badge" style={{ background: '#eff6ff', color: '#1e40af', borderColor: '#bfdbfe' }}>
+            Target: 5,000–10,000+ Papers
+          </span>
+        </div>
+
+        {/* Progress Bar towards Target */}
+        <div style={{ marginTop: '16px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '13px', fontWeight: 700 }}>
+            <span style={{ color: '#073b5c' }}>
+              Corpus Capacity: <strong>{corpusStats?.total_papers || overview.total_papers || 0}</strong> / {corpusStats?.target_corpus_size || 10000} Papers
+            </span>
+            <span style={{ color: '#0b726e' }}>
+              {corpusStats?.target_progress_percentage || Math.min(100, Math.round(((overview.total_papers || 0) / 10000) * 100))}% Completed
+            </span>
+          </div>
+          <div style={{ width: '100%', height: '10px', background: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
+            <div
+              style={{
+                height: '100%',
+                width: `${corpusStats?.target_progress_percentage || Math.min(100, Math.round(((overview.total_papers || 0) / 10000) * 100))}%`,
+                background: 'linear-gradient(90deg, #0b726e, #2563eb)',
+                borderRadius: '6px',
+                transition: 'width 0.4s ease',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Sources Breakdown Grid across 13 connected providers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+          {[
+            { key: 'OpenAlex', label: 'OpenAlex', icon: '🌐' },
+            { key: 'Crossref', label: 'Crossref', icon: '🏛️' },
+            { key: 'Semantic Scholar', label: 'Semantic Scholar', icon: '🔬' },
+            { key: 'CORE', label: 'CORE', icon: '📚' },
+            { key: 'arXiv', label: 'arXiv', icon: '📄' },
+            { key: 'Europe PMC', label: 'Europe PMC', icon: '🇪🇺' },
+            { key: 'PubMed', label: 'PubMed', icon: '🧬' },
+            { key: 'DOAJ', label: 'DOAJ', icon: '🔓' },
+            { key: 'OpenAIRE', label: 'OpenAIRE', icon: '🌍' },
+            { key: 'Zenodo', label: 'Zenodo', icon: '📦' },
+            { key: 'bioRxiv', label: 'bioRxiv', icon: '🧪' },
+            { key: 'medRxiv', label: 'medRxiv', icon: '🏥' },
+            { key: 'BASE', label: 'BASE', icon: '🔍' },
+          ].map((src) => {
+            const status = (corpusStats?.sources_status?.[src.key] || 'available').toLowerCase()
+            const isOk = status === 'available' || status === 'connected'
+            const isRate = status === 'rate_limited'
+            const isNotConfig = status === 'not_configured'
+            const count = corpusStats?.by_source?.[src.key] || corpusStats?.sources?.[src.key] || 0
+
+            return (
+              <div key={src.key} style={{ background: '#ffffff', border: '1px solid #dce7ee', borderRadius: '10px', padding: '10px 12px' }}>
+                <div style={{ fontSize: '11px', color: '#587083', fontWeight: 600 }}>{src.icon} {src.label}</div>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: '#073b5c', marginTop: '2px' }}>
+                  {count}
+                </div>
+                <div style={{ fontSize: '10.5px', color: isOk ? '#10b981' : (isRate ? '#d97706' : '#64748b'), marginTop: '2px', fontWeight: 600 }}>
+                  {isOk ? '● Connected' : (isRate ? '⚠ Rate limited' : (isNotConfig ? '○ Not configured' : '● Offline'))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Batch Ingest Trigger Controls */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', background: '#f1f6fa', padding: '14px 18px', borderRadius: '10px', border: '1px solid #d5e5f0' }}>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#073b5c' }}>
+              Multi-Domain 13-Source Ingestion Trigger
+            </div>
+            <div style={{ fontSize: '12px', color: '#587083' }}>
+              Fetch and store verified peer-reviewed publications and preprints across 18 core academic topics in parallel across all 13 sources.
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <select
+              value={batchTarget}
+              onChange={(e) => setBatchTarget(Number(e.target.value))}
+              disabled={ingestingCorpus}
+              style={{
+                background: '#ffffff',
+                border: '1px solid #c2d8e9',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#073b5c',
+              }}
+            >
+              <option value="50">50 per topic (~900 papers)</option>
+              <option value="100">100 per topic (~1,800 papers)</option>
+              <option value="200">200 per topic (~3,600 papers)</option>
+            </select>
+            <button
+              type="button"
+              className="cr-item-action-btn"
+              onClick={handleBatchIngest}
+              disabled={ingestingCorpus}
+              style={{
+                background: 'linear-gradient(135deg, #0b726e, #155094)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '12.5px',
+                cursor: ingestingCorpus ? 'wait' : 'pointer',
+                opacity: ingestingCorpus ? 0.7 : 1,
+              }}
+            >
+              {ingestingCorpus ? '⏳ Ingesting Real Papers...' : '🚀 Ingest Multi-Topic Corpus'}
+            </button>
+          </div>
+        </div>
+
+        {ingestStatusMsg && (
+          <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '8px', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', fontSize: '12px', fontWeight: 600 }}>
+            ℹ️ {ingestStatusMsg}
+          </div>
+        )}
       </div>
 
       {/* 7. User Management & Access Control Table */}

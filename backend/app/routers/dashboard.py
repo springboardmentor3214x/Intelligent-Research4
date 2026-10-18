@@ -121,3 +121,49 @@ def admin_recommendations_monitoring(
     Strictly protected by backend RBAC for Administrator only.
     """
     return get_admin_recommendations_monitoring(db)
+
+
+@router.post("/admin/broadcast")
+def admin_broadcast_announcement(
+    payload: dict,
+    current_user: User = Depends(require_roles("administrator")),
+    db: Session = Depends(get_db),
+):
+    """
+    Module 9/10: Admin Announcement Broadcast Dispatcher.
+    Delivers persistent notifications to all targeted users based on audience selection.
+    """
+    title = payload.get("title", "").strip()
+    message = payload.get("message", "").strip()
+    audience = payload.get("audience", "all").strip().lower()
+    priority = payload.get("priority", "HIGH").strip().upper()
+
+    if not title or not message:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Title and message are required for broadcast.")
+
+    query = db.query(User)
+    if audience != "all":
+        query = query.filter(User.role.ilike(audience))
+
+    recipients = query.all()
+    count = 0
+    from backend.app.services.notification_service import create_platform_notification
+    for target_user in recipients:
+        create_platform_notification(
+            db=db,
+            user=target_user,
+            title=title,
+            message=message,
+            related_record_id=f"broadcast-{current_user.id}",
+            priority=priority if priority in ("LOW", "NORMAL", "HIGH", "URGENT") else "HIGH",
+        )
+        count += 1
+
+    db.commit()
+    return {
+        "status": "success",
+        "message": f"Broadcast '{title}' successfully delivered to {count} recipient(s).",
+        "recipients_count": count,
+        "audience": audience,
+    }

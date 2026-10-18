@@ -47,8 +47,8 @@ class NotificationPreferencesResponse(BaseModel):
     research_enabled: bool
     commercialization_enabled: bool
     platform_enabled: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class NotificationPreferencesUpdate(BaseModel):

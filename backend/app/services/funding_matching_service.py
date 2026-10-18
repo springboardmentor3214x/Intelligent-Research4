@@ -23,6 +23,35 @@ from backend.app.services.patent_embedding_service import (
 
 logger = logging.getLogger(__name__)
 
+# Pre-computed embedding cache for funding opportunities
+_OPP_EMBEDDING_CACHE: dict[str, np.ndarray] = {}
+
+
+def get_cached_opp_embeddings(opps: list[FundingOpportunity], opp_texts: list[str]) -> np.ndarray:
+    """Efficiently retrieve or compute embeddings for funding opportunities."""
+    uncached_indices = []
+    uncached_texts = []
+    embeddings_list = [None] * len(opps)
+
+    for i, (opp, text) in enumerate(zip(opps, opp_texts)):
+        cache_key = f"{opp.id}_{len(text)}"
+        if cache_key in _OPP_EMBEDDING_CACHE:
+            embeddings_list[i] = _OPP_EMBEDDING_CACHE[cache_key]
+        else:
+            uncached_indices.append(i)
+            uncached_texts.append(text)
+
+    if uncached_texts:
+        computed = patent_embedding_service.generate_text_embeddings(uncached_texts)
+        for idx, comp_vec in zip(uncached_indices, computed):
+            opp = opps[idx]
+            text = opp_texts[idx]
+            cache_key = f"{opp.id}_{len(text)}"
+            _OPP_EMBEDDING_CACHE[cache_key] = comp_vec
+            embeddings_list[idx] = comp_vec
+
+    return np.array(embeddings_list, dtype=np.float32)
+
 
 def clean_html_text(text: str | None) -> str:
     """Unescape HTML entities like &ndash;, &nbsp;, &amp;, &#8211; into normal characters."""
@@ -355,18 +384,31 @@ class FundingMatchingService:
         self,
         db: Session,
         current_user: User,
-        limit: int = 20,
+        limit: int = 500,
+        page: int = 1,
+        page_size: int = 50,
         min_score: float = 0.0,
         topic: str = "",
         research_area: str = "",
         funding_type: str = "",
         agency: str = "",
+        sort: str = "match_score_desc",
         focus_terms: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Produce ranked personalized funding opportunities matching user's researcher profile.
-        Returns structured dictionary with total, recommendations list, profile_used metadata, and status message.
+        Scales cleanly from 30 to 500-1200 real opportunities with full backend pagination,
+        multi-source deduplication, sorting, and explainable relevance scoring.
         """
+        # Respect limits and bounds
+        MAX_RECOMMENDATIONS = 1200
+        DEFAULT_RECOMMENDATIONS = 500
+
+        requested_limit = limit if limit and limit > 0 else DEFAULT_RECOMMENDATIONS
+        effective_limit = min(requested_limit, MAX_RECOMMENDATIONS)
+
+        page = max(1, page or 1)
+        page_size = max(1, min(page_size or 50, 100))
         norm_min_score = self.normalize_min_score(min_score)
 
         profile = db.query(ResearchProfile).filter(ResearchProfile.user_id == current_user.id).first()
@@ -413,7 +455,7 @@ class FundingMatchingService:
         if not profile_text:
             profile_text = "Scientific Research, Technology Innovation, Applied Healthcare, Artificial Intelligence, Sustainable Energy"
 
-        # Query candidates from DB with basic structural filters
+        # Query candidates from DB with structural filters
         query = db.query(FundingOpportunity)
         if research_area and research_area.strip():
             clean_ra = research_area.strip()
@@ -431,18 +473,38 @@ class FundingMatchingService:
             return {
                 "total": 0,
                 "recommendations": [],
+                "items": [],
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0,
+                "has_next": False,
+                "has_previous": False,
+                "threshold": min_score,
+                "sort": sort,
+                "sources": [],
                 "profile_used": profile_metadata,
                 "message": "No funding opportunities found matching the specified filters.",
             }
 
-        # Generate semantic embeddings
+        # Deduplicate candidates before ranking
+        seen_opps: dict[str, FundingOpportunity] = {}
+        source_breakdown: dict[str, int] = {}
+        for opp in opportunities:
+            src = opp.source or "General"
+            source_breakdown[src] = source_breakdown.get(src, 0) + 1
+            key = f"{src.lower()}:{opp.source_id or opp.id}"
+            if key not in seen_opps:
+                seen_opps[key] = opp
+
+        dedup_opportunities = list(seen_opps.values())
+
+        # Generate semantic embeddings with persistent caching
         profile_vec = patent_embedding_service.generate_text_embeddings([profile_text])[0]
-        opp_texts = [build_funding_text(opp) for opp in opportunities]
-        opp_embeddings = patent_embedding_service.generate_text_embeddings(opp_texts)
+        opp_texts = [build_funding_text(opp) for opp in dedup_opportunities]
+        opp_embeddings = get_cached_opp_embeddings(dedup_opportunities, opp_texts)
 
         # Cosine similarities
         similarities = np.dot(opp_embeddings, profile_vec)
-        ranked_indices = np.argsort(similarities)[::-1]
 
         # Get saved opportunity IDs for user
         saved_opp_ids = set(
@@ -451,11 +513,10 @@ class FundingMatchingService:
             ).all()
         )
 
-        results = []
+        all_matching_items = []
         today = date.today()
 
-        for idx in ranked_indices:
-            opp = opportunities[idx]
+        for idx, opp in enumerate(dedup_opportunities):
             raw_score = float(similarities[idx])
             score = max(0.0, min(1.0, raw_score))
 
@@ -492,13 +553,13 @@ class FundingMatchingService:
             else:
                 match_level = "Broad Match"
 
-            results.append({
+            all_matching_items.append({
                 "id": str(opp.id),
                 "opportunity_number": opp.opportunity_number,
                 "title": clean_html_text(opp.title),
                 "agency": clean_html_text(opp.agency),
                 "description": clean_html_text(opp.description),
-                "funding_amount": opp.funding_amount,
+                "funding_amount": float(opp.funding_amount) if opp.funding_amount is not None else None,
                 "funding_type": opp.funding_type,
                 "research_area": opp.research_area or opp.funding_category,
                 "funding_category": opp.funding_category,
@@ -516,17 +577,66 @@ class FundingMatchingService:
                 "match_level": match_level,
                 "matched_concepts": matched_terms,
                 "is_saved": opp.id in saved_opp_ids,
-                "structured_intelligence": generate_opportunity_intelligence(opp),
+                "_opp_obj": opp,
             })
 
-            if len(results) >= limit:
-                break
+        # Apply user selected sorting
+        if sort == "published_desc" or sort == "newest":
+            all_matching_items.sort(key=lambda x: (x.get("open_date") or "1970-01-01"), reverse=True)
+        elif sort == "deadline_asc" or sort == "deadline_soon":
+            all_matching_items.sort(key=lambda x: (x.get("days_remaining") if x.get("days_remaining") is not None and x.get("days_remaining") >= 0 else 99999))
+        elif sort == "amount_desc" or sort == "highest_funding":
+            all_matching_items.sort(key=lambda x: (x.get("funding_amount") or 0.0), reverse=True)
+        else:  # best match / match_score_desc (default)
+            all_matching_items.sort(key=lambda x: x.get("relevance_score", 0.0), reverse=True)
+
+        # Cap pool by effective_limit (max 1200)
+        bounded_pool = all_matching_items[:effective_limit]
+        total_unique_matching = len(bounded_pool)
+
+        # Apply pagination on bounded pool
+        total_pages = max(1, (total_unique_matching + page_size - 1) // page_size) if total_unique_matching > 0 else 0
+        current_page = min(page, total_pages) if total_pages > 0 else 1
+        start_idx = (current_page - 1) * page_size
+        end_idx = start_idx + page_size
+        raw_page_items = bounded_pool[start_idx:end_idx] if total_unique_matching > 0 else []
+
+        # Populate structured intelligence only for the paged items
+        page_items = []
+        for item in raw_page_items:
+            opp_obj = item.pop("_opp_obj", None)
+            if opp_obj:
+                item["structured_intelligence"] = generate_opportunity_intelligence(opp_obj)
+            page_items.append(item)
+
+        sources_summary = [
+            {"source": src, "count": count}
+            for src, count in sorted(source_breakdown.items(), key=lambda x: -x[1])
+        ]
+
+        active_count = sum(1 for item in bounded_pool if item.get("deadline_status") != "Expired")
+        coverage_metrics = {
+            "total_opportunities": total_unique_matching,
+            "active_opportunities": active_count,
+            "sources_count": len(sources_summary),
+            "last_synchronized": datetime.utcnow().strftime("%d %b %Y"),
+        }
 
         return {
-            "total": len(results),
-            "recommendations": results,
+            "total": total_unique_matching,
+            "recommendations": page_items,
+            "items": page_items,
+            "page": current_page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "has_next": current_page < total_pages,
+            "has_previous": current_page > 1,
+            "threshold": min_score,
+            "sort": sort,
+            "sources": sources_summary,
+            "source_coverage": coverage_metrics,
             "profile_used": profile_metadata,
-            "message": f"Successfully matched {len(results)} opportunities using AI semantic ranking.",
+            "message": f"Successfully matched {total_unique_matching} opportunities across {len(sources_summary)} funding sources using AI semantic ranking.",
         }
 
     def search_funding_opportunities(

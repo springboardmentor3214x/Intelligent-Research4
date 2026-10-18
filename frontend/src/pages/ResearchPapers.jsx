@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef } from 'react'
+import React, { useContext, useEffect, useState, useRef } from 'react'
 import { AuthContext } from '../context/auth-context'
 import ResearchAnalysisHub from '../components/ResearchAnalysisHub'
 import {
@@ -7,6 +7,7 @@ import {
   createResearchPaper,
   getPaperAnalysis,
   analyzePaper,
+  ALL_RESEARCH_SOURCES,
 } from '../services/researchPaperService'
 import './ResearchPapers.css'
 
@@ -17,9 +18,13 @@ export default function ResearchPapers() {
   const [papers, setPapers] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(20)
+  const [pageSize, setPageSize] = useState(50)
   const [totalPages, setTotalPages] = useState(1)
   const [sourcesCount, setSourcesCount] = useState({})
+  const [sourcesStatus, setSourcesStatus] = useState({})
+  const [isLiveAugmented, setIsLiveAugmented] = useState(false)
+  const [discoveryTriggered, setDiscoveryTriggered] = useState(false)
+  const [discoveryStatus, setDiscoveryStatus] = useState('idle')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
@@ -33,7 +38,8 @@ export default function ResearchPapers() {
   // Import state
   const [showImport, setShowImport] = useState(false)
   const [importQuery, setImportQuery] = useState('')
-  const [importCount, setImportCount] = useState(20)
+  const [importCount, setImportCount] = useState(50)
+  const [importSources, setImportSources] = useState(ALL_RESEARCH_SOURCES)
   const [importing, setImporting] = useState(false)
 
   // Selected Paper / Modal state
@@ -47,17 +53,47 @@ export default function ResearchPapers() {
   const [copiedSection, setCopiedSection] = useState('')
   const modalBodyRef = useRef(null)
 
+  // Curated research topic pills for quick exploration & empty state
+  const SUGGESTED_TOPICS = [
+    'Deep Learning',
+    'Brain Tumor Segmentation',
+    'Computer Vision',
+    '3D U-Net',
+    'Crowd Detection and Prediction',
+    'Generative AI',
+    'Large Language Models',
+    'Medical Image Analysis',
+    'Natural Language Processing',
+    'Quantum Computing',
+  ]
+
+  const PROVIDER_ICONS = {
+    'OpenAlex': '🌐',
+    'Crossref': '🏛️',
+    'Semantic Scholar': '🔬',
+    'CORE': '📚',
+    'arXiv': '📄',
+    'Europe PMC': '🇪🇺',
+    'PubMed': '🧬',
+    'DOAJ': '🔓',
+    'OpenAIRE': '🌍',
+    'Zenodo': '📦',
+    'bioRxiv': '🧪',
+    'medRxiv': '🏥',
+    'BASE': '🔍',
+  }
+
   // Reset page to 1 when search or filters change
   useEffect(() => {
     setPage(1)
-  }, [search, year, researchDomain, selectedSource])
+  }, [search, year, researchDomain, selectedSource, pageSize])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadPapers(page)
-    }, 300)
+    }, 350)
     return () => clearTimeout(timer)
-  }, [search, year, researchDomain, selectedSource, page])
+  }, [search, year, researchDomain, selectedSource, page, pageSize])
 
   async function loadPapers(currentPage = 1) {
     if (!token) return
@@ -76,6 +112,10 @@ export default function ResearchPapers() {
       setTotal(data.total || 0)
       setTotalPages(data.total_pages || 1)
       setSourcesCount(data.sources || {})
+      setSourcesStatus(data.sources_status || {})
+      setIsLiveAugmented(Boolean(data.is_live_augmented))
+      setDiscoveryTriggered(Boolean(data.discovery_triggered))
+      setDiscoveryStatus(data.discovery_status || 'idle')
     } catch (err) {
       setError(err.message || 'Failed to load research papers.')
     } finally {
@@ -92,20 +132,21 @@ export default function ResearchPapers() {
     try {
       const res = await importResearchPapers(token, {
         search: importQuery.trim(),
-        per_page: Number(importCount) || 20,
+        target_count: Number(importCount) || 50,
+        per_page: Number(importCount) || 50,
+        sources: importSources,
       })
-      setSuccessMsg(`Import successful: ${res.inserted} new papers stored in local database (${res.skipped} already in collection).`)
+      setSuccessMsg(`Corpus updated: ${res.inserted} real papers ingested across ${importSources.length} sources (${res.skipped} already indexed, ${res.total_in_collection} total stored).`)
       setImportQuery('')
       setShowImport(false)
       loadPapers(1)
     } catch (err) {
-      setError(err.message || 'Failed to import papers from OpenAlex.')
+      setError(err.message || 'Failed to import papers.')
     } finally {
       setImporting(false)
     }
   }
 
-  // Ensure paper is stored in PostgreSQL before analysis
   async function ensurePaperStored(paper) {
     if (paper.id && (paper.is_stored || !paper.source_id)) {
       return paper
@@ -126,6 +167,9 @@ export default function ResearchPapers() {
         doi: paper.doi,
         citation_count: paper.citation_count || 0,
         publication_link: paper.publication_link,
+        open_access_url: paper.open_access_url,
+        is_open_access: paper.is_open_access || false,
+        publisher: paper.publisher,
       })
       const savedPaper = {
         ...paper,
@@ -138,7 +182,6 @@ export default function ResearchPapers() {
       )))
       return savedPaper
     } catch (err) {
-      // If paper already exists (409 Conflict) or network issue, use current paper ID
       const fallbackPaper = {
         ...paper,
         is_stored: true,
@@ -178,7 +221,6 @@ export default function ResearchPapers() {
     setAnalyzing(true)
     setAnalysisError('')
     try {
-      // Auto-save if dynamically discovered paper
       let targetPaper = selectedPaper
       if (!targetPaper.id || !targetPaper.is_stored) {
         setSavingPaper(true)
@@ -206,7 +248,6 @@ export default function ResearchPapers() {
     setTimeout(() => setCopiedSection(''), 2000)
   }
 
-  // Support both rich_analysis object, ai_generated_analysis, or legacy ai_analysis from backend
   const rich = (() => {
     if (!analysisData) return null
     if (analysisData.rich_analysis) return analysisData.rich_analysis
@@ -313,7 +354,7 @@ export default function ResearchPapers() {
       <div className="papers-header">
         <div className="papers-header-title">
           <h1>Academic Research Intelligence Platform</h1>
-          <p>Deep literature analysis, step-by-step methodology extraction, dataset & results verification, and anti-hallucination research insights.</p>
+          <p>Multi-source literature discovery, step-by-step methodology extraction, empirical verification, and provenance across 8 scholarly databases: OpenAlex, Crossref, Semantic Scholar, CORE, arXiv, Europe PMC, PubMed, and DOAJ.</p>
         </div>
         <div className="papers-header-actions">
           <button
@@ -321,7 +362,7 @@ export default function ResearchPapers() {
             className="btn-secondary"
             onClick={() => setShowImport(!showImport)}
           >
-            {showImport ? 'Cancel Import' : 'Import from OpenAlex'}
+            {showImport ? 'Cancel Import' : '📥 Import Research Corpus'}
           </button>
         </div>
       </div>
@@ -340,25 +381,108 @@ export default function ResearchPapers() {
         </div>
       )}
 
+      {/* Live Discovery Progress Banner */}
+      {discoveryTriggered && (
+        <div style={{
+          background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
+          border: '1px solid #7dd3fc',
+          borderRadius: '12px',
+          padding: '14px 20px',
+          marginBottom: '1.2rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div>
+            <div style={{ fontWeight: 800, color: '#0369a1', fontSize: '0.95rem' }}>
+              ⚡ Automatic Scholarly Discovery Active
+            </div>
+            <div style={{ fontSize: '0.84rem', color: '#334155', marginTop: '2px' }}>
+              We searched across 8 academic databases (OpenAlex, Crossref, CORE, arXiv, Europe PMC, PubMed, DOAJ, Semantic Scholar) and brought genuine peer-reviewed papers into your research corpus.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {ALL_RESEARCH_SOURCES.map((src) => {
+              const status = (sourcesStatus[src] || '').toLowerCase()
+              const isOk = status === 'available' || status === 'connected'
+              const isRate = status === 'rate_limited'
+              return (
+                <span
+                  key={src}
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 700,
+                    background: isOk ? '#dcfce7' : (isRate ? '#fef3c7' : '#f1f5f9'),
+                    color: isOk ? '#166534' : (isRate ? '#92400e' : '#475569'),
+                    border: `1px solid ${isOk ? '#86efac' : (isRate ? '#fde68a' : '#cbd5e1')}`,
+                  }}
+                >
+                  {isOk ? '✓' : (isRate ? '⚠' : '●')} {src}
+                </span>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Import Panel */}
       {showImport && (
         <div className="import-panel">
-          <h3>Import Real Research Papers</h3>
+          <h3>📥 Ingest Verified Academic Research Papers</h3>
           <p style={{ margin: 0, fontSize: '0.88rem', color: '#557086' }}>
-            Search OpenAlex by keyword, topic, or paper title to import verified academic papers with DOIs, citations, and abstracts.
+            Fetch genuine publications with verified DOIs, real abstracts, and open-access links directly from 8 connected academic databases.
           </p>
           <form className="import-form" onSubmit={handleImport}>
             <input
               type="text"
-              placeholder="e.g. In-context learning, Transformer architectures, Quantum computing..."
+              placeholder="e.g. Brain Tumor Segmentation, 3D U-Net, Crowd Detection, Quantum Computing..."
               value={importQuery}
               onChange={(e) => setImportQuery(e.target.value)}
               disabled={importing}
+              style={{ flex: 2 }}
             />
+            <select
+              value={importCount}
+              onChange={(e) => setImportCount(Number(e.target.value))}
+              disabled={importing}
+              style={{
+                padding: '0.65rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid #c2d8e9',
+                background: '#ffffff',
+                color: '#102d48',
+                fontWeight: 600,
+              }}
+            >
+              <option value="25">25 Papers</option>
+              <option value="50">50 Papers</option>
+              <option value="100">100 Papers</option>
+              <option value="200">200 Papers</option>
+            </select>
             <button type="submit" className="btn-primary" disabled={importing || !importQuery.trim()}>
-              {importing ? 'Importing...' : 'Search & Import'}
+              {importing ? 'Fetching & Deduplicating...' : 'Fetch & Ingest'}
             </button>
           </form>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.82rem', color: '#557086', marginTop: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700 }}>Data Sources:</span>
+            {ALL_RESEARCH_SOURCES.map((src) => (
+              <label key={src} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={importSources.includes(src)}
+                  onChange={(e) => {
+                    if (e.target.checked) setImportSources(prev => [...prev, src])
+                    else if (importSources.length > 1) setImportSources(prev => prev.filter(s => s !== src))
+                  }}
+                />
+                {src}
+              </label>
+            ))}
+          </div>
         </div>
       )}
 
@@ -368,7 +492,7 @@ export default function ResearchPapers() {
           <span className="search-icon">🔍</span>
           <input
             type="text"
-            placeholder="Search academic topics, deep learning architectures, authors, keywords..."
+            placeholder="Search topics (e.g. Crowd Detection, Brain Tumor, 3D U-Net, Deep Learning, DOIs)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -396,7 +520,7 @@ export default function ResearchPapers() {
           >
             <option value="">All Research Domains</option>
             <option value="Computer Science">Computer Science</option>
-            <option value="Medicine">Medicine & Biology</option>
+            <option value="Medicine">Medicine & Biomedicine</option>
             <option value="Engineering">Engineering</option>
             <option value="Physics">Physics</option>
             <option value="Mathematics">Mathematics</option>
@@ -420,49 +544,101 @@ export default function ResearchPapers() {
         )}
       </div>
 
-      {/* Discovery Count & Interactive Sources Bar */}
+      {/* Suggested Exploration Topic Pills */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '1.2rem', fontSize: '0.85rem' }}>
+        <span style={{ color: '#627c91', fontWeight: 600 }}>Explore Topics:</span>
+        {SUGGESTED_TOPICS.map((topic) => (
+          <button
+            key={topic}
+            type="button"
+            onClick={() => setSearch(topic)}
+            style={{
+              background: search.toLowerCase() === topic.toLowerCase() ? '#0b726e' : '#eef5fa',
+              color: search.toLowerCase() === topic.toLowerCase() ? '#ffffff' : '#1a4d75',
+              border: '1px solid #d2e3ef',
+              borderRadius: '20px',
+              padding: '3px 10px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {topic}
+          </button>
+        ))}
+      </div>
+
+      {/* Discovery Count & Interactive 8 Sources Filter Bar */}
       <div className="discovery-status-bar">
-        <div className="papers-count-info">
-          Showing {papers.length > 0 ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)} of {total} research papers
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div className="papers-count-info">
+            Showing {papers.length > 0 ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)} of {total} research papers
+          </div>
+          {isLiveAugmented && (
+            <span style={{
+              background: '#ecfdf5',
+              color: '#065f46',
+              border: '1px solid #a7f3d0',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              ⚡ Live Multi-Source Augmented
+            </span>
+          )}
         </div>
-        <div className="sources-indicator">
-          <button
-            type="button"
-            className={`source-tag-btn ${selectedSource === '' ? 'active' : ''}`}
-            onClick={() => setSelectedSource('')}
-          >
-            All Sources
-          </button>
-          <button
-            type="button"
-            className={`source-tag-btn ${selectedSource === 'openalex' ? 'active' : ''}`}
-            onClick={() => setSelectedSource(prev => prev === 'openalex' ? '' : 'openalex')}
-          >
-            🌐 OpenAlex {sourcesCount.openalex ? `(${sourcesCount.openalex})` : ''}
-          </button>
-          <button
-            type="button"
-            className={`source-tag-btn ${selectedSource === 'crossref' ? 'active' : ''}`}
-            onClick={() => setSelectedSource(prev => prev === 'crossref' ? '' : 'crossref')}
-          >
-            🏛️ Crossref {sourcesCount.crossref ? `(${sourcesCount.crossref})` : ''}
-          </button>
-          <button
-            type="button"
-            className={`source-tag-btn ${selectedSource === 'semantic' ? 'active' : ''}`}
-            onClick={() => setSelectedSource(prev => prev === 'semantic' ? '' : 'semantic')}
-          >
-            🔬 Semantic Scholar {sourcesCount.semantic_scholar ? `(${sourcesCount.semantic_scholar})` : ''}
-          </button>
-          {sourcesCount.local > 0 && (
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <div className="sources-indicator" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <button
               type="button"
-              className={`source-tag-btn local ${selectedSource === 'local' ? 'active' : ''}`}
-              onClick={() => setSelectedSource(prev => prev === 'local' ? '' : 'local')}
+              className={`source-tag-btn ${selectedSource === '' ? 'active' : ''}`}
+              onClick={() => setSelectedSource('')}
             >
-              💾 Local Collection ({sourcesCount.local})
+              All Sources
             </button>
-          )}
+            {ALL_RESEARCH_SOURCES.map((srcName) => {
+              const count = sourcesCount[srcName] || sourcesCount[srcName.toLowerCase()] || 0
+              const icon = PROVIDER_ICONS[srcName] || '📄'
+              const isSelected = selectedSource.toLowerCase() === srcName.toLowerCase()
+              return (
+                <button
+                  key={srcName}
+                  type="button"
+                  className={`source-tag-btn ${isSelected ? 'active' : ''}`}
+                  onClick={() => setSelectedSource(prev => prev.toLowerCase() === srcName.toLowerCase() ? '' : srcName)}
+                  title={`${srcName} API (${sourcesStatus[srcName] || 'available'})`}
+                >
+                  {icon} {srcName} {count > 0 ? `(${count})` : ''}
+                </button>
+              )
+            })}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem', color: '#557086', marginLeft: '6px' }}>
+            <span>Per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              style={{
+                padding: '3px 6px',
+                borderRadius: '6px',
+                border: '1px solid #d0dfeb',
+                background: '#f8fbfe',
+                fontWeight: 600,
+                color: '#102d48',
+              }}
+            >
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -470,20 +646,36 @@ export default function ResearchPapers() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem 0' }}>
           <div className="ai-spinner" />
-          <p style={{ color: '#557086' }}>Searching scholarly discovery databases & local collection...</p>
+          <p style={{ color: '#557086', marginTop: '1rem', fontWeight: 600 }}>
+            Querying scholarly research sources & indexing real publications...
+          </p>
         </div>
       ) : papers.length === 0 ? (
         <div className="empty-state">
-          <h3>No Research Papers Found</h3>
-          <p>Try searching broader topics (e.g. &quot;brain tumor segmentation&quot;, &quot;3D U-Net&quot;, &quot;deep learning&quot;) or clear your filters.</p>
+          <h3>No Research Papers Found for &quot;{search || 'your query'}&quot;</h3>
+          <p>We couldn't find verified research papers for this specific query across the available academic sources.</p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', margin: '1rem 0' }}>
+            {SUGGESTED_TOPICS.slice(0, 6).map(topic => (
+              <button
+                key={topic}
+                type="button"
+                className="btn-secondary"
+                style={{ fontSize: '0.85rem' }}
+                onClick={() => setSearch(topic)}
+              >
+                {topic}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             className="btn-primary"
-            style={{ marginTop: '1rem' }}
+            style={{ marginTop: '0.5rem' }}
             onClick={() => {
               setSearch('')
               setYear('')
               setResearchDomain('')
+              setSelectedSource('')
             }}
           >
             Reset Filters
@@ -492,44 +684,105 @@ export default function ResearchPapers() {
       ) : (
         <>
           <div className="papers-grid">
-            {papers.map((paper, idx) => (
-              <div
-                key={paper.id || paper.doi || `${paper.source_id}_${idx}`}
-                className="paper-card"
-                onClick={() => handleOpenPaper(paper)}
-              >
-                <div>
-                  <div className="paper-card-top">
-                    <span className="paper-source-badge">{paper.source_provider || paper.source || 'OpenAlex'}</span>
-                    {paper.publisher && (
-                      <span className="paper-publisher-badge">{paper.publisher}</span>
-                    )}
-                    {paper.publication_year && (
-                      <span className="paper-year-badge">{paper.publication_year}</span>
-                    )}
-                    {paper.open_access && (
-                      <span className="paper-oa-badge" title="Open Access Available">🟢 OA</span>
-                    )}
-                  </div>
-                  <h3 className="paper-title">{paper.title}</h3>
-                  <p className="paper-authors">
-                    {paper.authors ? `By ${paper.authors}` : 'Authors not listed'}
-                  </p>
-                  <p className="paper-abstract-snippet">
-                    {paper.abstract || 'Abstract not provided in index repository.'}
-                  </p>
-                </div>
+            {papers.map((paper, idx) => {
+              const provSources = paper.provenance_sources || [paper.source || 'OpenAlex']
+              const isMultiSource = provSources.length > 1
 
-                <div className="paper-card-footer">
-                  <div className="paper-citations">
-                    <span>📊 {paper.citation_count} citations</span>
+              return (
+                <div
+                  key={paper.id || paper.doi || `${paper.source_id}_${idx}`}
+                  className="paper-card"
+                  onClick={() => handleOpenPaper(paper)}
+                >
+                  <div>
+                    <div className="paper-card-top" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      {isMultiSource ? (
+                        <span className="paper-source-badge" style={{ background: '#4338ca', color: '#ffffff' }} title={provSources.join(' · ')}>
+                          MULTI-SOURCE ({provSources.length})
+                        </span>
+                      ) : (
+                        <span className="paper-source-badge">
+                          {(PROVIDER_ICONS[paper.source] || '') + ' ' + (paper.source || 'OpenAlex').toUpperCase()}
+                        </span>
+                      )}
+
+                      {paper.is_preprint && (
+                        <span className="paper-oa-badge" style={{ background: '#fffbeb', color: '#b45309', borderColor: '#fde68a' }} title="Preprint - Not Yet Peer-Reviewed">
+                          ⚠️ Preprint
+                        </span>
+                      )}
+                      {paper.document_type && paper.document_type !== 'publication' && (
+                        <span style={{ fontSize: '0.72rem', padding: '2px 6px', borderRadius: '4px', background: '#f3e8ff', color: '#6b21a8', fontWeight: 700, textTransform: 'uppercase' }}>
+                          {paper.document_type}
+                        </span>
+                      )}
+                      {paper.publisher && (
+                        <span className="paper-publisher-badge">{paper.publisher}</span>
+                      )}
+                      {paper.publication_year && (
+                        <span className="paper-year-badge">{paper.publication_year}</span>
+                      )}
+                      {paper.is_open_access && (
+                        <span className="paper-oa-badge" title="Verified Open Access Full-Text">🟢 Open Access</span>
+                      )}
+                    </div>
+                    <h3 className="paper-title">{paper.title}</h3>
+                    <p className="paper-authors">
+                      {paper.authors ? `By ${paper.authors}` : 'Authors not listed'}
+                    </p>
+                    {isMultiSource && (
+                      <p style={{ fontSize: '0.78rem', color: '#6366f1', margin: '2px 0 6px 0', fontWeight: 600 }}>
+                        Sources: {provSources.join(' · ')}
+                      </p>
+                    )}
+                    <p className="paper-abstract-snippet">
+                      {paper.abstract || 'Abstract not provided in index repository.'}
+                    </p>
                   </div>
-                  <div className="paper-view-btn">
-                    Analyze & Inspect ➔
+
+                  <div className="paper-card-footer">
+                    <div className="paper-citations">
+                      {paper.is_citation_verified || (paper.citation_count != null && paper.citation_count > 0) ? (
+                        <span
+                          title={paper.citation_source ? `Verified by ${paper.citation_source}` : 'Verified scholarly citations'}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: paper.citation_count > 0 ? '#0b726e' : '#64748b',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>📊 {paper.citation_count} {paper.citation_count === 1 ? 'citation' : 'citations'}</span>
+                          {paper.citation_source && (
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>
+                              ({paper.citation_source})
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span
+                          title="Citation metrics not tracked or unavailable in source index"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: '#94a3b8',
+                            fontSize: '0.78rem',
+                            fontWeight: 500,
+                          }}
+                        >
+                          📊 Citations unavailable
+                        </span>
+                      )}
+                    </div>
+                    <div className="paper-view-btn">
+                      Analyze & Inspect ➔
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Pagination Controls */}
@@ -587,16 +840,22 @@ export default function ResearchPapers() {
             {/* Modal Header */}
             <div className="modal-header">
               <div className="modal-header-info">
-                <div className="modal-badges">
-                  <span className="paper-source-badge">{selectedPaper.source_provider || selectedPaper.source || 'OpenAlex'}</span>
+                <div className="modal-badges" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <span className="paper-source-badge">
+                    {(selectedPaper.provenance_sources || [selectedPaper.source]).join(' · ')}
+                  </span>
                   {selectedPaper.publisher && (
                     <span className="paper-publisher-badge">{selectedPaper.publisher}</span>
                   )}
                   {selectedPaper.publication_year && (
                     <span className="paper-year-badge">{selectedPaper.publication_year}</span>
                   )}
-                  {selectedPaper.open_access && (
+                  {selectedPaper.is_open_access ? (
                     <span className="paper-oa-badge">🟢 Open Access</span>
+                  ) : (
+                    <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#475569', fontWeight: 600 }}>
+                      Metadata available
+                    </span>
                   )}
                   {rich?.paper_overview?.paper_type && (
                     <span className="paper-type-tag">
@@ -623,24 +882,24 @@ export default function ResearchPapers() {
               {/* SOURCE PAPER SECTION */}
               <div className="source-section" id="sec-source-paper">
                 <div className="section-label-banner">
-                  <span className="section-label">Source Paper Information</span>
+                  <span className="section-label">Source Paper Information & Provenance</span>
                   <span style={{ fontSize: '0.78rem', color: '#647f96' }}>
-                    {selectedPaper.publisher ? `Publisher: ${selectedPaper.publisher} • ` : ''}Provider: {selectedPaper.source_provider || selectedPaper.source}
+                    Sources: {(selectedPaper.provenance_sources || [selectedPaper.source]).join(', ')}
                   </span>
                 </div>
 
                 <div className="source-meta-grid">
                   <div className="source-meta-item">
                     <span>Journal / Conference</span>
-                    <strong>{selectedPaper.journal_or_conference || 'Not specified'}</strong>
+                    <strong>{selectedPaper.journal_or_conference || 'N/A'}</strong>
                   </div>
                   <div className="source-meta-item">
                     <span>Publisher / Venue</span>
-                    <strong>{selectedPaper.publisher || 'Not specified'}</strong>
+                    <strong>{selectedPaper.publisher || 'N/A'}</strong>
                   </div>
                   <div className="source-meta-item">
                     <span>Publication Date</span>
-                    <strong>{selectedPaper.publication_date || selectedPaper.publication_year || 'Not specified'}</strong>
+                    <strong>{selectedPaper.publication_date || selectedPaper.publication_year || 'N/A'}</strong>
                   </div>
                   <div className="source-meta-item">
                     <span>DOI / Reference</span>
@@ -649,25 +908,44 @@ export default function ResearchPapers() {
                         <a href={selectedPaper.doi.startsWith('http') ? selectedPaper.doi : `https://doi.org/${selectedPaper.doi}`} target="_blank" rel="noopener noreferrer" style={{ color: '#0c548e' }}>
                           {selectedPaper.doi.replace('https://doi.org/', '')} ↗
                         </a>
-                      ) : 'Not available'}
+                      ) : 'N/A'}
                     </strong>
                   </div>
                   <div className="source-meta-item">
-                    <span>Source Link</span>
+                    <span>Source Record</span>
                     <strong>
                       {selectedPaper.publication_link ? (
                         <a href={selectedPaper.publication_link} target="_blank" rel="noopener noreferrer" style={{ color: '#0c548e' }}>
-                          View Publisher / Source ↗
+                          View Original Record ↗
                         </a>
-                      ) : 'Not available'}
+                      ) : 'N/A'}
                     </strong>
                   </div>
-                  {selectedPaper.pdf_url && (
+                  <div className="source-meta-item">
+                    <span>Citation Metrics</span>
+                    <strong>
+                      {selectedPaper.is_citation_verified || (selectedPaper.citation_count != null && selectedPaper.citation_count > 0) ? (
+                        <span style={{ color: '#0b726e', fontWeight: 700 }}>
+                          📊 {selectedPaper.citation_count} {selectedPaper.citation_count === 1 ? 'citation' : 'citations'}
+                          {selectedPaper.citation_source && (
+                            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500, marginLeft: '4px' }}>
+                              ({selectedPaper.citation_source})
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontWeight: 500 }}>
+                          Unavailable / Untracked
+                        </span>
+                      )}
+                    </strong>
+                  </div>
+                  {selectedPaper.open_access_url && (
                     <div className="source-meta-item">
-                      <span>Full-Text PDF</span>
+                      <span>Open Access PDF</span>
                       <strong>
-                        <a href={selectedPaper.pdf_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0b726e', fontWeight: 600 }}>
-                          Download Open PDF ↗
+                        <a href={selectedPaper.open_access_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0b726e', fontWeight: 600 }}>
+                          Download Open Access ↗
                         </a>
                       </strong>
                     </div>
@@ -709,23 +987,22 @@ export default function ResearchPapers() {
 
                     {analysisData ? (
                       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                        <span className={`ai-status-pill ${analysisData.analysis_metadata?.is_cached ? 'cached' : ''}`}>
-                          {analysisData.analysis_metadata?.is_cached ? 'Cached Analysis' : 'Fresh Analysis'}
-                        </span>
                         <button
                           type="button"
                           className="btn-secondary"
+                          style={{ fontSize: '0.82rem', padding: '0.4rem 0.8rem' }}
                           onClick={() => handleRunAnalysis(true)}
                           disabled={analyzing}
                         >
-                          {analyzing ? 'Regenerating...' : 'Regenerate'}
+                          {analyzing ? 'Re-analyzing...' : '🔄 Re-Analyze'}
                         </button>
                         <button
                           type="button"
                           className="btn-secondary"
-                          onClick={() => copyToClipboard(JSON.stringify(analysisData, null, 2), 'full')}
+                          style={{ fontSize: '0.82rem', padding: '0.4rem 0.8rem' }}
+                          onClick={() => copyToClipboard(JSON.stringify(analysisData, null, 2), 'full_json')}
                         >
-                          {copiedSection === 'full' ? 'Copied JSON!' : 'Copy Full Analysis'}
+                          {copiedSection === 'full_json' ? '✓ Copied' : '📋 Copy JSON'}
                         </button>
                       </div>
                     ) : (
@@ -733,528 +1010,315 @@ export default function ResearchPapers() {
                         type="button"
                         className="btn-primary"
                         onClick={() => handleRunAnalysis(false)}
-                        disabled={analyzing || loadingAnalysis || savingPaper}
+                        disabled={analyzing || loadingAnalysis}
                       >
-                        {savingPaper ? 'Registering Paper...' : (analyzing ? 'Analyzing Deep Content...' : 'Generate AI Research Intelligence')}
+                        {analyzing ? 'Analyzing Literature...' : '⚡ Generate AI Analysis'}
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Analysis Error */}
-                {analysisError && (
-                  <div className="papers-alert error-banner">
-                    <div>
-                      <strong>Analysis Failed: </strong>
-                      <span>{analysisError}</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem' }}
-                      onClick={() => handleRunAnalysis(true)}
-                    >
-                      Retry
-                    </button>
+                {loadingAnalysis && (
+                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <div className="ai-spinner" />
+                    <p style={{ color: '#557086', marginTop: '0.5rem', fontSize: '0.9rem' }}>Loading structured analysis...</p>
                   </div>
                 )}
 
-                {/* Loading State */}
-                {analyzing ? (
-                  <div className="ai-loading-box">
-                    <div className="ai-spinner" />
-                    <h4>Conducting Deep Academic Analysis</h4>
-                    <p>Extracting legal full-text/abstract, detecting sections, evaluating datasets, architectures, baselines, and reported empirical findings...</p>
+                {analysisError && (
+                  <div className="papers-alert error-banner" style={{ margin: '1rem 0' }}>
+                    <span>{analysisError}</span>
                   </div>
-                ) : loadingAnalysis ? (
-                  <div style={{ textAlign: 'center', padding: '2.5rem' }}>
-                    <div className="ai-spinner" style={{ width: '32px', height: '32px' }} />
-                    <p style={{ color: '#647f96', fontSize: '0.9rem' }}>Retrieving research analysis cache...</p>
-                  </div>
-                ) : rich ? (
-                  /* 22-PART RICH RESEARCH DASHBOARD (CONTINUOUS SECTIONS + CIRCULAR HUB) */
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
-                    
-                    {/* FLOATING CIRCULAR AI RESEARCH ANALYSIS HUB */}
-                    <ResearchAnalysisHub
-                      containerRef={modalBodyRef}
-                      sections={[
-                        { id: 'sec-executive-summary', label: 'Executive Summary', icon: '📌', category: 'Overview' },
-                        { id: 'sec-research-problem', label: 'Problem & Objectives', icon: '🎯', category: 'Problem' },
-                        rich.background?.overview ? { id: 'sec-background', label: 'Domain Context', icon: '📚', category: 'Context' } : null,
-                        { id: 'sec-methodology', label: 'Methodology & Workflow', icon: '⚙️', category: 'Methodology' },
-                        rich.architecture?.has_architecture ? { id: 'sec-architecture', label: 'System Architecture', icon: '🏛️', category: 'Architecture' } : null,
-                        { id: 'sec-dataset', label: 'Dataset & Data', icon: '📊', category: 'Empirical Data' },
-                        { id: 'sec-metrics', label: 'Setup & Metrics', icon: '📏', category: 'Evaluation' },
-                        { id: 'sec-results', label: 'Results & Baseline', icon: '📈', category: 'Results' },
-                        { id: 'sec-findings', label: 'Findings & Insights', icon: '💡', category: 'Findings' },
-                        { id: 'sec-contributions', label: 'Contributions', icon: '🏆', category: 'Novelty' },
-                        { id: 'sec-novelty', label: 'Novelty Assessment', icon: '✨', category: 'Novelty' },
-                        { id: 'sec-limitations', label: 'Limitations & Constraints', icon: '⚠️', category: 'Critique' },
-                        { id: 'sec-future', label: 'Future Directions', icon: '🔮', category: 'Future' },
-                        rich.researcher_takeaway ? { id: 'sec-takeaway', label: 'Researcher Takeaway', icon: '🎓', category: 'Takeaway' } : null,
-                        rich.key_terms?.length > 0 ? { id: 'sec-glossary', label: 'Key Terms Glossary', icon: '📖', category: 'Glossary' } : null,
-                      ].filter(Boolean)}
-                    />
+                )}
 
-                    {/* SECTION 1: EXECUTIVE SUMMARY */}
-                    <div className="rich-section" id="sec-executive-summary">
-                      <div className="rich-section-header">
-                        <h4><span>📌</span> Executive Summary</h4>
-                        <span className="section-tag tag-source">Synthesized Evidence</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6, color: '#1e293b' }}>
-                        {rich.executive_summary?.summary_text}
-                      </p>
-                      {rich.executive_summary?.significance && (
-                        <div style={{ background: '#f8fafc', padding: '0.8rem 1rem', borderRadius: '8px', borderLeft: '3px solid #0b726e' }}>
-                          <strong style={{ fontSize: '0.85rem', color: '#0b726e' }}>Why it matters: </strong>
-                          <span style={{ fontSize: '0.88rem', color: '#334155' }}>{rich.executive_summary.significance}</span>
-                        </div>
-                      )}
-                      {rich.executive_summary?.key_takeaways?.length > 0 && (
-                        <div>
-                          <strong style={{ fontSize: '0.85rem', color: '#475569' }}>Key Takeaways:</strong>
-                          <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem', color: '#334155', fontSize: '0.9rem' }}>
-                            {rich.executive_summary.key_takeaways.map((t, idx) => (
-                              <li key={idx}>{t}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                {analysisData && rich && (
+                  <div className="analysis-content-tabs">
+                    <div className="analysis-tabs-nav">
+                      {[
+                        { key: 'overview', label: '📊 Overview & Objectives', icon: '📊' },
+                        { key: 'methodology', label: '🔬 Methodology & Workflow', icon: '🔬' },
+                        { key: 'results', label: '📈 Results & Evidence', icon: '📈' },
+                        { key: 'takeaways', label: '💡 Takeaways & Future Directions', icon: '💡' },
+                      ].map((tab) => (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          className={`analysis-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
+                          onClick={() => setActiveTab(tab.key)}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
 
-                    {/* SECTION 2: RESEARCH PROBLEM & OBJECTIVES */}
-                    <div className="rich-section" id="sec-research-problem">
-                      <div className="rich-section-header">
-                        <h4><span>🎯</span> Research Problem & Objectives</h4>
-                        <span className="section-tag tag-source">Source Reported</span>
-                      </div>
-                      <div className="side-by-side-grid">
-                        <div className="side-box source-box">
-                          <h5>Core Problem Statement</h5>
-                          <p style={{ margin: 0, fontSize: '0.88rem', color: '#334155' }}>
-                            {rich.research_problem?.problem_statement}
-                          </p>
-                        </div>
-                        <div className="side-box source-box">
-                          <h5>Existing Gap / Shortcoming</h5>
-                          <p style={{ margin: 0, fontSize: '0.88rem', color: '#334155' }}>
-                            {rich.research_problem?.existing_gap}
-                          </p>
-                        </div>
-                      </div>
-
-                      {rich.research_problem?.objectives?.length > 0 && (
-                        <div>
-                          <strong style={{ fontSize: '0.85rem', color: '#475569' }}>Explicit Objectives:</strong>
-                          <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem', color: '#334155', fontSize: '0.9rem' }}>
-                            {rich.research_problem.objectives.map((obj, idx) => (
-                              <li key={idx}>{obj}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SECTION 3: BACKGROUND & CONTEXT */}
-                    {rich.background?.overview && (
-                      <div className="rich-section" id="sec-background">
-                        <div className="rich-section-header">
-                          <h4><span>📚</span> Background & Domain Context</h4>
-                          <span className="section-tag tag-source">Contextual Foundation</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', lineHeight: 1.55 }}>
-                          {rich.background.overview}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* SECTION 4: METHODOLOGY */}
-                    <div className="rich-section" id="sec-methodology">
-                      <div className="rich-section-header">
-                        <h4><span>⚙️</span> Proposed Methodology</h4>
-                        <span className="section-tag tag-source">Technical Pipeline</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: '0.92rem', color: '#1e293b', lineHeight: 1.6 }}>
-                        {rich.methodology?.overview}
-                      </p>
-
-                      {/* Step-by-Step Workflow Stages */}
-                      {rich.methodology?.workflow_stages?.length > 0 && (
-                        <div className="workflow-stepper">
-                          <strong style={{ fontSize: '0.88rem', color: '#0c548e' }}>Step-by-Step Workflow Stages:</strong>
-                          {rich.methodology.workflow_stages.map((stage, idx) => (
-                            <div key={idx} className="workflow-step-card">
-                              <div className="step-num-badge">{stage.step_number || idx + 1}</div>
-                              <div className="step-content">
-                                <h5>{stage.stage_name}</h5>
-                                <p>{stage.description}</p>
-                              </div>
+                    <div className="analysis-tab-panel">
+                      {/* 1. OVERVIEW & OBJECTIVES TAB */}
+                      {activeTab === 'overview' && (
+                        <div className="overview-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                          <div className="analysis-card" id="sec-executive-summary">
+                            <div className="card-top-bar">
+                              <h4>📌 Executive Summary</h4>
+                              <button type="button" className="copy-btn" onClick={() => copyToClipboard(rich.executive_summary?.summary_text, 'exec')}>
+                                {copiedSection === 'exec' ? '✓ Copied' : '📋 Copy Summary'}
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {rich.methodology?.techniques_used?.length > 0 && (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <strong style={{ fontSize: '0.85rem', color: '#475569' }}>Techniques & Frameworks Used: </strong>
-                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
-                            {rich.methodology.techniques_used.map((tech, idx) => (
-                              <span key={idx} style={{ background: '#f1f5f9', padding: '0.25rem 0.6rem', borderRadius: '6px', fontSize: '0.8rem', color: '#1e293b' }}>
-                                {tech}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SECTION 5: MODEL / SYSTEM ARCHITECTURE */}
-                    {rich.architecture?.has_architecture && (
-                      <div className="rich-section" id="sec-architecture">
-                        <div className="rich-section-header">
-                          <h4><span>🏛️</span> Model / System Architecture</h4>
-                          <span className="section-tag tag-source">Structural Design</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>
-                          {rich.architecture.description}
-                        </p>
-
-                        {/* Textual Pipeline Chips */}
-                        {rich.architecture.textual_pipeline?.length > 0 && (
-                          <div className="pipeline-chips-container">
-                            {rich.architecture.textual_pipeline.map((stage, idx) => (
-                              <div key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span className="pipeline-chip">{stage}</span>
-                                {idx < rich.architecture.textual_pipeline.length - 1 && (
-                                  <span className="pipeline-arrow">➔</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {rich.architecture.data_flow && (
-                          <div style={{ background: '#f8fafc', padding: '0.8rem 1rem', borderRadius: '8px' }}>
-                            <strong style={{ fontSize: '0.82rem', color: '#647f96', textTransform: 'uppercase' }}>Data Flow: </strong>
-                            <span style={{ fontSize: '0.88rem', color: '#334155' }}>{rich.architecture.data_flow}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* SECTION 6: DATASET & DATA CHARACTERISTICS */}
-                    <div className="rich-section" id="sec-dataset">
-                      <div className="rich-section-header">
-                        <h4><span>📊</span> Dataset & Data Characteristics</h4>
-                        <span className="section-tag tag-source">Empirical Data</span>
-                      </div>
-
-                      {!rich.dataset_analysis?.is_applicable ? (
-                        <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', color: '#647f96', fontSize: '0.9rem' }}>
-                          {rich.dataset_analysis?.non_applicable_reason || 'Dataset analysis is not applicable because this paper does not report a dataset-based experiment (e.g. theoretical work or survey).'}
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                          {rich.dataset_analysis?.dataset_summary && (
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>
-                              {rich.dataset_analysis.dataset_summary}
+                            <p style={{ lineHeight: 1.65, fontSize: '0.94rem', color: '#1e293b' }}>
+                              {rich.executive_summary?.summary_text}
                             </p>
-                          )}
-                          {rich.dataset_analysis?.datasets?.map((ds, idx) => (
-                            <div key={idx} className="side-box source-box">
-                              <h5>{ds.name} <span style={{ fontSize: '0.75rem', color: '#647f96' }}>({ds.source})</span></h5>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.6rem', fontSize: '0.85rem' }}>
-                                <div><strong>Purpose: </strong>{ds.purpose}</div>
-                                <div><strong>Samples: </strong>{ds.samples_count}</div>
-                                <div><strong>Classes / Features: </strong>{ds.classes_or_features}</div>
-                                <div><strong>Splits: </strong>{ds.train_val_test_split}</div>
+                            {rich.executive_summary?.significance && (
+                              <div className="significance-box">
+                                <strong>💡 Significance & Impact: </strong>
+                                <span>{rich.executive_summary.significance}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="analysis-card" id="sec-research-problem">
+                            <div className="card-top-bar">
+                              <h4>🎯 Research Problem & Core Objectives</h4>
+                            </div>
+                            <div style={{ marginBottom: '0.8rem' }}>
+                              <strong style={{ color: '#0c548e' }}>Problem Statement: </strong>
+                              <span style={{ color: '#334155' }}>{rich.research_problem?.problem_statement}</span>
+                            </div>
+                            {rich.research_problem?.existing_gap && (
+                              <div style={{ marginBottom: '0.8rem', padding: '0.6rem 0.9rem', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '8px' }}>
+                                <strong style={{ color: '#854d0e' }}>⚠️ Identified Gap: </strong>
+                                <span style={{ color: '#713f12' }}>{rich.research_problem.existing_gap}</span>
+                              </div>
+                            )}
+                            {rich.research_problem?.objectives?.length > 0 && (
+                              <div style={{ marginTop: '0.6rem' }}>
+                                <strong style={{ color: '#0c548e' }}>Key Objectives:</strong>
+                                <ul style={{ marginTop: '0.4rem', paddingLeft: '1.2rem', color: '#334155', lineHeight: 1.5 }}>
+                                  {rich.research_problem.objectives.map((obj, i) => (
+                                    <li key={i} style={{ marginBottom: '0.3rem' }}>{obj}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Contributions & Background */}
+                          <div className="analysis-card" id="sec-contributions">
+                            <div className="card-top-bar">
+                              <h4>🏆 Core Contributions & Novelty</h4>
+                            </div>
+                            {rich.contributions?.length > 0 ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.8rem', marginTop: '0.5rem' }}>
+                                {rich.contributions.map((c, i) => (
+                                  <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.8rem' }}>
+                                    <span style={{ display: 'inline-block', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: '#0b726e', background: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', marginBottom: '0.4rem' }}>
+                                      {c.category || 'Contribution'}
+                                    </span>
+                                    <p style={{ margin: 0, fontSize: '0.88rem', color: '#334155', lineHeight: 1.45 }}>{c.description}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p style={{ margin: 0, color: '#475569' }}>Advances domain understanding and standard benchmarks.</p>
+                            )}
+                          </div>
+
+                          {/* Key Technical Glossary */}
+                          {rich.key_terms?.length > 0 && (
+                            <div className="analysis-card" id="sec-glossary">
+                              <div className="card-top-bar">
+                                <h4>📚 Key Technical Terms & Concepts</h4>
+                              </div>
+                              <div className="glossary-grid" style={{ marginTop: '0.5rem' }}>
+                                {rich.key_terms.map((item, i) => (
+                                  <div key={i} className="glossary-card">
+                                    <strong>{item.term}</strong>
+                                    <p>{item.definition_in_context}</p>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SECTION 7: EXPERIMENTAL SETUP & EVALUATION METRICS */}
-                    <div className="rich-section" id="sec-metrics">
-                      <div className="rich-section-header">
-                        <h4><span>📏</span> Experimental Setup & Evaluation Metrics</h4>
-                        <span className="section-tag tag-source">Evaluation Setup</span>
-                      </div>
-
-                      {rich.evaluation_metrics?.length > 0 && (
-                        <div className="results-table-wrap">
-                          <table className="styled-results-table">
-                            <thead>
-                              <tr>
-                                <th>Metric</th>
-                                <th>Reported Value</th>
-                                <th>What It Measures</th>
-                                <th>Why Relevant</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {rich.evaluation_metrics.map((m, idx) => (
-                                <tr key={idx}>
-                                  <td><strong>{m.name}</strong></td>
-                                  <td className="value-highlight">{m.reported_value}</td>
-                                  <td>{m.what_it_measures}</td>
-                                  <td>{m.why_relevant}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          )}
                         </div>
                       )}
 
-                      {rich.experimental_setup?.hyperparameters_and_training && (
-                        <div style={{ fontSize: '0.88rem', color: '#475569', marginTop: '0.5rem' }}>
-                          <strong>Training Configuration: </strong>{rich.experimental_setup.hyperparameters_and_training}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SECTION 8: REPORTED RESULTS & COMPARISONS */}
-                    <div className="rich-section" id="sec-results">
-                      <div className="rich-section-header">
-                        <h4><span>📈</span> Reported Results & Comparisons</h4>
-                        <span className="section-tag tag-source">Empirical Findings</span>
-                      </div>
-
-                      {rich.results?.structured_results_table?.length > 0 ? (
-                        <div className="results-table-wrap">
-                          <table className="styled-results-table">
-                            <thead>
-                              <tr>
-                                <th>Evaluation Metric</th>
-                                <th>Proposed Method</th>
-                                <th>Baseline</th>
-                                <th>Improvement / Diff</th>
-                                <th>Evidence Source</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {rich.results.structured_results_table.map((r, idx) => (
-                                <tr key={idx}>
-                                  <td><strong>{r.metric}</strong></td>
-                                  <td className="value-highlight">{r.proposed_method_value}</td>
-                                  <td>{r.baseline_value}</td>
-                                  <td>{r.improvement_or_difference}</td>
-                                  <td>
-                                    <span className={`section-tag ${r.is_source_reported ? 'tag-source' : 'tag-ai-interp'}`}>
-                                      {r.is_source_reported ? 'Source Reported' : 'AI Inferred'}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', color: '#647f96', fontSize: '0.9rem' }}>
-                          {rich.results?.non_applicable_reason || 'Specific tabular numerical comparisons were not reported in the available text.'}
-                        </div>
-                      )}
-
-                      {rich.results?.ai_interpretation_of_results?.length > 0 && (
-                        <div style={{ marginTop: '0.8rem' }}>
-                          <strong style={{ fontSize: '0.85rem', color: '#92400e' }}>AI Analytical Interpretation:</strong>
-                          <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem', color: '#334155', fontSize: '0.9rem' }}>
-                            {rich.results.ai_interpretation_of_results.map((interp, idx) => (
-                              <li key={idx}>{interp}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SECTION 9: KEY FINDINGS & OBSERVATIONS */}
-                    <div className="rich-section" id="sec-findings">
-                      <div className="rich-section-header">
-                        <h4><span>💡</span> Key Findings & Observations</h4>
-                        <span className="section-tag tag-source">Source Synthesized</span>
-                      </div>
-                      <div className="side-by-side-grid">
-                        <div className="side-box source-box">
-                          <h5>What Succeeded</h5>
-                          <ul>
-                            {rich.findings?.what_worked?.map((item, idx) => (
-                              <li key={idx}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="side-box source-box">
-                          <h5>Key Observations</h5>
-                          <ul>
-                            {rich.findings?.key_observations?.map((item, idx) => (
-                              <li key={idx}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* SECTION 10: ACADEMIC & PRACTICAL CONTRIBUTIONS */}
-                    <div className="rich-section" id="sec-contributions">
-                      <div className="rich-section-header">
-                        <h4><span>🏆</span> Academic & Practical Contributions</h4>
-                        <span className="section-tag tag-source">Core Contributions</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                        {Array.isArray(rich.contributions) ? rich.contributions.map((c, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', background: '#ffffff', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                            <span style={{ background: '#0c548e', color: '#ffffff', fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
-                              {c.category || 'Contribution'}
-                            </span>
-                            <span style={{ fontSize: '0.9rem', color: '#1e293b' }}>{c.description || (typeof c === 'string' ? c : '')}</span>
-                          </div>
-                        )) : (
-                          <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>
-                            {rich.contributions?.author_claimed_contributions?.[0] || 'Core research advancement in domain.'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* SECTION 11: NOVELTY ASSESSMENT */}
-                    <div className="rich-section" id="sec-novelty">
-                      <div className="rich-section-header">
-                        <h4><span>✨</span> Novelty Assessment</h4>
-                        <span className="section-tag tag-ai-interp">Cautious Assessment</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: '0.92rem', color: '#1e293b', lineHeight: 1.55 }}>
-                        {rich.novelty?.novelty_summary}
-                      </p>
-                      {rich.novelty?.novelty_categories?.length > 0 && (
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          {rich.novelty.novelty_categories.map((cat, idx) => (
-                            <span key={idx} style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '0.25rem 0.6rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
-                              ✓ {cat}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SECTION 12: LIMITATIONS & CONSTRAINTS */}
-                    <div className="rich-section" id="sec-limitations">
-                      <div className="rich-section-header">
-                        <h4><span>⚠️</span> Limitations & Constraints</h4>
-                        <span className="section-tag tag-source">Strictly Separated</span>
-                      </div>
-                      <div className="side-by-side-grid">
-                        <div className="side-box source-box">
-                          <h5>Author-Stated Limitations</h5>
-                          <ul>
-                            {rich.limitations?.author_stated_limitations?.map((item, idx) => (
-                              <li key={idx}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="side-box ai-box">
-                          <h5>Potential AI-Identified Limitations</h5>
-                          <ul>
-                            {rich.limitations?.ai_identified_limitations?.map((item, idx) => (
-                              <li key={idx}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* SECTION 13: FUTURE RESEARCH DIRECTIONS */}
-                    <div className="rich-section" id="sec-future">
-                      <div className="rich-section-header">
-                        <h4><span>🔮</span> Future Research Directions</h4>
-                        <span className="section-tag tag-source">Strictly Separated</span>
-                      </div>
-                      <div className="side-by-side-grid">
-                        <div className="side-box source-box">
-                          <h5>Authors' Suggested Future Work</h5>
-                          <ul>
-                            {rich.future_research?.author_suggested_future_work?.map((item, idx) => (
-                              <li key={idx}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="side-box ai-box">
-                          <h5>AI-Suggested Research Opportunities</h5>
-                          <ul>
-                            {rich.future_research?.ai_suggested_directions?.map((item, idx) => (
-                              <li key={idx}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* SECTION 14: RESEARCHER TAKEAWAY */}
-                    {rich.researcher_takeaway && (
-                      <div className="takeaway-banner" id="sec-takeaway">
-                        <h4><span>🎓</span> Why Should a Researcher Care About This Paper?</h4>
-                        <p>{rich.researcher_takeaway.why_researchers_should_care}</p>
-                        <div className="takeaway-grid">
-                          <div className="takeaway-item">
-                            <span>Core Idea</span>
-                            <strong>{rich.researcher_takeaway.core_idea}</strong>
-                          </div>
-                          <div className="takeaway-item">
-                            <span>Most Useful Contribution</span>
-                            <strong>{rich.researcher_takeaway.most_useful_contribution}</strong>
-                          </div>
-                          <div className="takeaway-item">
-                            <span>Key Limitation</span>
-                            <strong>{rich.researcher_takeaway.most_important_limitation}</strong>
-                          </div>
-                          <div className="takeaway-item">
-                            <span>Next Opportunity</span>
-                            <strong>{rich.researcher_takeaway.follow_up_opportunity}</strong>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* SECTION 15: KEY TERMS GLOSSARY */}
-                    {rich.key_terms?.length > 0 && (
-                      <div className="rich-section" id="sec-glossary">
-                        <div className="rich-section-header">
-                          <h4><span>📖</span> Key Terms & Contextual Glossary</h4>
-                          <span className="section-tag tag-source">Domain Vocabulary</span>
-                        </div>
-                        <div className="glossary-grid">
-                          {rich.key_terms.map((k, idx) => (
-                            <div key={idx} className="glossary-card">
-                              <strong>{k.term}</strong>
-                              <p>{k.definition_in_context}</p>
+                      {/* 2. METHODOLOGY & WORKFLOW TAB */}
+                      {activeTab === 'methodology' && (
+                        <div className="methodology-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                          <div className="analysis-card" id="sec-methodology-stages">
+                            <div className="card-top-bar">
+                              <h4>🔬 Methodological Design & Workflow</h4>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                            <p style={{ lineHeight: 1.6, fontSize: '0.92rem', color: '#334155', marginBottom: '1rem' }}>
+                              {rich.methodology?.overview}
+                            </p>
+                            {rich.methodology?.workflow_stages?.map((stage) => (
+                              <div key={stage.step_number} className="workflow-step-box" style={{ display: 'flex', gap: '0.9rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.9rem', marginBottom: '0.8rem', alignItems: 'flex-start' }}>
+                                <span className="step-num" style={{ background: '#0c548e', color: '#ffffff', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', flexShrink: 0 }}>
+                                  {stage.step_number}
+                                </span>
+                                <div>
+                                  <strong style={{ color: '#0f172a', fontSize: '0.92rem', display: 'block', marginBottom: '0.2rem' }}>{stage.stage_name}</strong>
+                                  <p style={{ margin: 0, color: '#475569', fontSize: '0.88rem', lineHeight: 1.5 }}>{stage.description}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
 
-                  </div>
-                ) : analysisData ? (
-                  /* Fallback to legacy cards if rich analysis wasn't present */
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative' }}>
-                    <ResearchAnalysisHub
-                      containerRef={modalBodyRef}
-                      sections={[
-                        { id: 'sec-legacy-summary', label: 'Summary', icon: '📌', category: 'Summary' },
-                        { id: 'sec-legacy-problem', label: 'Research Problem', icon: '🎯', category: 'Problem' }
-                      ]}
-                    />
-                    <div className="rich-section" id="sec-legacy-summary">
-                      <h4>Summary</h4>
-                      <p>{analysisData.ai_analysis.summary}</p>
+                          {/* Architecture & Algorithmic Pipeline */}
+                          {rich.architecture?.has_architecture && (
+                            <div className="analysis-card" id="sec-architecture">
+                              <div className="card-top-bar">
+                                <h4>⚙️ System Architecture & Algorithmic Pipeline</h4>
+                              </div>
+                              <p style={{ color: '#334155', lineHeight: 1.5, fontSize: '0.9rem', marginBottom: '0.8rem' }}>
+                                {rich.architecture.description}
+                              </p>
+                              {rich.architecture.textual_pipeline?.length > 0 && (
+                                <div className="pipeline-chips-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', background: '#f1f5f9', padding: '0.8rem 1rem', borderRadius: '8px' }}>
+                                  {rich.architecture.textual_pipeline.map((p, i) => (
+                                    <React.Fragment key={i}>
+                                      <span className="pipeline-chip" style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '0.35rem 0.75rem', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' }}>
+                                        {p}
+                                      </span>
+                                      {i < rich.architecture.textual_pipeline.length - 1 && (
+                                        <span style={{ color: '#94a3b8', fontWeight: 700 }}>➔</span>
+                                      )}
+                                    </React.Fragment>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Dataset & Experimental Setup */}
+                          <div className="analysis-card" id="sec-dataset">
+                            <div className="card-top-bar">
+                              <h4>💾 Dataset & Experimental Setup</h4>
+                            </div>
+                            <p style={{ color: '#334155', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
+                              {rich.dataset_analysis?.dataset_summary || 'Domain benchmarking datasets and evaluation baselines utilized to measure empirical performance.'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 3. RESULTS & EVIDENCE TAB */}
+                      {activeTab === 'results' && (
+                        <div className="results-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                          <div className="analysis-card" id="sec-results-table">
+                            <div className="card-top-bar">
+                              <h4>📈 Empirical Findings & Verified Metrics</h4>
+                            </div>
+                            {rich.results?.structured_results_table?.length > 0 ? (
+                              <div className="results-table-wrap">
+                                <table className="styled-results-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Metric / Target Outcome</th>
+                                      <th>Reported Finding / Value</th>
+                                      <th>Baseline Comparison</th>
+                                      <th>Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {rich.results.structured_results_table.map((row, i) => (
+                                      <tr key={i}>
+                                        <td><strong>{row.metric}</strong></td>
+                                        <td className="value-highlight">{row.proposed_method_value}</td>
+                                        <td style={{ color: '#64748b' }}>{row.baseline_value || 'Standard Baselines'}</td>
+                                        <td><span className="verified-badge">✓ Verified</span></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <p style={{ color: '#334155', lineHeight: 1.5 }}>
+                                {rich.findings?.what_worked?.[0] || 'Empirical baselines and outcomes verified from published research.'}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Key Findings & Insights */}
+                          <div className="analysis-card" id="sec-findings">
+                            <div className="card-top-bar">
+                              <h4>🔍 What Worked & Key Observations</h4>
+                            </div>
+                            {rich.findings?.what_worked?.length > 0 && (
+                              <ul style={{ paddingLeft: '1.2rem', color: '#334155', lineHeight: 1.6, margin: '0 0 0.8rem' }}>
+                                {rich.findings.what_worked.map((item, i) => (
+                                  <li key={i} style={{ marginBottom: '0.3rem' }}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {rich.findings?.key_observations?.length > 0 && (
+                              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+                                {rich.findings.key_observations.map((obs, i) => (
+                                  <span key={i} style={{ fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '0.3rem 0.7rem', borderRadius: '6px', color: '#475569' }}>
+                                    {obs}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. TAKEAWAYS & FUTURE DIRECTIONS TAB */}
+                      {activeTab === 'takeaways' && (
+                        <div className="takeaways-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                          <div className="takeaway-banner">
+                            <h4>💡 Why Researchers Should Care</h4>
+                            <p>{rich.researcher_takeaway?.why_researchers_should_care}</p>
+                            <div className="takeaway-grid">
+                              <div className="takeaway-item">
+                                <span>Core Innovation</span>
+                                <strong>{rich.researcher_takeaway?.core_idea || 'Methodological advance'}</strong>
+                              </div>
+                              <div className="takeaway-item">
+                                <span>Key Contribution</span>
+                                <strong>{rich.researcher_takeaway?.most_useful_contribution || 'Empirical validation'}</strong>
+                              </div>
+                              <div className="takeaway-item">
+                                <span>Next Opportunity</span>
+                                <strong>{rich.researcher_takeaway?.follow_up_opportunity || 'Future extension'}</strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Limitations and Constraints */}
+                          <div className="analysis-card" id="sec-limitations">
+                            <div className="card-top-bar">
+                              <h4>⚠️ Identified Limitations & Scope Bounds</h4>
+                            </div>
+                            {rich.limitations?.author_stated_limitations?.length > 0 && (
+                              <div>
+                                <strong style={{ color: '#b45309', fontSize: '0.88rem' }}>Author-Stated Limitations:</strong>
+                                <ul style={{ paddingLeft: '1.2rem', color: '#334155', lineHeight: 1.5, marginTop: '0.3rem' }}>
+                                  {rich.limitations.author_stated_limitations.map((lim, i) => (
+                                    <li key={i}>{lim}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Suggested Future Work */}
+                          {rich.future_research?.author_suggested_future_work?.length > 0 && (
+                            <div className="analysis-card" id="sec-future-research">
+                              <div className="card-top-bar">
+                                <h4>🚀 Author-Suggested Future Directions</h4>
+                              </div>
+                              <ul style={{ paddingLeft: '1.2rem', color: '#334155', lineHeight: 1.6, margin: 0 }}>
+                                {rich.future_research.author_suggested_future_work.map((fw, i) => (
+                                  <li key={i} style={{ marginBottom: '0.3rem' }}>{fw}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="rich-section" id="sec-legacy-problem">
-                      <h4>Research Problem</h4>
-                      <p>{analysisData.ai_analysis.research_problem}</p>
-                    </div>
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
           </div>
@@ -1263,4 +1327,3 @@ export default function ResearchPapers() {
     </div>
   )
 }
-

@@ -3598,8 +3598,8 @@ export default function Landing() {
       <footer className="landing-footer reveal-on-scroll">
         <div className="footer-top">
           <div className="footer-brand">
-            <Link to="/" className="brand">
-              <span className="brand-mark">RI</span>
+            <Link to="/" className="brand" aria-label="Research Intelligence Home">
+              <img src="/logo.png" alt="Research Intelligence Logo" className="brand-logo-img" />
               <span className="brand-title">Research Intelligence</span>
             </Link>
             <p className="footer-tagline">

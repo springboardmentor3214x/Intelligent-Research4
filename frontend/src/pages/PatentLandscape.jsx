@@ -37,9 +37,10 @@ export default function PatentLandscape() {
 
   // EPO Import state
   const [importKeyword, setImportKeyword] = useState('artificial intelligence')
-  const [importLimit, setImportLimit] = useState(5)
+  const [importLimit, setImportLimit] = useState(50)
   const [importLoading, setImportLoading] = useState(false)
   const [importMessage, setImportMessage] = useState(null)
+  const [patentStats, setPatentStats] = useState(null)
 
   // Search filters
   const [selectedDomainFilter, setSelectedDomainFilter] = useState('')
@@ -62,16 +63,26 @@ export default function PatentLandscape() {
 
   // Fetch initial patents and clusters
   useEffect(() => {
+    loadStats()
     loadPatents()
     loadClusters()
   }, [])
+
+  async function loadStats() {
+    try {
+      const stats = await patentService.getPatentStats()
+      setPatentStats(stats)
+    } catch (err) {
+      console.error('Failed to load patent stats:', err)
+    }
+  }
 
   async function loadPatents(keyword = '', domain = null) {
     try {
       setLoading(true)
       setError(null)
       const domainToUse = domain !== undefined ? domain : (selectedDomainFilter || null)
-      const res = await patentService.searchPatents(keyword, domainToUse, null, 50)
+      const res = await patentService.searchPatents(keyword, domainToUse, null, 100)
       setPatents(res?.patents || [])
     } catch (err) {
       setError(err.message || 'Failed to load patents')
@@ -84,7 +95,7 @@ export default function PatentLandscape() {
     try {
       setClusteringLoading(true)
       setError(null)
-      const data = await patentService.getPatentClusters(k)
+      const data = await patentService.getPatentClusters(k, 1000)
       setClustersData(data)
     } catch (err) {
       if (err.message?.includes('At least 2 patent records')) {
@@ -163,11 +174,13 @@ export default function PatentLandscape() {
       setImportLoading(true)
       setImportMessage(null)
       const res = await patentService.importPatents(importKeyword, importLimit)
-      setImportMessage(`Imported ${res.inserted} new patents from EPO (${res.skipped} already in database).`)
+      const totalDb = res.total_database_records ? ` | Total in Database: ${res.total_database_records}` : ''
+      setImportMessage(`Imported ${res.inserted} new live patents from EPO (${res.skipped} skipped as duplicates, ${res.total_found} retrieved${totalDb}).`)
+      await loadStats()
       await loadPatents()
       await loadClusters()
     } catch (err) {
-      setError(err.message || 'EPO import failed')
+      setError(err.message || 'EPO live import failed. Please verify network connectivity.')
     } finally {
       setImportLoading(false)
     }
@@ -235,15 +248,15 @@ export default function PatentLandscape() {
           <div className="stats-row">
             <div className="stat-card">
               <span className="stat-label">Total Real Patents</span>
-              <strong className="stat-value">{patents.length}</strong>
+              <strong className="stat-value">{patentStats?.total_patents ?? (clustersData?.total_patents || patents.length)}</strong>
             </div>
             <div className="stat-card">
               <span className="stat-label">AI Technology Clusters</span>
-              <strong className="stat-value">{clustersData?.number_of_clusters || 0}</strong>
+              <strong className="stat-value">{clustersData?.number_of_clusters || patentStats?.total_clusters || 0}</strong>
             </div>
             <div className="stat-card">
               <span className="stat-label">Embedding Model</span>
-              <strong className="stat-value small-text">{clustersData?.embedding_model || 'all-MiniLM-L6-v2'}</strong>
+              <strong className="stat-value small-text">{clustersData?.embedding_model || patentStats?.embedding_model || 'all-MiniLM-L6-v2'}</strong>
             </div>
             <div className="stat-card">
               <span className="stat-label">Spatial Projection</span>
@@ -260,26 +273,27 @@ export default function PatentLandscape() {
             <span className="import-icon">🌐</span>
             <div>
               <strong>Import Real Patents from EPO (European Patent Office)</strong>
-              <small>Seed database with live SPARQL linked-data records across technology domains</small>
+              <small>Harvest genuine live Linked Data records across technology domains (5, 50, 100, 500, or 1,000 patents)</small>
             </div>
           </div>
           <div className="import-inputs">
             <input
               type="text"
-              placeholder="e.g. quantum computing, medical imaging, solar battery"
+              placeholder="e.g. artificial intelligence, healthcare, robotics, renewable energy, computer vision, battery technology"
               value={importKeyword}
               onChange={(e) => setImportKeyword(e.target.value)}
               className="import-search-input"
             />
             <select
               value={importLimit}
-              onChange={(e) => setImportLimit(e.target.value)}
+              onChange={(e) => setImportLimit(Number(e.target.value))}
               className="import-limit-select"
             >
-              <option value="3">3 Patents</option>
               <option value="5">5 Patents</option>
-              <option value="10">10 Patents</option>
-              <option value="20">20 Patents</option>
+              <option value="50">50 Patents</option>
+              <option value="100">100 Patents</option>
+              <option value="500">500 Patents</option>
+              <option value="1000">1,000 Patents</option>
             </select>
             <button type="submit" className="btn-import" disabled={importLoading}>
               {importLoading ? 'Importing from EPO...' : 'Import Live Patents'}
@@ -288,6 +302,7 @@ export default function PatentLandscape() {
         </form>
         {importMessage && <div className="success-banner">{importMessage}</div>}
       </section>
+
 
       {/* Error Alert */}
       {error && (

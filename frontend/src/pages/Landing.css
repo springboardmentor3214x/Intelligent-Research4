@@ -2969,6 +2969,21 @@
   margin-bottom: 0.75rem;
 }
 
+.footer-brand .brand-logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+  filter: drop-shadow(0 3px 8px rgba(13, 148, 136, 0.25));
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease;
+}
+
+.footer-brand:hover .brand-logo-img {
+  transform: scale(1.08);
+  filter: drop-shadow(0 6px 14px rgba(3, 105, 161, 0.35));
+}
+
 .footer-brand .brand-mark {
   width: 36px;
   height: 36px;
