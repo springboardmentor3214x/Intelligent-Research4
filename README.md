@@ -12,6 +12,10 @@
 > **ResearchIntel** is an enterprise-grade AI-powered intelligence platform that unifies global scholarly publications, patent registries, grant funding opportunities, technology maturity tracking, and explainable innovation assessment into a single real-time decision-support system for researchers, university innovation managers, startups, and policy analysts.
 
 ---
+## 🎥 Website Demo
+
+If you want to watch the full demo of our website, then 👉 [Click Here](https://drive.google.com/file/d/1B6XWvn1-kmzzv42f4vD0ClYqcs_kjK_q/view?usp=sharing)
+
 
 ## 📑 Table of Contents
 
