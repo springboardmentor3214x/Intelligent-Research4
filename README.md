@@ -47,9 +47,13 @@
 - [Directory Structure](#-directory-structure)
 - [Getting Started & Installation](#-getting-started--installation)
   - [Prerequisites](#prerequisites)
-  - [Backend Setup (FastAPI & PostgreSQL)](#backend-setup-fastapi--postgresql)
-  - [Frontend Setup (React 19 & Vite)](#frontend-setup-react-19--vite)
-- [Database Migrations & Seeding](#-database-migrations--seeding)
+  - [One-Click Docker Orchestration (Recommended)](#one-click-docker-orchestration-recommended)
+  - [Local Backend Setup (FastAPI & PostgreSQL)](#backend-setup-fastapi--postgresql)
+  - [Local Frontend Setup (React 19 & Vite)](#frontend-setup-react-19--vite)
+  - [One-Click Demo Bootstrapper & Data Seeder](#one-click-demo-bootstrapper--data-seeder)
+- [CI/CD & Automated Verification](#-cicd--automated-verification)
+- [Live Demonstration Playbook & Pitch Guide](#-live-demonstration-playbook--pitch-guide)
+- [Interactive API Testing & Postman Collection](#-interactive-api-testing--postman-collection)
 - [Running Test Suites](#-running-test-suites)
 - [API Endpoints Reference](#-api-endpoints-reference)
 - [User Roles & Personas](#-user-roles--personas)
@@ -382,13 +386,47 @@ Intelligent-Research4/
 │   │       ├── patent_clustering_service.py  # KMeans & PCA projection
 │   │       ├── report_service.py     # ReportLab PDF synthesis
 │   │       └── unified_report_service.py # Multi-module dossier aggregator
+├── .github/
+│   └── workflows/
+│       └── ci.yml                    # Automated GitHub Actions CI pipeline (Pytest + Vite)
+├── backend/
+│   ├── Dockerfile                    # Multi-stage production Python 3.11 container
+│   ├── app/                          # Core application package
+│   │   ├── auth/                     # Authentication, RBAC, and security dependencies
+│   │   ├── database/                 # SQLAlchemy 2.0 async/sync engine & models
+│   │   ├── models/                   # 16+ Relational domain models
+│   │   ├── routers/                  # 14+ REST API controllers
+│   │   │   ├── dashboard.py          # Role-based dashboard aggregations
+│   │   │   ├── funding_opportunity.py# Grants search, sync, and recommendations
+│   │   │   ├── innovation_assessment.py # Deterministic Innovation Scoring API
+│   │   │   ├── notifications.py      # Real-time notifications & preferences
+│   │   │   ├── patent.py             # Patent search, EPO import, and 3D clustering
+│   │   │   ├── reports.py            # Unified dossier generator & PDF export
+│   │   │   ├── research_paper.py     # Scholarly discovery & AI paper analysis
+│   │   │   ├── tech_intelligence.py  # Multi-source technology intelligence
+│   │   │   └── technology.py         # Technology CRUD & maturity metrics
+│   │   ├── schemas/                  # Pydantic v2 validation contracts
+│   │   └── services/                 # Core business logic & external adapters
+│   │       ├── providers/            # 13 Scholarly provider adapters
+│   │       ├── sources/              # Multi-source patent & grant adapters
+│   │       ├── citation_service.py   # DOI citation verification
+│   │       ├── funding_matching_service.py # Semantic cosine similarity matcher
+│   │       ├── innovation_scoring_service.py # 5-factor deterministic calculator
+│   │       ├── patent_clustering_service.py  # KMeans & PCA projection
+│   │       ├── report_service.py     # ReportLab PDF synthesis
+│   │       └── unified_report_service.py # Multi-module dossier aggregator
 │   ├── scripts/                      # Seed data fetchers & utilities
 │   ├── tests_funding_intelligence.py # Test suite for funding & semantic matching
 │   ├── tests_innovation_scoring.py   # Test suite for 5-factor scoring engine
 │   ├── tests_patent_clustering.py    # Test suite for patent clustering & PCA
 │   └── tests_research_intelligence.py# Test suite for scholarly discovery & analysis
-├── docs/                             # In-depth architectural & methodology reports
+├── docs/                             # In-depth architectural, demo & methodology guides
+│   ├── LIVE_DEMO_SCRIPT.md           # 7-Minute live defense & investor presentation script
+│   ├── POSTMAN_COLLECTION.json       # Pre-configured Postman v2.1 collection for all 11 modules
+│   └── PATENT_LANDSCAPE_GUIDE.md     # 3D spatial clustering methodology & IPC classifications
 ├── frontend/
+│   ├── Dockerfile                    # Production multi-stage Vite SPA builder & Nginx runner
+│   ├── nginx.conf                    # Nginx server config with SPA fallback & gzip compression
 │   ├── public/                       # Static branding, logo, and team images
 │   ├── src/
 │   │   ├── components/               # Reusable UI components (Navbar, 3D Canvas, etc.)
@@ -408,6 +446,9 @@ Intelligent-Research4/
 │   │   └── main.jsx                  # Application entry point
 │   ├── package.json                  # Node.js dependencies
 │   └── vite.config.js                # Vite build configuration
+├── scripts/
+│   └── bootstrap_demo.py             # One-click DB schema creation & full demo seeder
+├── docker-compose.yml                # Full-stack Docker orchestration (Postgres + Backend + Frontend)
 ├── .env.example                      # Template environment variables
 ├── requirements.txt                  # Python dependencies
 └── README.md                         # Project documentation
@@ -420,20 +461,33 @@ Intelligent-Research4/
 ### Prerequisites
 - **Python**: Version `3.10` or higher installed
 - **Node.js**: Version `18.x` or higher and `npm` installed
-- **PostgreSQL**: Version `14` or higher running locally or accessible remotely
+- **PostgreSQL**: Version `14` or higher (or Docker)
 - **Git**
 
 ---
 
-### Backend Setup (FastAPI & PostgreSQL)
+### One-Click Docker Orchestration (Recommended)
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/springboardmentor3214x/Intelligent-Research4.git
-   cd Intelligent-Research4
-   ```
+To launch the complete platform including the **PostgreSQL 16 database**, **FastAPI Backend**, and **React 19 / Nginx Frontend** with zero local dependencies:
 
-2. **Create and activate a Python virtual environment**:
+```bash
+# 1. Clone the repository
+git clone https://github.com/springboardmentor3214x/Intelligent-Research4.git
+cd Intelligent-Research4
+
+# 2. Build and launch all containers
+docker compose up --build
+```
+
+- **Frontend Application**: `http://localhost:3000`
+- **Backend REST API**: `http://localhost:8000`
+- **Interactive Swagger Docs**: `http://localhost:8000/docs`
+
+---
+
+### Local Backend Setup (FastAPI & PostgreSQL)
+
+1. **Create and activate a Python virtual environment**:
    ```bash
    # Windows (PowerShell)
    python -m venv venv
@@ -444,54 +498,32 @@ Intelligent-Research4/
    source venv/bin/activate
    ```
 
-3. **Install Python dependencies**:
+2. **Install Python dependencies**:
    ```bash
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
 
-4. **Configure Environment Variables**:
-   Copy the `.env.example` file to `.env`:
+3. **Configure Environment Variables**:
+   Copy `.env.example` to `.env`:
    ```bash
    cp .env.example .env
    ```
-   Open `.env` and fill in your database credentials and API keys:
-   ```ini
-   DATABASE_URL="postgresql+psycopg://postgres:your_password@localhost:5432/research_intelligence"
-   JWT_SECRET_KEY="generate-a-secure-random-64-character-hex-string"
-   JWT_ALGORITHM="HS256"
-   ACCESS_TOKEN_EXPIRE_MINUTES="60"
-   CORS_ORIGINS="http://localhost:5173"
-   FRONTEND_URL="http://localhost:5173"
 
-   # Optional: Groq API key for platform AI assistant
-   GROQ_API_KEY="your-groq-api-key"
-   GROQ_MODEL="openai/gpt-oss-120b"
-   ```
-
-5. **Run Database Migrations**:
+4. **Run the One-Click Demo Bootstrapper**:
    ```bash
-   alembic upgrade head
+   python scripts/bootstrap_demo.py
    ```
+   *This single command automatically verifies your `.env`, initializes database tables, creates 3 demo accounts (`admin@institution.edu`, `researcher@institution.edu`, `reviewer@institution.edu` with password `Password123!`), and seeds benchmark Indian/USPTO patents, active grant opportunities, and research papers.*
 
-6. **Seed Initial Dataset (Optional but Recommended)**:
-   ```bash
-   # Seed Indian Patent Office data
-   python backend/seed_indian_patents.py
-
-   # Seed domain intelligence data
-   python backend/scripts/fetch_real_domain_data.py
-   ```
-
-7. **Start the FastAPI Development Server**:
+5. **Start the FastAPI Development Server**:
    ```bash
    uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
    ```
-   The backend API will be live at `http://localhost:8000`. Interactive Swagger API documentation will be available at `http://localhost:8000/docs`.
 
 ---
 
-### Frontend Setup (React 19 & Vite)
+### Local Frontend Setup (React 19 & Vite)
 
 1. **Navigate to the frontend directory**:
    ```bash
@@ -507,7 +539,44 @@ Intelligent-Research4/
    ```bash
    npm run dev
    ```
-   The frontend will be live at `http://localhost:5173`.
+   The frontend application will be live at `http://localhost:5173`.
+
+---
+
+## 🎬 Live Demonstration Playbook & Pitch Guide
+
+For presentations to professors, defense committees, hackathon panels, or investors, refer to our comprehensive presentation guide:
+
+📄 **[Read the 7-Minute Live Demo Playbook](file:///d:/Intelligent-Research4/docs/LIVE_DEMO_SCRIPT.md)**
+
+It provides an exact minute-by-minute script:
+- **Minute 0–1**: The academic data silo crisis & platform vision.
+- **Minute 1–2:30**: Concurrent multi-source paper discovery (arXiv + Crossref + Semantic Scholar).
+- **Minute 2:30–4**: Real-time AI grant matching & instant proposal drafting.
+- **Minute 4–5:30**: 3D patent landscape visualization & white-space discovery.
+- **Minute 5:30–6:30**: Institutional multi-tenant RBAC & governance dashboards.
+- **Minute 6:30–7**: Key metrics, ROI impact, and Q&A transitions.
+
+---
+
+## 📦 Interactive API Testing & Postman Collection
+
+We provide a complete, ready-to-import Postman v2.1 collection covering all 11 modules:
+
+📄 **[View Postman Collection](file:///d:/Intelligent-Research4/docs/POSTMAN_COLLECTION.json)**
+
+- Automatic JWT Bearer token capture on login.
+- Pre-configured requests for Multi-Source Literature Discovery, Semantic Grant Matching, 3D Spatial Clustering, and Innovation Scoring.
+- Compatible with Postman, Insomnia, Bruno, and Hoppscotch.
+
+---
+
+## 🔄 CI/CD & Automated Verification
+
+The repository includes an enterprise-grade GitHub Actions CI pipeline configured in [`.github/workflows/ci.yml`](file:///d:/Intelligent-Research4/.github/workflows/ci.yml). Every push and pull request triggers:
+1. **Flake8 Syntax & Code Quality Checks** across backend Python code.
+2. **Automated Pytest Suite Execution** covering research discovery, funding matching, and 3D patent clustering.
+3. **Frontend Vite Production Compilation** verifying that all React 19 / Three.js assets build cleanly without bundle errors.
 
 ---
 
