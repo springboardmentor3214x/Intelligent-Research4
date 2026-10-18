@@ -1,7 +1,12 @@
 import { apiFetch } from './api'
 
 export const patentService = {
+  async getPatentStats() {
+    return apiFetch('/patents/stats')
+  },
+
   async getPatents(keyword = '', limit = 50) {
+
     const params = new URLSearchParams()
     if (keyword) params.append('keyword', keyword)
     if (limit) params.append('limit', limit)

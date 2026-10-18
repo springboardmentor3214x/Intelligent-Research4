@@ -58,6 +58,16 @@ class FundingSearchRequest(BaseModel):
 class FundingRecommendationResponse(BaseModel):
     total: int
     recommendations: list[dict[str, Any]]
+    items: list[dict[str, Any]] = []
+    page: int = 1
+    page_size: int = 50
+    total_pages: int = 1
+    has_next: bool = False
+    has_previous: bool = False
+    threshold: float = 0.0
+    sort: str = "match_score_desc"
+    sources: list[dict[str, Any]] = []
+    source_coverage: dict[str, Any] | None = None
     profile_used: dict[str, Any] | None = None
     message: str | None = None
 

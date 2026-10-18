@@ -1,0 +1,255 @@
+/* =========================================================
+   ENTERPRISE PLATFORM FOOTER STYLES
+   ========================================================= */
+
+.platform-enterprise-footer {
+  width: 100%;
+  background: linear-gradient(180deg, #f8fafc 0%, #edf4f8 100%);
+  border-top: 1px solid #dce6ed;
+  color: #173a53;
+  padding: 4.5rem 0 2rem 0;
+  margin-top: 4rem;
+  position: relative;
+  z-index: 10;
+}
+
+.footer-inner-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.footer-main-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 3.5rem;
+  margin-bottom: 3.5rem;
+}
+
+.footer-brand-pane {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.footer-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: #0f2942;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.footer-brand-img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+  filter: drop-shadow(0 3px 8px rgba(13, 148, 136, 0.25));
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease;
+}
+
+.footer-brand-logo:hover .footer-brand-img {
+  transform: scale(1.08);
+  filter: drop-shadow(0 6px 14px rgba(3, 105, 161, 0.35));
+}
+
+.footer-brand-badge {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0d9488 0%, #0369a1 100%);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgba(13, 148, 136, 0.25);
+}
+
+.footer-brand-name {
+  color: #0f2942;
+}
+
+.footer-brand-tagline {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #587083;
+  margin: 0;
+}
+
+.footer-brand-mission-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  color: #0f766e;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+}
+
+.footer-brand-mission-pill .mission-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #0d9488;
+  box-shadow: 0 0 8px #0d9488;
+}
+
+/* Links Grid */
+.footer-links-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+}
+
+.footer-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-column-heading {
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0f2942;
+  margin: 0 0 1.25rem 0;
+}
+
+.footer-link-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.footer-nav-link {
+  color: #587083;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.footer-nav-link:hover {
+  color: #0d9488;
+  transform: translateX(3px);
+}
+
+.footer-action-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0369a1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: color 0.2s ease;
+}
+
+.footer-action-button:hover {
+  color: #0d9488;
+  text-decoration: underline;
+}
+
+/* Team Column */
+.footer-team-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 0.4rem;
+}
+
+.team-person-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f2942;
+}
+
+.team-person-role {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+/* Bottom Bar */
+.footer-bottom-bar {
+  padding-top: 2rem;
+  border-top: 1px solid #dce6ed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.footer-motto-tag {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+.motto-separator {
+  color: #94a3b8;
+}
+
+.footer-bottom-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.footer-copyright-text {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .footer-main-grid {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+  .footer-links-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .platform-enterprise-footer {
+    padding: 3.5rem 0 2rem 0;
+  }
+  .footer-inner-container {
+    padding: 0 1.25rem;
+  }
+  .footer-links-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .footer-bottom-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context/auth-context'
+import NotificationCenter from './NotificationCenter'
 import './Navbar.css'
 
 export default function Navbar() {
@@ -9,13 +10,15 @@ export default function Navbar() {
   const location = useLocation()
 
   // State for mobile menu, dropdowns, and scrolled glass effect
+  const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [researchDropdownOpen, setResearchDropdownOpen] = useState(false)
   const [fundingDropdownOpen, setFundingDropdownOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
+  const [techDropdownOpen, setTechDropdownOpen] = useState(false)
 
   const researchRef = useRef(null)
   const fundingRef = useRef(null)
+  const techRef = useRef(null)
 
   function handleLogout() {
     logout()
@@ -45,12 +48,16 @@ export default function Navbar() {
       if (fundingRef.current && !fundingRef.current.contains(event.target)) {
         setFundingDropdownOpen(false)
       }
+      if (techRef.current && !techRef.current.contains(event.target)) {
+        setTechDropdownOpen(false)
+      }
     }
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         setResearchDropdownOpen(false)
         setFundingDropdownOpen(false)
+        setTechDropdownOpen(false)
         setMobileMenuOpen(false)
       }
     }
@@ -63,49 +70,38 @@ export default function Navbar() {
     }
   }, [])
 
-  // Close mobile menu on route change
+  // Close mobile menu and dropdowns on route change
   useEffect(() => {
     setMobileMenuOpen(false)
     setResearchDropdownOpen(false)
     setFundingDropdownOpen(false)
+    setTechDropdownOpen(false)
   }, [location.pathname])
 
-  function handleNavClick(sectionId) {
-    setMobileMenuOpen(false)
+  const isCurrent = (path) => location.pathname === path
+
+  const handleNavClick = (sectionId) => {
     if (location.pathname !== '/') {
-      navigate('/')
-      setTimeout(() => {
-        const el = document.getElementById(sectionId)
-        if (el) el.scrollIntoView({ behavior: 'smooth' })
-      }, 100)
+      navigate(`/#${sectionId}`)
     } else {
       const el = document.getElementById(sectionId)
       if (el) el.scrollIntoView({ behavior: 'smooth' })
     }
+    setMobileMenuOpen(false)
   }
 
-  const isCurrent = (path) => location.pathname === path
-
   return (
-    <header className={`navbar ${scrolled ? 'scrolled-glass' : ''}`} role="banner">
+    <header className={`navbar ${scrolled ? 'scrolled-glass' : ''}`}>
       <div className="navbar-inner">
-        {/* Brand Logo & Name */}
-        <Link to="/" className="brand" aria-label="Research Intelligence Home">
-          <span className="brand-mark" aria-hidden="true">RI</span>
-          <span className="brand-title">Research Intelligence</span>
+        {/* Brand / Logo */}
+        <Link to="/" className="brand" onClick={() => setMobileMenuOpen(false)} aria-label="ResearchIntel Home">
+          <img src="/logo.png" alt="ResearchIntel Logo" className="brand-logo-img" />
+          <span className="brand-title">ResearchIntel</span>
         </Link>
 
-        {/* Center Navigation Links */}
+        {/* Navigation Links */}
         {!user ? (
-          /* Public Unauthenticated Navigation */
           <nav className="nav-links" aria-label="Public Navigation">
-            <button
-              type="button"
-              className={`nav-link-btn ${location.pathname === '/' ? 'active' : ''}`}
-              onClick={() => handleNavClick('home')}
-            >
-              Home
-            </button>
             <button
               type="button"
               className="nav-link-btn"
@@ -127,24 +123,45 @@ export default function Navbar() {
             >
               How It Works
             </button>
+            <Link
+              to="/about"
+              className={`nav-link-btn ${isCurrent('/about') ? 'active' : ''}`}
+            >
+              About Us
+            </Link>
+            <Link
+              to="/contact"
+              className={`nav-link-btn ${isCurrent('/contact') ? 'active' : ''}`}
+            >
+              Contact Us
+            </Link>
+          </nav>
+        ) : (user.role === 'administrator' || user.role === 'admin') ? (
+          /* Dedicated Admin Control Center Navigation (Strictly Separated) */
+          <nav className="nav-links admin-nav-links" aria-label="Admin Control Center Navigation">
+            <Link
+              to="/admin"
+              className={`nav-link-btn ${isCurrent('/admin') || isCurrent('/dashboard') ? 'active' : ''}`}
+              style={{ fontWeight: 800, color: '#0369a1' }}
+            >
+              🛡️ Master Control Center
+            </Link>
+            <Link
+              to="/reports"
+              className={`nav-link-btn ${isCurrent('/reports') ? 'active' : ''}`}
+            >
+              Platform Reports
+            </Link>
+            <Link
+              to="/notifications"
+              className={`nav-link-btn ${isCurrent('/notifications') ? 'active' : ''}`}
+            >
+              System Broadcasts
+            </Link>
           </nav>
         ) : (
-          /* Authenticated Navigation with Dropdowns */
+          /* Authenticated Navigation with Dropdowns for Researchers / Founders / Managers */
           <nav className="nav-links" aria-label="Platform Navigation">
-            <Link
-              to="/"
-              className={`nav-link-btn ${isCurrent('/') ? 'active' : ''}`}
-            >
-              Home
-            </Link>
-
-            <Link
-              to="/patents"
-              className={`nav-link-btn ${isCurrent('/patents') ? 'active' : ''}`}
-            >
-              Patent Landscape
-            </Link>
-
             {/* Research Dropdown */}
             <div className="nav-dropdown" ref={researchRef}>
               <button
@@ -153,6 +170,7 @@ export default function Navbar() {
                 onClick={() => {
                   setResearchDropdownOpen(!researchDropdownOpen)
                   setFundingDropdownOpen(false)
+                  setTechDropdownOpen(false)
                 }}
                 aria-expanded={researchDropdownOpen}
                 aria-haspopup="true"
@@ -183,20 +201,8 @@ export default function Navbar() {
                   >
                     <div className="dropdown-item-icon">📄</div>
                     <div>
-                      <strong>Research Papers</strong>
-                      <small>Search &amp; AI Analysis</small>
-                    </div>
-                  </Link>
-                    <Link
-                    to="/patents"
-                    className={`dropdown-item ${isCurrent('/patents') ? 'active-item' : ''}`}
-                    role="menuitem"
-                    onClick={() => setResearchDropdownOpen(false)}
-                  >
-                    <div className="dropdown-item-icon">🧩</div>
-                    <div>
-                      <strong>Patent Landscape</strong>
-                      <small>AI Clustering &amp; Similarity</small>
+                      <strong>Papers &amp; Literature</strong>
+                      <small>Semantic Search &amp; Citations</small>
                     </div>
                   </Link>
                   <Link
@@ -208,7 +214,7 @@ export default function Navbar() {
                     <div className="dropdown-item-icon">👤</div>
                     <div>
                       <strong>Research Profile</strong>
-                      <small>Expertise, Domains &amp; Publications</small>
+                      <small>Domain Interests &amp; Publications</small>
                     </div>
                   </Link>
                 </div>
@@ -223,6 +229,7 @@ export default function Navbar() {
                 onClick={() => {
                   setFundingDropdownOpen(!fundingDropdownOpen)
                   setResearchDropdownOpen(false)
+                  setTechDropdownOpen(false)
                 }}
                 aria-expanded={fundingDropdownOpen}
                 aria-haspopup="true"
@@ -260,6 +267,141 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+
+            <Link
+              to="/patents"
+              className={`nav-link-btn ${isCurrent('/patents') ? 'active' : ''}`}
+            >
+              Patent Landscape
+            </Link>
+
+            {/* Technology Intelligence Dropdown */}
+            <div className="nav-dropdown" ref={techRef}>
+              <button
+                type="button"
+                className={`nav-link-btn dropdown-toggle ${isCurrent('/technologies') || isCurrent('/technologies/maturity') || isCurrent('/technologies/adoption') || isCurrent('/technologies/trends') ? 'active' : ''}`}
+                onClick={() => {
+                  setTechDropdownOpen(!techDropdownOpen)
+                  setResearchDropdownOpen(false)
+                  setFundingDropdownOpen(false)
+                }}
+                aria-expanded={techDropdownOpen}
+                aria-haspopup="true"
+              >
+                Tech Intelligence
+                <svg
+                  className={`dropdown-chevron ${techDropdownOpen ? 'rotated' : ''}`}
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {techDropdownOpen && (
+                <div className="dropdown-menu" role="menu">
+                  <Link
+                    to="/technologies"
+                    className={`dropdown-item ${isCurrent('/technologies') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">⚡</div>
+                    <div>
+                      <strong>Overview &amp; Landscape</strong>
+                      <small>Cross-Domain Technology Intelligence</small>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/technologies/maturity"
+                    className={`dropdown-item ${isCurrent('/technologies/maturity') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">📊</div>
+                    <div>
+                      <strong>Maturity &amp; S-Curve</strong>
+                      <small>6-Indicator Empirical Progression</small>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/technologies/adoption"
+                    className={`dropdown-item ${isCurrent('/technologies/adoption') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">🏢</div>
+                    <div>
+                      <strong>Market Adoption</strong>
+                      <small>Industrial &amp; Commercialization Velocity</small>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/technologies/trends"
+                    className={`dropdown-item ${isCurrent('/technologies/trends') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">📈</div>
+                    <div>
+                      <strong>Growth Trends</strong>
+                      <small>Longitudinal Trajectory &amp; Forecasts</small>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/innovation"
+                    className={`dropdown-item ${isCurrent('/innovation') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">🚀</div>
+                    <div>
+                      <strong>Innovation Scoring</strong>
+                      <small>Multi-Factor Engine</small>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/commercialization"
+                    className={`dropdown-item ${isCurrent('/commercialization') ? 'active-item' : ''}`}
+                    role="menuitem"
+                    onClick={() => setTechDropdownOpen(false)}
+                  >
+                    <div className="dropdown-item-icon">💡</div>
+                    <div>
+                      <strong>Commercialization</strong>
+                      <small>Applications, Products &amp; Startups</small>
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <Link
+              to="/dashboard"
+              className={`nav-link-btn ${isCurrent('/dashboard') ? 'active' : ''}`}
+            >
+              Dashboard
+            </Link>
+
+            <Link
+              to="/reports"
+              className={`nav-link-btn ${isCurrent('/reports') ? 'active' : ''}`}
+            >
+              Reports
+            </Link>
+
+            <Link
+              to="/compare"
+              className={`nav-link-btn ${isCurrent('/compare') ? 'active' : ''}`}
+            >
+              Compare
+            </Link>
           </nav>
         )}
 
@@ -267,12 +409,26 @@ export default function Navbar() {
         <div className="navbar-actions">
           {user ? (
             <div className="authenticated-actions">
-              <Link
-                to="/dashboard"
-                className={`nav-pill-btn ${isCurrent('/dashboard') ? 'active-pill' : ''}`}
-              >
-                Dashboard
-              </Link>
+              {(user.role === 'administrator' || user.role === 'admin') && (
+                <Link
+                  to="/admin"
+                  className={`nav-pill-btn ${isCurrent('/admin') ? 'active-pill' : ''}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    borderColor: '#bae6fd',
+                    fontWeight: 700,
+                  }}
+                  title="Admin Control Room"
+                >
+                  <span style={{ fontSize: '14px' }}>🛡️</span>
+                  Admin
+                </Link>
+              )}
+              <NotificationCenter />
               <Link
                 to="/profile"
                 className="user-chip-link"
@@ -304,7 +460,7 @@ export default function Navbar() {
                 Get Started
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12" />
-                  <polyline points="12 5 19 12 12 19" />
+                  <polyline points="12 5 19 12 19" />
                 </svg>
               </Link>
             </div>
@@ -337,6 +493,12 @@ export default function Navbar() {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="mobile-drawer" role="dialog" aria-label="Mobile Navigation Menu">
+          <div className="mobile-drawer-brand">
+            <Link to="/" className="brand" onClick={() => setMobileMenuOpen(false)} aria-label="ResearchIntel Home">
+              <img src="/logo.png" alt="ResearchIntel Logo" className="brand-logo-img" />
+              <span className="brand-title">ResearchIntel</span>
+            </Link>
+          </div>
           <div className="mobile-drawer-links">
             {!user ? (
               <>
@@ -352,9 +514,12 @@ export default function Navbar() {
                 <button type="button" className="mobile-link" onClick={() => handleNavClick('how-it-works')}>
                   How It Works
                 </button>
-                <button type="button" className="mobile-link" onClick={() => handleNavClick('about')}>
-                  About
-                </button>
+                <Link to="/about" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  📖 About Us
+                </Link>
+                <Link to="/contact" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  ✉️ Contact Us
+                </Link>
                 <hr className="mobile-divider" />
                 <Link to="/login" className="mobile-btn secondary" onClick={() => setMobileMenuOpen(false)}>
                   Login
@@ -386,6 +551,27 @@ export default function Navbar() {
                 </Link>
                 <Link to="/patents" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
                   🧩 Patent Landscape &amp; Clusters
+                </Link>
+                <Link to="/technologies" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  ⚡ Technology Intelligence
+                </Link>
+                <Link to="/technologies/maturity" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  📊 Technology Maturity
+                </Link>
+                <Link to="/technologies/adoption" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  🏢 Market Adoption
+                </Link>
+                <Link to="/technologies/trends" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  📈 Growth Trends
+                </Link>
+                <Link to="/innovation" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  🚀 Innovation Scoring
+                </Link>
+                <Link to="/commercialization" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  💡 Commercialization
+                </Link>
+                <Link to="/reports" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                  📑 Reports &amp; Dossiers
                 </Link>
                 <Link to="/profile" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
                   👤 Research Profile

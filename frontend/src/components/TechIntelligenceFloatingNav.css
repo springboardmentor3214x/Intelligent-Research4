@@ -1,0 +1,358 @@
+/* =========================================================
+   TECH INTELLIGENCE FLOATING RADIAL NAVIGATION HUB STYLES
+   Theme: Polished Cyan/Teal AI Intelligence with Glassmorphism
+   ========================================================= */
+
+.tech-floating-nav-container {
+  position: fixed;
+  z-index: 9999;
+  width: 0;
+  height: 0;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Center Floating Trigger Button */
+.center-trigger-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 62px;
+  height: 62px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(135deg, #0d9488 0%, #0f2942 100%);
+  box-shadow: 0 8px 28px rgba(13, 148, 136, 0.38), 0 4px 12px rgba(15, 41, 66, 0.2);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  outline: none;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.3s ease;
+  z-index: 10;
+}
+
+.center-trigger-btn:active {
+  cursor: grabbing;
+}
+
+.is-dragging .center-trigger-btn {
+  cursor: grabbing !important;
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 14px 36px rgba(13, 148, 136, 0.5), 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.center-trigger-btn:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+  box-shadow: 0 10px 32px rgba(13, 148, 136, 0.45);
+}
+
+.center-trigger-btn.active-open {
+  background: linear-gradient(135deg, #0f2942 0%, #0f172a 100%);
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25), 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.center-btn-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Icon Flipper for Smooth Open / Close Transition */
+.center-icon-flipper {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tech-main-icon {
+  position: absolute;
+  color: #38bdf8;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transition: opacity 0.25s ease, transform 0.3s ease;
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.tech-close-icon {
+  position: absolute;
+  color: #ffffff;
+  transition: opacity 0.25s ease, transform 0.3s ease;
+  opacity: 0;
+  transform: scale(0.6) rotate(-90deg);
+}
+
+.center-trigger-btn.active-open .tech-main-icon {
+  opacity: 0;
+  transform: scale(0.5) rotate(90deg);
+}
+
+.center-trigger-btn.active-open .tech-close-icon {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+/* Glowing Pulsing Beacon */
+.center-badge-pulse {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: beaconPulse 2s infinite ease-in-out;
+}
+
+.center-trigger-btn.active-open .center-badge-pulse {
+  display: none;
+}
+
+@keyframes beaconPulse {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0.6; }
+}
+
+/* Subtle Aesthetic Orbital Ring Guide */
+.radial-ring-guide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%) scale(0.5);
+  border-radius: 50%;
+  border: 1.5px dashed rgba(13, 148, 136, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 0;
+  animation: orbitalSpinGuide 35s linear infinite;
+}
+
+.radial-ring-guide.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+@keyframes orbitalSpinGuide {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Radial Menu Layer with Smooth Orbiting Rotation */
+.radial-menu-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 2;
+  transform: rotate(0deg);
+  transition: opacity 0.3s ease;
+}
+
+.radial-menu-layer.visible {
+  pointer-events: auto;
+  animation: continuousOrbit 28s linear infinite;
+}
+
+/* Pause orbital rotation on hover for effortless selection */
+.radial-menu-layer:hover {
+  animation-play-state: paused;
+}
+
+@keyframes continuousOrbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Radial Navigation Buttons */
+.radial-item-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 8px 24px rgba(15, 41, 66, 0.16), 0 2px 6px rgba(0, 0, 0, 0.06);
+  color: #0f2942;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  z-index: 3;
+}
+
+.radial-menu-layer.visible .radial-item-btn {
+  transform: translate(calc(-50% + var(--offset-x)), calc(-50% + var(--offset-y))) scale(1);
+  opacity: 1;
+  transition-delay: var(--item-delay, 0ms);
+}
+
+.radial-item-btn:hover {
+  background: #0f2942;
+  border-color: #38bdf8;
+  color: #38bdf8;
+  transform: translate(calc(-50% + var(--offset-x)), calc(-50% + var(--offset-y))) scale(1.18);
+  box-shadow: 0 12px 28px rgba(15, 41, 66, 0.35), 0 0 12px rgba(56, 189, 248, 0.35);
+  z-index: 6;
+}
+
+.radial-item-btn.current-route {
+  background: #0d9488;
+  border-color: #14b8a6;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.28), 0 10px 24px rgba(13, 148, 136, 0.38);
+}
+
+/* Button Inner wrapper to rotate on exact center */
+.radial-item-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: counterOrbit 28s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+.radial-menu-layer:hover .radial-item-inner {
+  animation-play-state: paused;
+}
+
+@keyframes counterOrbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+.radial-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  width: 22px;
+  height: 22px;
+}
+
+.radial-item-tag {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 5px;
+  background: rgba(15, 41, 66, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.radial-menu-layer.visible .radial-item-tag {
+  opacity: 1;
+}
+
+.radial-item-btn:hover .radial-item-tag {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+}
+
+/* Hover Tooltip Card */
+.radial-hover-tooltip {
+  position: absolute;
+  top: -65px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 41, 66, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #ffffff;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  z-index: 10;
+}
+
+.radial-hover-tooltip strong {
+  font-size: 0.8rem;
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.radial-hover-tooltip small {
+  font-size: 0.7rem;
+  color: #cbd5e1;
+}
+
+/* Tooltip Arrow */
+.radial-hover-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid rgba(15, 41, 66, 0.95);
+}
+
+/* Mobile & Tablet Optimizations */
+@media (max-width: 768px) {
+  .center-trigger-btn {
+    width: 54px;
+    height: 54px;
+  }
+  .radial-item-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .radial-hover-tooltip {
+    top: -55px;
+  }
+}

@@ -1,7 +1,7 @@
 from uuid import UUID
-
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import select, or_, func
 from sqlalchemy.orm import Session
 
 from backend.app.database.connection import get_db
@@ -15,6 +15,7 @@ from backend.app.schemas.patent import (
     PatentResponse,
     PatentSearchItem,
     PatentSearchResponse,
+    PatentStatsResponse,
     PatentSuggestionItem,
     PatentSuggestionsResponse,
     SimilarPatentsResponse,
@@ -80,7 +81,7 @@ def get_patent_suggestions(
     if len(suggestions) < limit:
         for p in all_patents:
             if p.title and query_str in p.title.lower():
-                # Extract clean title snippet
+
                 text = p.title.strip()
                 if len(text) > 48:
                     text = f"{text[:45]}..."
@@ -120,7 +121,7 @@ def search_patents(
         return PatentSearchResponse(query=q, total_results=0, patents=[])
 
     if not query_str:
-        # Return most recent patents
+
         results = [
             PatentSearchItem(
                 id=p.id,
@@ -147,8 +148,7 @@ def search_patents(
         ]
         return PatentSearchResponse(query="", total_results=len(results), patents=results)
 
-    # Hybrid Search:
-    # A. Text match score (exact title / keyword / abstract)
+
     q_lower = query_str.lower()
     text_matched: list[tuple[Patent, float, str]] = []
     semantic_pool: list[Patent] = []
@@ -170,7 +170,7 @@ def search_patents(
         else:
             semantic_pool.append(p)
 
-    # B. Dense semantic cosine similarity for query vs semantic pool (or all candidates)
+
     semantic_results = patent_embedding_service.search_patents_by_query(
         query=query_str,
         patents=candidates,
@@ -179,7 +179,7 @@ def search_patents(
 
     combined_dict: dict[UUID, PatentSearchItem] = {}
 
-    # Add text matches first with high score
+
     for p, score, match_type in text_matched:
         combined_dict[p.id] = PatentSearchItem(
             id=p.id,
@@ -203,7 +203,7 @@ def search_patents(
             updated_at=p.updated_at,
         )
 
-    # Complement with semantic similarity ranked matches
+
     for p, sim_score in semantic_results:
         if p.id not in combined_dict and sim_score >= 0.15:
             combined_dict[p.id] = PatentSearchItem(
@@ -291,16 +291,41 @@ def run_patent_clustering(
     )
 
 
+@router.get("/stats", response_model=PatentStatsResponse)
+def get_patent_stats(
+    db: Session = Depends(get_db),
+):
+    """Return real aggregate dataset metrics for the Patent Landscape dashboard."""
+    total_count = db.scalar(select(func.count(Patent.id))) or 0
+    sources_stmt = select(Patent.source, func.count(Patent.id)).group_by(Patent.source)
+    sources_res = db.execute(sources_stmt).all()
+    sources_dict = {str(s or "Unknown"): int(c) for s, c in sources_res}
+
+    # Dynamic clusters count
+    if total_count >= 2:
+        k = min(8, total_count) if total_count > 60 else (4 if total_count > 10 else 2)
+    else:
+        k = 0
+
+    return PatentStatsResponse(
+        total_patents=total_count,
+        total_clusters=k,
+        embedding_model=patent_embedding_service.model_name,
+        spatial_projection="3D / 2D PCA",
+        sources_breakdown=sources_dict,
+    )
+
+
 @router.post("/import")
 def import_patent_data(
     request: PatentImportRequest,
     db: Session = Depends(get_db),
 ):
-    """Import patents from EPO Linked Data API into PostgreSQL."""
-    if request.limit < 1 or request.limit > 50:
+    """Import genuine patents from EPO Linked Data API into PostgreSQL/SQLite."""
+    if request.limit < 1 or request.limit > 1000:
         raise HTTPException(
             status_code=400,
-            detail="limit must be between 1 and 50",
+            detail="limit must be between 1 and 1000",
         )
 
     return import_patents(
@@ -308,23 +333,6 @@ def import_patent_data(
         request.keyword,
         request.limit,
     )
-
-
-@router.get("/{patent_id}", response_model=PatentResponse)
-def get_patent(
-    patent_id: UUID,
-    db: Session = Depends(get_db),
-):
-    """Get single patent details by UUID."""
-    patent = db.get(Patent, patent_id)
-
-    if not patent:
-        raise HTTPException(
-            status_code=404,
-            detail="Patent not found",
-        )
-
-    return patent
 
 
 @router.get("/{patent_id}/similar", response_model=SimilarPatentsResponse)
@@ -342,6 +350,21 @@ def get_similar_patents(
         source_patent_id=patent_id,
         top_k=top_k,
     )
+
+
+@router.get("/{patent_id}", response_model=PatentResponse)
+def get_patent(
+    patent_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """Get single patent details by UUID."""
+    patent = db.get(Patent, patent_id)
+    if not patent:
+        raise HTTPException(
+            status_code=404,
+            detail="Patent not found",
+        )
+    return patent
 
 
 @router.post("/analyze-idea", response_model=PatentIdeaAnalysisResponse)
@@ -367,3 +390,4 @@ def analyze_patent_idea(
         min_similarity=payload.min_similarity,
         limit=payload.limit,
     )
+

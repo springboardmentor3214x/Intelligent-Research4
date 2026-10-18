@@ -3,7 +3,6 @@ import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
-import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import OAuthCallback from './pages/OAuthCallback'
@@ -11,11 +10,31 @@ import Profile from './pages/Profile'
 import ResearchPapers from './pages/ResearchPapers'
 import FundingIntelligence from './pages/FundingIntelligence'
 import PatentLandscape from './pages/PatentLandscape'
+import TechnologyIntelligence from './pages/TechnologyIntelligence'
+import TechnologyMaturity from './pages/TechnologyMaturity'
+import TechnologyAdoption from './pages/TechnologyAdoption'
+import TechnologyTrends from './pages/TechnologyTrends'
+import InnovationScoring from './pages/InnovationScoring'
+import Commercialization from './pages/Commercialization'
+import Reports from './pages/Reports'
+import RoleBasedDashboard from './pages/RoleBasedDashboard'
+import NotificationsPage from './pages/NotificationsPage'
+import CompareTechnologies from './pages/CompareTechnologies'
+import AboutUs from './pages/AboutUs'
+import ContactUs from './pages/ContactUs'
+import PlatformAIAssistant from './components/PlatformAIAssistant'
+import TechIntelligenceFloatingNav from './components/TechIntelligenceFloatingNav'
+import PlatformGlobalFloatingNav from './components/PlatformGlobalFloatingNav'
 import './App.css'
 
 function AppContent() {
   const location = useLocation()
-  const isLandingPage = location.pathname === '/'
+  const isLandingPage = location.pathname === '/' || location.pathname === '/about' || location.pathname === '/contact'
+  const isTechIntelligenceSection = 
+    location.pathname.startsWith('/technologies') || 
+    location.pathname.startsWith('/innovation') ||
+    location.pathname.startsWith('/commercialization') ||
+    location.pathname.startsWith('/compare')
 
   return (
     <div className="application">
@@ -23,19 +42,35 @@ function AppContent() {
       <main className={isLandingPage ? 'landing-app-shell' : 'app-shell'}>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/contact" element={<ContactUs />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/patents" element={<PatentLandscape />} />
+          <Route path="/technologies" element={<TechnologyIntelligence />} />
+          <Route path="/technologies/maturity" element={<TechnologyMaturity />} />
+          <Route path="/technologies/adoption" element={<TechnologyAdoption />} />
+          <Route path="/technologies/trends" element={<TechnologyTrends />} />
+          <Route path="/innovation" element={<InnovationScoring />} />
+          <Route path="/innovation-scoring" element={<InnovationScoring />} />
+          <Route path="/commercialization" element={<Commercialization />} />
+          <Route path="/compare" element={<CompareTechnologies />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<RoleBasedDashboard />} />
+            <Route path="/admin" element={<RoleBasedDashboard />} />
             <Route path="/research-papers" element={<ResearchPapers />} />
             <Route path="/funding" element={<FundingIntelligence />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <PlatformAIAssistant />
+      {location.pathname === '/' && <PlatformGlobalFloatingNav />}
+      {isTechIntelligenceSection && <TechIntelligenceFloatingNav />}
     </div>
   )
 }
@@ -49,4 +84,3 @@ export default function App() {
     </BrowserRouter>
   )
 }
-

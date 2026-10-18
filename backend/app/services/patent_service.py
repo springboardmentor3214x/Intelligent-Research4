@@ -207,285 +207,204 @@ def build_publication_number(
     return result[:100]
 
 
-def fetch_patents_from_epo(
-    keyword: str,
-    limit: int = 5,
-):
-    """
-    Search EPO Linked Open EP Data and retrieve
-    complete patent metadata.
-    """
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
+import urllib.parse
+from datetime import datetime
+import re
 
-    # Protect the SPARQL query from accidental quotes.
-    safe_keyword = keyword.replace(
-        '"',
-        '\\"',
-    )
+import httpx
+from sqlalchemy import select, func
+from sqlalchemy.orm import Session
 
-    query = f"""
-    PREFIX patent: <http://data.epo.org/linked-data/def/patent/>
-    PREFIX dcterms: <http://purl.org/dc/terms/>
-    PREFIX text: <http://jena.apache.org/text#>
-    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+from backend.app.models.patent import Patent
 
-    SELECT DISTINCT ?publn ?title WHERE {{
-        ?publn
-            text:query (
-                dcterms:abstract "{safe_keyword}"
-            ) ;
-            rdf:type patent:Publication ;
-            patent:titleOfInvention ?title .
+logger = logging.getLogger(__name__)
 
-        FILTER(langMatches(lang(?title), "en"))
-    }}
-    LIMIT {limit}
-    """
+EPO_QUERY_URL = "https://data.epo.org/linked-data/query"
+# EPO OPS Open API OAuth credentials (optional, when configured in .env)
+EPO_OPS_CONSUMER_KEY = os.getenv("EPO_OPS_CONSUMER_KEY", "")
+EPO_OPS_CONSUMER_SECRET = os.getenv("EPO_OPS_CONSUMER_SECRET", "")
 
-    response = httpx.post(
-        EPO_QUERY_URL,
-        data={
-            "query": query,
-            "format": "json",
-        },
-        timeout=30,
-    )
 
-    response.raise_for_status()
-
-    data = response.json()
-
-    results = (
-        data.get("results", {})
-        .get("bindings", [])
-    )
-
-    patents = []
-    seen = set()
-
-    for result in results:
-        try:
-            # ---------------------------------
-            # Publication URI
-            # ---------------------------------
-
-            uri = result["publn"]["value"]
-
-            # Avoid duplicate EPO records.
-            if uri in seen:
-                continue
-
-            seen.add(uri)
-
-            # ---------------------------------
-            # Title
-            # ---------------------------------
-
-            title = result["title"]["value"]
-
-            # ---------------------------------
-            # Retrieve complete patent record
-            # ---------------------------------
-
+def parse_single_epo_record(uri: str, title: str, keyword: str, client: httpx.Client | None = None) -> dict | None:
+    """Fetch and parse a single EPO publication URI into a normalized patent dict."""
+    try:
+        if client is not None:
+            record_response = client.get(
+                uri,
+                headers={"Accept": "application/json"},
+                timeout=12,
+            )
+        else:
             record_response = httpx.get(
                 uri,
-                headers={
-                    "Accept": "application/json",
-                },
-                timeout=20,
+                headers={"Accept": "application/json"},
+                timeout=12,
             )
 
-            if record_response.status_code != 200:
-                continue
+        if record_response.status_code != 200:
+            return None
 
-            record = record_response.json()
-
-            if isinstance(record, dict):
-                result_obj = record.get("result", {})
-                if isinstance(result_obj, dict):
-                    patent_data = result_obj.get("primaryTopic", {})
-                elif isinstance(result_obj, list) and len(result_obj) > 0 and isinstance(result_obj[0], dict):
-                    patent_data = result_obj[0].get("primaryTopic", {})
-                else:
-                    patent_data = {}
+        record = record_response.json()
+        if isinstance(record, dict):
+            result_obj = record.get("result", {})
+            if isinstance(result_obj, dict):
+                patent_data = result_obj.get("primaryTopic", {})
+            elif isinstance(result_obj, list) and len(result_obj) > 0 and isinstance(result_obj[0], dict):
+                patent_data = result_obj[0].get("primaryTopic", {})
             else:
                 patent_data = {}
+        else:
+            patent_data = {}
 
-            if not isinstance(patent_data, dict) or not patent_data:
-                continue
+        if not isinstance(patent_data, dict) or not patent_data:
+            return None
 
-            # ---------------------------------
-            # Application
-            # ---------------------------------
+        application = patent_data.get("application") if isinstance(patent_data, dict) else {}
+        if not isinstance(application, dict):
+            application = {}
 
-            application = (
-                patent_data.get("application")
-                if isinstance(patent_data, dict)
-                else {}
+        inventors = clean_text(patent_data.get("inventorVC"))
+        applicant = clean_text(patent_data.get("applicantVC"))
+
+        classifications = patent_data.get("classificationIPCInventive") or []
+        classification_values = []
+        for item in classifications:
+            if isinstance(item, dict):
+                label = item.get("label")
+                if label:
+                    classification_values.append(label)
+
+        classification = ", ".join(dict.fromkeys(classification_values)) or None
+        citations = patent_data.get("citesPatentPublication") or []
+        citation_count = len(citations)
+
+        raw_publication_number = patent_data.get("publicationNumber")
+        raw_publication_authority = patent_data.get("publicationAuthority")
+        raw_publication_kind = patent_data.get("publicationKind")
+
+        publication_number = build_publication_number(
+            raw_publication_number,
+            raw_publication_authority,
+            raw_publication_kind,
+        )
+
+        if not publication_number:
+            return None
+
+        return {
+            "source": "EPO",
+            "source_id": normalize_uri(uri),
+            "publication_number": publication_number,
+            "title": title,
+            "abstract": clean_text(patent_data.get("abstract")),
+            "assignee": applicant,
+            "inventors": inventors,
+            "filing_date": parse_epo_date(application.get("filingDate")),
+            "publication_date": parse_epo_date(patent_data.get("publicationDate")),
+            "classification": classification,
+            "technology_domain": keyword,
+            "citation_count": citation_count,
+            "status": None,
+            "official_link": uri,
+        }
+    except Exception as exc:
+        logger.debug("Error parsing single EPO record %s: %s", uri, exc)
+        return None
+
+
+def fetch_patents_from_epo(
+    keyword: str,
+    limit: int = 50,
+) -> list[dict]:
+    """
+    Search EPO Linked Open EP Data and retrieve
+    complete patent metadata using concurrent workers.
+    Supports scaling up to 1,000 real records.
+    """
+    safe_keyword = keyword.replace('"', '\\"').strip()
+    
+    # Keyword concept expansion if needed
+    search_terms = [safe_keyword]
+    if " " in safe_keyword:
+        words = [w for w in safe_keyword.split() if len(w) > 3]
+        if words:
+            search_terms.append(words[0])
+
+    all_uris_and_titles: list[tuple[str, str]] = []
+    seen_uris: set[str] = set()
+
+    # Query SPARQL endpoint for candidates
+    for term in search_terms:
+        if len(all_uris_and_titles) >= limit:
+            break
+
+        query = f"""
+        PREFIX patent: <http://data.epo.org/linked-data/def/patent/>
+        PREFIX dcterms: <http://purl.org/dc/terms/>
+        PREFIX text: <http://jena.apache.org/text#>
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+        SELECT DISTINCT ?publn ?title WHERE {{
+            ?publn
+                text:query (
+                    dcterms:abstract "{term}"
+                ) ;
+                rdf:type patent:Publication ;
+                patent:titleOfInvention ?title .
+
+            FILTER(langMatches(lang(?title), "en"))
+        }}
+        LIMIT {limit * 2}
+        """
+
+        try:
+            response = httpx.post(
+                EPO_QUERY_URL,
+                data={
+                    "query": query,
+                    "format": "json",
+                },
+                timeout=35,
             )
-            if not isinstance(application, dict):
-                application = {}
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", {}).get("bindings", [])
+                for res in results:
+                    uri = res.get("publn", {}).get("value")
+                    title = res.get("title", {}).get("value")
+                    if uri and title and uri not in seen_uris:
+                        seen_uris.add(uri)
+                        all_uris_and_titles.append((uri, title))
+                        if len(all_uris_and_titles) >= limit:
+                            break
+        except Exception as exc:
+            logger.warning("SPARQL query failed for term '%s': %s", term, exc)
 
-            # ---------------------------------
-            # Inventors
-            # ---------------------------------
+    if not all_uris_and_titles:
+        return []
 
-            inventors = clean_text(
-                patent_data.get("inventorVC")
-            )
+    # Target batch size to process
+    targets = all_uris_and_titles[:limit]
+    patents: list[dict] = []
 
-            # ---------------------------------
-            # Applicant / Assignee
-            # ---------------------------------
-
-            applicant = clean_text(
-                patent_data.get("applicantVC")
-            )
-
-            # ---------------------------------
-            # Classification
-            # ---------------------------------
-
-            classifications = (
-                patent_data.get(
-                    "classificationIPCInventive"
-                )
-                or []
-            )
-
-            classification_values = []
-
-            for item in classifications:
-                if isinstance(item, dict):
-                    label = item.get("label")
-
-                    if label:
-                        classification_values.append(
-                            label
-                        )
-
-            classification = (
-                ", ".join(
-                    dict.fromkeys(
-                        classification_values
-                    )
-                )
-                or None
-            )
-
-            # ---------------------------------
-            # Citations
-            # ---------------------------------
-
-            citations = (
-                patent_data.get(
-                    "citesPatentPublication"
-                )
-                or []
-            )
-
-            citation_count = len(citations)
-
-            # ---------------------------------
-            # Publication information
-            # ---------------------------------
-
-            raw_publication_number = (
-                patent_data.get(
-                    "publicationNumber"
-                )
-            )
-
-            raw_publication_authority = (
-                patent_data.get(
-                    "publicationAuthority"
-                )
-            )
-
-            raw_publication_kind = (
-                patent_data.get(
-                    "publicationKind"
-                )
-            )
-
-            publication_number = (
-                build_publication_number(
-                    raw_publication_number,
-                    raw_publication_authority,
-                    raw_publication_kind,
-                )
-            )
-
-            # ---------------------------------
-            # Safety check
-            # ---------------------------------
-
-            if not publication_number:
-                continue
-
-            # ---------------------------------
-            # Official link
-            # ---------------------------------
-
-            official_link = uri
-
-            # ---------------------------------
-            # Normalized patent record
-            # ---------------------------------
-
-            patents.append(
-                {
-                    "source": "EPO",
-
-                    "source_id": normalize_uri(
-                        uri
-                    ),
-
-                    "publication_number": (
-                        publication_number
-                    ),
-
-                    "title": title,
-
-                    "abstract": clean_text(
-                        patent_data.get("abstract")
-                    ),
-
-                    "assignee": applicant,
-
-                    "inventors": inventors,
-
-                    "filing_date": parse_epo_date(
-                        application.get(
-                            "filingDate"
-                        )
-                    ),
-
-                    "publication_date": parse_epo_date(
-                        patent_data.get(
-                            "publicationDate"
-                        )
-                    ),
-
-                    "classification": classification,
-
-                    "technology_domain": keyword,
-
-                    "citation_count": citation_count,
-
-                    "status": None,
-
-                    "official_link": official_link,
-                }
-            )
-
-        except (
-            httpx.HTTPError,
-            KeyError,
-            ValueError,
-            TypeError,
-        ):
-            # Ignore one bad EPO record and continue.
-            continue
+    # Use thread pool for fast concurrent fetching
+    max_workers = min(12, max(2, len(targets)))
+    with httpx.Client(timeout=15) as client:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_target = {
+                executor.submit(parse_single_epo_record, uri, title, keyword, client): (uri, title)
+                for uri, title in targets
+            }
+            for future in as_completed(future_to_target):
+                try:
+                    record_dict = future.result()
+                    if record_dict:
+                        patents.append(record_dict)
+                except Exception as exc:
+                    logger.debug("Failed fetching record: %s", exc)
 
     return patents
 
@@ -493,55 +412,53 @@ def fetch_patents_from_epo(
 def import_patents(
     db: Session,
     keyword: str,
-    limit: int = 5,
-):
+    limit: int = 50,
+) -> dict:
     """
-    Import patents from EPO into PostgreSQL.
-
-    Existing patents are skipped using:
-        source + source_id
+    Import real patents from EPO Linked Data API into PostgreSQL/SQLite.
+    Deduplicates against existing database records using (source, source_id)
+    and publication_number.
     """
-
     patents = fetch_patents_from_epo(
-        keyword,
-        limit,
+        keyword=keyword,
+        limit=limit,
     )
 
     inserted = 0
     skipped = 0
 
     for patent_data in patents:
-
         existing = db.scalar(
             select(Patent).where(
-                Patent.source
-                == patent_data["source"],
-                Patent.source_id
-                == patent_data["source_id"],
+                (Patent.source == patent_data["source"])
+                & (Patent.source_id == patent_data["source_id"])
             )
         )
+        if not existing and patent_data.get("publication_number"):
+            existing = db.scalar(
+                select(Patent).where(
+                    Patent.publication_number == patent_data["publication_number"]
+                )
+            )
 
         if existing:
             skipped += 1
             continue
 
-        db.add(
-            Patent(
-                **patent_data
-            )
-        )
-
+        db.add(Patent(**patent_data))
         inserted += 1
 
     try:
         db.commit()
-
     except Exception:
         db.rollback()
         raise
+
+    total_in_db = db.scalar(select(func.count(Patent.id))) or 0
 
     return {
         "inserted": inserted,
         "skipped": skipped,
         "total_found": len(patents),
-    }
+        "total_database_records": total_in_db,
+    }

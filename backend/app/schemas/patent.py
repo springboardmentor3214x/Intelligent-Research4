@@ -35,7 +35,16 @@ class PatentResponse(PatentBase):
 
 class PatentImportRequest(BaseModel):
     keyword: str
-    limit: int = 5
+    limit: int = Field(default=50, ge=1, le=1000)
+
+
+class PatentStatsResponse(BaseModel):
+    total_patents: int
+    total_clusters: int
+    embedding_model: str
+    spatial_projection: str
+    sources_breakdown: dict[str, int] = {}
+
 
 
 class PatentSearchItem(BaseModel):

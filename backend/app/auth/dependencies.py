@@ -48,6 +48,26 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    token: Optional[str] = Depends(OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """
+    FastAPI dependency to extract the current user if token is present, else returns None.
+    """
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        user_id_str: Optional[str] = payload.get("sub")
+        if user_id_str is None:
+            return None
+        user_id = uuid.UUID(user_id_str)
+        return db.query(User).filter(User.id == user_id).first()
+    except Exception:
+        return None
+
+
 def require_roles(*allowed_roles: str) -> Callable:
     """Require a valid authenticated user with one of the permitted roles."""
     def role_guard(current_user: User = Depends(get_current_user)) -> User:
@@ -55,3 +75,4 @@ def require_roles(*allowed_roles: str) -> Callable:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this resource")
         return current_user
     return role_guard
+

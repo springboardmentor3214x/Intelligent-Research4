@@ -7,7 +7,23 @@ function authHeaders(token) {
   }
 }
 
-export function fetchResearchPapers(token, { search = '', year = '', researchDomain = '', source = '', page = 1, pageSize = 20 } = {}) {
+export const ALL_RESEARCH_SOURCES = [
+  'OpenAlex',
+  'Crossref',
+  'Semantic Scholar',
+  'CORE',
+  'arXiv',
+  'Europe PMC',
+  'PubMed',
+  'DOAJ',
+  'OpenAIRE',
+  'Zenodo',
+  'bioRxiv',
+  'medRxiv',
+  'BASE',
+]
+
+export function fetchResearchPapers(token, { search = '', year = '', researchDomain = '', source = '', page = 1, pageSize = 50 } = {}) {
   const params = new URLSearchParams()
   if (search && search.trim()) params.append('search', search.trim())
   if (year && String(year).trim().length === 4 && !isNaN(year)) {
@@ -41,11 +57,37 @@ export function getResearchPaper(token, paperId) {
   })
 }
 
-export function importResearchPapers(token, { search, per_page = 20 }) {
+export function importResearchPapers(token, { search, target_count = 50, per_page = 50, sources = ALL_RESEARCH_SOURCES, year_from = null, year_to = null, research_domain = null }) {
   return apiFetch('/research-papers/import', {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({ search, per_page }),
+    body: JSON.stringify({
+      search,
+      target_count,
+      per_page,
+      sources,
+      year_from: year_from ? Number(year_from) : null,
+      year_to: year_to ? Number(year_to) : null,
+      research_domain,
+    }),
+  })
+}
+
+export function batchCorpusIngest(token, { topics = null, target_per_topic = 100, sources = ALL_RESEARCH_SOURCES } = {}) {
+  return apiFetch('/research-papers/batch-corpus-ingest', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      topics,
+      target_per_topic,
+      sources,
+    }),
+  })
+}
+
+export function getCorpusStats(token) {
+  return apiFetch('/research-papers/corpus-stats', {
+    headers: { Authorization: `Bearer ${token}` },
   })
 }
 

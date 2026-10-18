@@ -354,3 +354,66 @@ def test_api_similar_patents_and_clustering(client: TestClient, db_session: Sess
     assert search_data["total_results"] >= 2
     assert "Solar" in search_data["patents"][0]["title"]
 
+    # GET /patents/stats
+    res_stats = client.get("/patents/stats")
+    assert res_stats.status_code == 200
+    stats_data = res_stats.json()
+    assert stats_data["total_patents"] >= 4
+    assert stats_data["spatial_projection"] == "3D / 2D PCA"
+    assert "all-MiniLM-L6-v2" in stats_data["embedding_model"]
+
+
+def test_patent_import_endpoint_and_deduplication(client: TestClient, monkeypatch):
+    """Test importing live patent records with mocked provider response and deduplication."""
+    mock_records = [
+        {
+            "source": "EPO",
+            "source_id": "EP10001",
+            "publication_number": "EP 3001001 A1",
+            "title": "Quantum Error Mitigation Architecture for Superconducting Qubits",
+            "abstract": "A quantum computing architecture mitigating decoherence using topological surface codes.",
+            "assignee": "Quantum Systems Europe",
+            "inventors": "Dr. Niels Quantum",
+            "filing_date": date(2024, 1, 15),
+            "publication_date": date(2024, 8, 20),
+            "classification": "G06N 10/00",
+            "technology_domain": "quantum computing",
+            "citation_count": 3,
+            "status": None,
+            "official_link": "https://data.epo.org/linked-data/data/publication/EP10001",
+        },
+        {
+            "source": "EPO",
+            "source_id": "EP10002",
+            "publication_number": "EP 3001002 A1",
+            "title": "Cryogenic Control Circuit for Quantum Processor",
+            "abstract": "Low noise cryogenic microwave control circuits operating below 4 Kelvin.",
+            "assignee": "Quantum Systems Europe",
+            "inventors": "Dr. Elena Cryo",
+            "filing_date": date(2024, 2, 10),
+            "publication_date": date(2024, 9, 5),
+            "classification": "G06N 10/40",
+            "technology_domain": "quantum computing",
+            "citation_count": 1,
+            "status": None,
+            "official_link": "https://data.epo.org/linked-data/data/publication/EP10002",
+        },
+    ]
+
+    # Mock fetch_patents_from_epo
+    monkeypatch.setattr(
+        "backend.app.routers.patent.import_patents",
+        lambda db, keyword, limit: {"inserted": 2, "skipped": 0, "total_found": 2, "total_database_records": 6},
+    )
+
+    # Test importing with limit 50
+    res_import = client.post("/patents/import", json={"keyword": "quantum computing", "limit": 50})
+    assert res_import.status_code == 200
+    data = res_import.json()
+    assert data["inserted"] == 2
+    assert data["total_database_records"] == 6
+
+    # Test limit validation error (greater than 1000)
+    res_over = client.post("/patents/import", json={"keyword": "quantum", "limit": 1500})
+    assert res_over.status_code == 422  # Pydantic validation error
+

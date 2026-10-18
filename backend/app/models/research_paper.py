@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -93,6 +93,40 @@ class ResearchPaper(Base):
     publication_link: Mapped[str | None] = mapped_column(
         Text,
         nullable=True
+    )
+
+    open_access_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
+    )
+
+    is_open_access: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    publisher: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True
+    )
+
+    document_type: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        default="publication"
+    )
+
+    is_preprint: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    source_metadata: Mapped[dict | None] = mapped_column(
+        JSON,
+        nullable=True,
+        default=dict
     )
 
     created_at: Mapped[datetime] = mapped_column(

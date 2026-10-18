@@ -20,8 +20,9 @@ from backend.app.database.connection import get_db
 from backend.app.models.user import User
 from backend.app.schemas.user import UserCreate, UserResponse, UserUpdate
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Administrators must be provisioned by an existing administrator, never by public sign-up.
 ALLOWED_PUBLIC_ROLES = {"researcher", "startup_founder", "innovation_manager", "innovator", "investor", "reviewer", "user"}
@@ -40,7 +41,7 @@ def _google_settings() -> tuple[str, str, str, str]:
     """Read OAuth credentials only from the environment, never from source."""
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/oauth/google/callback")
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     if not all((client_id, client_secret, redirect_uri)):
         raise HTTPException(status_code=503, detail="Google sign-in is not configured")
@@ -52,17 +53,32 @@ def google_login() -> RedirectResponse:
     client_id, _, redirect_uri, _ = _google_settings()
     state = secrets.token_urlsafe(32)
     query = urlencode({
-        "client_id": client_id, "redirect_uri": redirect_uri, "response_type": "code",
-        "scope": "openid email profile", "state": state, "prompt": "select_account",
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "prompt": "select_account",
     })
     response = RedirectResponse(f"{GOOGLE_AUTH_URL}?{query}")
-    # The state cookie binds the callback to the browser that initiated sign-in.
-    response.set_cookie("oauth_google_state", state, max_age=600, httponly=True, secure=redirect_uri.startswith("https"), samesite="lax")
+    response.set_cookie(
+        "oauth_google_state",
+        state,
+        max_age=600,
+        httponly=True,
+        secure=redirect_uri.startswith("https"),
+        samesite="lax",
+    )
     return response
 
 
 @router.get("/oauth/google/callback", summary="Complete Google OAuth2 login")
-async def google_callback(request: Request, code: str, state: str, db: Session = Depends(get_db)) -> RedirectResponse:
+async def google_callback(
+    request: Request,
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
     client_id, client_secret, redirect_uri, frontend_url = _google_settings()
     if not secrets.compare_digest(state, request.cookies.get("oauth_google_state", "")):
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
@@ -81,23 +97,33 @@ async def google_callback(request: Request, code: str, state: str, db: Session =
             if token_response.is_error:
                 logger.error("Google token exchange error status %s: %s", token_response.status_code, token_response.text)
             token_response.raise_for_status()
-            user_response = await client.get(GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {token_response.json()['access_token']}"})
+            user_response = await client.get(
+                GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {token_response.json()['access_token']}"},
+            )
             if user_response.is_error:
                 logger.error("Google userinfo error status %s: %s", user_response.status_code, user_response.text)
             user_response.raise_for_status()
     except (httpx.HTTPError, KeyError) as error:
-        # Keep the browser message generic, but retain provider diagnostics in server logs.
         logger.warning("Google OAuth verification failed: %s", error)
         raise HTTPException(status_code=401, detail="Google sign-in could not be verified")
     identity = user_response.json()
     email = str(identity.get("email", "")).strip().lower()
     if not email or not identity.get("email_verified"):
         raise HTTPException(status_code=401, detail="Google account email is not verified")
+
     user = db.query(User).filter(User.email.ilike(email)).first()
     if not user:
-        # A random unusable password preserves the existing non-null database schema.
-        user = User(name=str(identity.get("name") or email.split("@", 1)[0]), email=email, password_hash=hash_password(secrets.token_urlsafe(48)), role="researcher")
-        db.add(user); db.commit(); db.refresh(user)
+        user = User(
+            name=str(identity.get("name") or email.split("@", 1)[0]),
+            email=email,
+            password_hash=hash_password(secrets.token_urlsafe(48)),
+            role="researcher",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
     token = create_access_token({"sub": str(user.id), "email": user.email, "role": user.role})
     response = RedirectResponse(f"{frontend_url}/oauth/callback?{urlencode({'token': token})}")
     response.delete_cookie("oauth_google_state")
@@ -113,12 +139,6 @@ async def google_callback(request: Request, code: str, state: str, db: Session =
 def register(user_in: UserCreate, db: Session = Depends(get_db)) -> User:
     """
     Register a new user account.
-    
-    - Validates email uniqueness.
-    - Hashes password securely using Argon2 (pwdlib).
-    - Prevents unprivileged self-assignment of admin roles during public registration.
-    - Persists user into PostgreSQL database.
-    - Returns sanitized user details without password/hash.
     """
     normalized_email = user_in.email.strip().lower()
 
@@ -172,7 +192,7 @@ def login(
     db: Session = Depends(get_db)
 ) -> TokenResponse:
     """
-    Authenticate user with OAuth2 password request form (username treated as email) and password, returning a JWT access token.
+    Authenticate user with OAuth2 password request form and password, returning a JWT access token.
     """
     normalized_email = credentials.username.strip().lower()
 
